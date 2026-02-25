@@ -133,10 +133,19 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 		if path == "workspace" {
 			return nil // workspace目录跳过
 		}
+
 		relPath := path
 		if strings.HasPrefix(path, "workspace/") {
 			relPath = path[len("workspace/"):]
 		}
+
+		if relPath == "BOOTSTRAP.md" {
+			targetLockFile := filepath.Join(workspaceDir, "BOOTSTRAP.lock")
+			if _, err := os.Stat(targetLockFile); err == nil {
+				return nil // lock文件存在，跳过
+			}
+		}
+
 		targetPath := filepath.Join(workspaceDir, relPath)
 		if d.IsDir() {
 			return os.MkdirAll(targetPath, 0755)

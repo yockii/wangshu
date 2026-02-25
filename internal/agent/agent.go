@@ -239,9 +239,19 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 		),
 	})
 	for _, msg := range sessionMessages {
+		tcs := make([]llm.ToolCall, 0, len(msg.ToolCalls))
+		for _, toolCall := range msg.ToolCalls {
+			tcs = append(tcs, llm.ToolCall{
+				ID:        toolCall.ID,
+				Name:      toolCall.Name,
+				Arguments: toolCall.Arguments,
+			})
+		}
+
 		m := llm.Message{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:      msg.Role,
+			Content:   msg.Content,
+			ToolCalls: tcs,
 		}
 		msgs = append(msgs, m)
 	}

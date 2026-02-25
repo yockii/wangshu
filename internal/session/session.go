@@ -139,7 +139,11 @@ func (s *Session) Touch() {
 }
 
 func (s *Session) saveMessage(msg Message) {
-	sessionFile := filepath.Join(s.workspace, "sessions", s.ID+".jsonl")
+	if s.ID == "" {
+		return
+	}
+
+	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
 	// 如果目录不存在则创建
 	if err := os.MkdirAll(filepath.Dir(sessionFile), 0755); err != nil {
 		slog.Error("Failed to create session directory", "error", err)

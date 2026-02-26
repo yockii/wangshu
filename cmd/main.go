@@ -2,21 +2,16 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/yockii/yoclaw/internal/agent"
 	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/internal/constant"
-	"github.com/yockii/yoclaw/internal/cron"
-	"github.com/yockii/yoclaw/internal/tasks"
 	systemTools "github.com/yockii/yoclaw/internal/tools/system"
-	taskTools "github.com/yockii/yoclaw/internal/tools/tasks"
+	taskTools "github.com/yockii/yoclaw/internal/tools/task"
 	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/channel"
 	"github.com/yockii/yoclaw/pkg/llm"
@@ -52,82 +47,23 @@ func main() {
 	defer bus.Close()
 
 	// 初始化工具注册中心
-	toolsRegistry := tools.NewRegistry()
-	tools.RegisterBuiltinTools(toolsRegistry)
-	tools.RegisterFileSystemTools(toolsRegistry)
+	tools.RegisterBuiltinTools()
+	tools.RegisterFileSystemTools()
 	// Register shell tools
-	shellTools.RegisterShellTools(toolsRegistry)
+	shellTools.RegisterShellTools()
 	// Register network tools
-	networkTools.RegisterNetworkTools(toolsRegistry)
+	networkTools.RegisterNetworkTools()
 	// Register system tools
-	systemTools.RegisterSystemTools(toolsRegistry)
+	systemTools.RegisterSystemTools()
 	// Register memory tools
-	memoryTools.RegisterMemoryTools(toolsRegistry)
-	// Register task tools
-	taskTools.RegisterTaskTools(toolsRegistry)
+	memoryTools.RegisterMemoryTools()
+	taskTools.RegisterTaskTools()
 	// TODO 实现并注册更多工具
 
-	// 确保各个agent的workspace完整性
-	for name, agent := range config.DefaultCfg.Agents {
-		if err := config.EnsureWorkspace(agent.Workspace); err != nil {
-			slog.Error("Failed to ensure workspace", "agent", name, "error", err)
-			return
-		}
-	}
-
-	skillLoader := skills.NewLoader(config.DefaultCfg.Skill.GlobalPath, config.DefaultCfg.Skill.BuiltInPath)
+	skills.InitializeSkillLoader(config.DefaultCfg.Skill.GlobalPath, config.DefaultCfg.Skill.BuiltInPath)
 
 	// 初始化agents
-	agents := make(map[string]*agent.Agent)
-	var defaultAgent *agent.Agent
-	for name, ac := range config.DefaultCfg.Agents {
-		agents[name] = agent.NewAgent(
-			llm.GetProvider(ac.Provider),
-			ac.Model,
-			toolsRegistry,
-			24*time.Hour,
-			10,
-			ac.Workspace,
-			skillLoader,
-		)
-		// Set agent name and start cron manager
-		agents[name].SetName(name)
-		if name == constant.Default || defaultAgent == nil {
-			defaultAgent = agents[name]
-		}
-	}
-
-	// Initialize global agent manager
-	agent.InitializeAgentManager(agents)
-
-	// Build workspaces map for task manager
-	workspaces := make(map[string]string)
-	for name, ac := range config.DefaultCfg.Agents {
-		workspaces[name] = ac.Workspace
-	}
-
-	// Build agent executors map for task manager
-	agentExecutors := make(map[string]tasks.AgentExecutor)
-	for name, ag := range agents {
-		agentExecutors[name] = ag
-	}
-
-	// Initialize task manager with agents and workspaces
-	taskMgr, err := tasks.Initialize(agentExecutors, workspaces)
-	if err != nil {
-		slog.Error("Failed to initialize task manager", "error", err)
-		return
-	}
-
-	// Connect CronManager with TaskManager via event handler
-	for name, ag := range agents {
-		// Create event handler for this agent's cron manager
-		cronEventHandler := &cronTaskEventHandler{
-			taskManager: taskMgr,
-			agentName:   name,
-		}
-		ag.GetCronManager().SetEventHandler(cronEventHandler)
-	}
+	defaultAgent := agent.InitializeAgentManager()
 
 	// 初始化channel
 	if config.DefaultCfg.Channels.Feishu.Enabled {
@@ -136,7 +72,7 @@ func main() {
 			channel.RegisterChannel("feishu", feishuChannel)
 			var feishuAgent *agent.Agent
 			if config.DefaultCfg.Channels.Feishu.Agent != "" {
-				a, has := agents[config.DefaultCfg.Channels.Feishu.Agent]
+				a, has := agent.GetAgent(config.DefaultCfg.Channels.Feishu.Agent)
 				if has {
 					feishuAgent = a
 				}
@@ -160,11 +96,9 @@ func main() {
 
 	<-sigCh
 
-	// Stop all cron managers
-	for name, ag := range agents {
-		slog.Info("Stopping agent", "name", name)
-		ag.Stop()
-	}
+	channel.StopAllChannel()
+	// Stop all agent
+	agent.StopAllAgents()
 	slog.Info("All agents stopped")
 }
 
@@ -182,48 +116,4 @@ func expandPath(path string) string {
 		return home
 	}
 	return path
-}
-
-// cronTaskEventHandler handles cron task events by creating tasks in TaskManager
-type cronTaskEventHandler struct {
-	taskManager *tasks.Manager
-	agentName   string
-}
-
-func (h *cronTaskEventHandler) OnCronTaskDue(cronTask *cron.Task) error {
-	// Build the prompt for the task
-	prompt := fmt.Sprintf("执行定时任务: %s\n描述: %s\n\n请执行这个任务。", cronTask.Name, cronTask.Description)
-	if cronTask.Description == "" {
-		prompt = fmt.Sprintf("执行定时任务: %s\n\n请执行这个任务。", cronTask.Name)
-	}
-
-	// Create the task
-	taskMeta, err := h.taskManager.CreateTask(
-		fmt.Sprintf("[Cron] %s", cronTask.Name),
-		cronTask.Description,
-		cronTask.OwnerID,
-		h.agentName,
-		"", // No schedule - this is a one-time execution
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create task: %w", err)
-	}
-
-	// Add cron metadata to the task
-	taskMeta.Metadata = map[string]string{
-		"cron_task_id": cronTask.ID,
-		"cron_task":    "true",
-	}
-	h.taskManager.SaveTaskMeta(taskMeta)
-
-	// Add initial message
-	h.taskManager.AddTaskMessage(taskMeta.ID, prompt)
-
-	// Execute the task
-	if err := h.taskManager.ExecuteTask(taskMeta.ID); err != nil {
-		return fmt.Errorf("failed to execute task: %w", err)
-	}
-
-	slog.Info("Cron task started", "task", cronTask.Name, "taskID", taskMeta.ID)
-	return nil
 }

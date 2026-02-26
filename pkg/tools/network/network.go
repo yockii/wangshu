@@ -5,8 +5,8 @@ import (
 )
 
 // RegisterNetworkTools registers all network-related tools
-func RegisterNetworkTools(registry *tools.Registry) {
-	registry.Register(NewWebSearchTool())
-	registry.Register(NewWebFetchTool())
-	registry.Register(NewBrowserTool())
+func RegisterNetworkTools() {
+	tools.GetDefaultToolRegistry().Register(NewWebSearchTool())
+	tools.GetDefaultToolRegistry().Register(NewWebFetchTool())
+	tools.GetDefaultToolRegistry().Register(NewBrowserTool())
 }

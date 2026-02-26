@@ -21,3 +21,9 @@ func GetChannel(name string) (Channel, bool) {
 	channel, exists := Channels[name]
 	return channel, exists
 }
+
+func StopAllChannel() {
+	for _, ch := range Channels {
+		ch.Stop()
+	}
+}

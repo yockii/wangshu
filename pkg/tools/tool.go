@@ -2,10 +2,6 @@ package tools
 
 import "context"
 
-const (
-	ToolCallParamWorkspace = "workspace"
-)
-
 // Tool is the basic tool interface
 type Tool interface {
 	Name() string

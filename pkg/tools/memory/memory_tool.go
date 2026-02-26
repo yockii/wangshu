@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/yoclaw/internal/constant"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
 
@@ -92,7 +92,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 		}
 	}
 
-	workspaceDir := params[tools.ToolCallParamWorkspace]
+	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -156,7 +156,7 @@ func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
 		return "", fmt.Errorf("invalid date format: %w", err)
 	}
 
-	workspaceDir := params[tools.ToolCallParamWorkspace]
+	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -184,7 +184,7 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 		}
 	}
 
-	workspaceDir := params[tools.ToolCallParamWorkspace]
+	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -399,7 +399,7 @@ func (t *MemoryTool) GetMemoryStats(workspaceDir string) (string, error) {
 		}
 	}
 
-	stats := fmt.Sprintf("Memory Statistics:\n")
+	stats := "Memory Statistics:\n"
 	stats += fmt.Sprintf("  Total entries: %d\n", count)
 	stats += fmt.Sprintf("  Total size: %d bytes\n", totalSize)
 	if count > 0 {

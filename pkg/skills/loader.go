@@ -11,9 +11,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var defaultSkillLoader *Loader
+
+func GetDefaultLoader() *Loader {
+	return defaultSkillLoader
+}
+
 type Loader struct {
 	globalPath  string
 	builtinPath string
+}
+
+func InitializeSkillLoader(globalPath, builtInPath string) {
+	defaultSkillLoader = NewLoader(globalPath, builtInPath)
 }
 
 func NewLoader(globalPath, builtInPath string) *Loader {

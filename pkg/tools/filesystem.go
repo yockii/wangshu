@@ -4,12 +4,12 @@ import (
 	"github.com/yockii/yoclaw/pkg/tools/filesystem"
 )
 
-func RegisterFileSystemTools(registry *Registry) {
-	registry.Register(filesystem.NewReadFileTool())
-	registry.Register(filesystem.NewWriteFileTool())
-	registry.Register(filesystem.NewListDirectoryTool())
-	registry.Register(filesystem.NewRenameFileTool())
-	registry.Register(filesystem.NewEditFileTool())
-	registry.Register(filesystem.NewFindFileTool())
-	registry.Register(filesystem.NewGrepTool())
+func RegisterFileSystemTools() {
+	defaultToolRegistry.Register(filesystem.NewReadFileTool())
+	defaultToolRegistry.Register(filesystem.NewWriteFileTool())
+	defaultToolRegistry.Register(filesystem.NewListDirectoryTool())
+	defaultToolRegistry.Register(filesystem.NewRenameFileTool())
+	defaultToolRegistry.Register(filesystem.NewEditFileTool())
+	defaultToolRegistry.Register(filesystem.NewFindFileTool())
+	defaultToolRegistry.Register(filesystem.NewGrepTool())
 }

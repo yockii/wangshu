@@ -8,6 +8,12 @@ import (
 	"github.com/yockii/yoclaw/pkg/llm"
 )
 
+var defaultToolRegistry = NewRegistry()
+
+func GetDefaultToolRegistry() *Registry {
+	return defaultToolRegistry
+}
+
 type Registry struct {
 	tools map[string]Tool
 	mu    sync.RWMutex

@@ -11,8 +11,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/yockii/yoclaw/internal/config"
+	"github.com/yockii/yoclaw/internal/constant"
 	"github.com/yockii/yoclaw/internal/cron"
-	"github.com/yockii/yoclaw/internal/notification"
 	"github.com/yockii/yoclaw/internal/session"
 	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/llm"
@@ -23,39 +24,38 @@ import (
 type Agent struct {
 	provider     llm.Provider
 	model        string
-	tools        *tools.Registry
 	sessions     *session.Manager
 	maxIter      int
 	workspaceDir string
-	skillLoader  *skills.Loader
-	cronManager  *cron.Manager
+	cronManager  *cron.CronManager
 	agentName    string
+
+	taskTicker *time.Ticker
 }
 
-func NewAgent(provider llm.Provider, model string, tools *tools.Registry, sessionTTL time.Duration, maxIter int, workspaceDir string, skillLoader *skills.Loader) *Agent {
+func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duration, maxIter int, workspaceDir string) (*Agent, error) {
 	agent := &Agent{
+		agentName:    name,
 		provider:     provider,
 		model:        model,
-		tools:        tools,
 		sessions:     session.NewManager(sessionTTL),
 		maxIter:      maxIter,
 		workspaceDir: workspaceDir,
-		skillLoader:  skillLoader,
+	}
+
+	err := config.EnsureWorkspace(workspaceDir)
+	if err != nil {
+		slog.Error("Failed to ensure workspace", "agent", agent.agentName, "error", err)
+		return nil, err
 	}
 
 	// Initialize cron manager (without task creator - will be set via event handler)
-	agent.cronManager = cron.NewManager(workspaceDir, nil, nil)
+	agent.cronManager = cron.NewManager(workspaceDir, agent.executionJob)
 
-	return agent
-}
+	agent.taskTicker = time.NewTicker(7 * time.Second)
+	go agent.startTaskLoop()
 
-// SetName sets the agent name
-func (a *Agent) SetName(name string) {
-	a.agentName = name
-	// Update cron manager with agent name
-	if a.cronManager != nil {
-		a.cronManager.SetAgentName(name)
-	}
+	return agent, nil
 }
 
 // GetName returns the agent name
@@ -64,7 +64,7 @@ func (a *Agent) GetName() string {
 }
 
 // GetCronManager returns the cron manager
-func (a *Agent) GetCronManager() *cron.Manager {
+func (a *Agent) GetCronManager() *cron.CronManager {
 	return a.cronManager
 }
 
@@ -73,15 +73,11 @@ func (a *Agent) GetWorkspace() string {
 }
 
 func (a *Agent) Stop() {
-	// Cron manager no longer needs to be stopped (it's now a lightweight recorder)
+	a.taskTicker.Stop()
+	a.cronManager.Stop()
 }
 
 func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, userInput, senderID string) (string, error) {
-	// Record user for proactive notifications
-	if senderID != "" {
-		notification.GetManager().RecordUser(channel, ChatID, senderID, a.GetWorkspace())
-	}
-
 	sess := a.sessions.GetOrCreate(a.workspaceDir, sessionID, channel, ChatID, senderID)
 	sess.AddMessage("user", userInput)
 
@@ -104,8 +100,9 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 	var finalContent string
 
 	for i := 0; i < a.maxIter; i++ {
+		availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 
-		resp, err := a.provider.Chat(ctx, a.model, msgs, a.tools.GetProviderDefs(), nil)
+		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
 		if err != nil {
 			return "", fmt.Errorf("LLM call failed (iteration %d): %w", i+1, err)
 		}
@@ -140,22 +137,14 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 		// 执行所有的工具调用
 		for _, tc := range resp.Message.ToolCalls {
-			var args any
-			if tc.Arguments != "" {
-				var parsedArgs map[string]any
-				if err := json.Unmarshal([]byte(tc.Arguments), &parsedArgs); err == nil {
-					args = parsedArgs
-				}
-			}
-
-			EmitToolStart(sess.ID, tc.Name, tc.ID, args)
+			// EmitToolStart(sess.ID, tc.Name, tc.ID, args)
 
 			toolResult, err := a.executeToolCall(ctx, tc, sess.Channel, sess.ChatID)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
-				EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, true)
+				// EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, true)
 			} else {
-				EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, false)
+				// EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, false)
 			}
 
 			addToolResultMessage(sess, "tool", toolResult, tc.ID)
@@ -173,7 +162,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 		sess.AddMessage("assistant", finalContent)
 	}
 
-	EmitLifecycle(sess.ID, "end", "")
+	// EmitLifecycle(sess.ID, "end", "")
 	return finalContent, nil
 }
 
@@ -190,7 +179,9 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 		args = make(map[string]any)
 	}
 
-	args[tools.ToolCallParamWorkspace] = a.workspaceDir
+	args[constant.ToolCallParamWorkspace] = a.workspaceDir
+	args[constant.ToolCallParamChannel] = channel
+	args[constant.ToolCallParamChatID] = chatID
 
 	// Create ToolContext with agent information
 	toolCtx := tools.NewToolContext(
@@ -204,7 +195,7 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 		a.model,
 	)
 
-	result := a.tools.ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
+	result := tools.GetDefaultToolRegistry().ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
 	if result.IsError {
 		return result.ForLLM, fmt.Errorf("Tool execution failed")
 	}
@@ -235,39 +226,22 @@ func addToolResultMessage(sess *session.Session, role, content, toolCallID strin
 	sess.AddMessage(role, content)
 }
 
+type SkillsParent struct {
+	XMLName   xml.Name        `xml:"skills"`
+	SkillList []*skills.Skill `xml:"skill"`
+}
+
 func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	sessionMessages := sess.GetMessages()
 
 	msgs := make([]llm.Message, 0, len(sessionMessages)+1)
 
-	// if len(sessionMessages) > 1 { // 之前已经加载过对应的tools和skills数据，不用单独加载
-	// 	for _, msg := range sessionMessages {
-	// 		tc := make([]llm.ToolCall, 0, len(msg.ToolCalls))
-	// 		for _, toolCall := range msg.ToolCalls {
-	// 			tc = append(tc, llm.ToolCall{
-	// 				ID:        toolCall.ID,
-	// 				Name:      toolCall.Name,
-	// 				Arguments: toolCall.Arguments,
-	// 			})
-	// 		}
-	// 		m := llm.Message{
-	// 			Role:      msg.Role,
-	// 			Content:   msg.Content,
-	// 			ToolCalls: tc,
-	// 		}
-	// 		msgs = append(msgs, m)
-	// 	}
-	// } else {
 	// 技能元数据加载
-	skillList, err := a.skillLoader.LoadSkills()
+	skillList, err := skills.GetDefaultLoader().LoadSkills()
 	if err != nil {
 		return nil, err
 	}
 	// 将skills转为xml字符串
-	type SkillsParent struct {
-		XMLName   xml.Name        `xml:"skills"`
-		SkillList []*skills.Skill `xml:"skill"`
-	}
 	parent := SkillsParent{
 		SkillList: skillList,
 	}
@@ -357,21 +331,6 @@ func (a *Agent) loadAgentContextInfo() string {
 	return content
 }
 
-// CallProvider calls the LLM provider directly (for task execution)
-func (a *Agent) CallProvider(ctx context.Context, sessionID string, msgs []llm.Message) (*llm.ChatResponse, error) {
-	return a.provider.Chat(ctx, a.model, msgs, a.tools.GetProviderDefs(), nil)
-}
-
-// GetTools returns the tool registry
-func (a *Agent) GetTools() *tools.Registry {
-	return a.tools
-}
-
-// GetLLMProvider returns the LLM provider and model
-func (a *Agent) GetLLMProvider() (llm.Provider, string) {
-	return a.provider, a.model
-}
-
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 	sessionID := msg.SessionKey
 	if sessionID == "" {
@@ -380,7 +339,7 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 	response, err := a.RunWithChannel(ctx, sessionID, msg.Channel, msg.ChatID, msg.Content, msg.SenderID)
 	if err != nil {
 		slog.Error("Failed to run with channel", "error", err)
-		response = fmt.Sprintf("Agent dealing failed: %w", err)
+		response = fmt.Sprintf("Agent dealing failed: %+v", err)
 	}
 	bus.Default().PublishOutbound(bus.OutboundMessage{
 		Channel: msg.Channel,

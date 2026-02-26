@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-func RegisterBuiltinTools(registry *Registry) {
-	registry.Register(&SleepTool{})
-	registry.Register(&GetTimeTool{})
+func RegisterBuiltinTools() {
+	defaultToolRegistry.Register(&SleepTool{})
+	defaultToolRegistry.Register(&GetTimeTool{})
 
 }
 

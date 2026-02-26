@@ -5,6 +5,6 @@ import (
 )
 
 // RegisterSystemTools registers all system-related tools
-func RegisterSystemTools(registry *tools.Registry) {
-	registry.Register(NewCronTool())
+func RegisterSystemTools() {
+	tools.GetDefaultToolRegistry().Register(NewCronTool())
 }

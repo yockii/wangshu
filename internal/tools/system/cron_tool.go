@@ -2,12 +2,29 @@ package system
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"time"
 
-	"github.com/yockii/yoclaw/internal/agent"
-	"github.com/yockii/yoclaw/internal/cron"
+	"github.com/google/uuid"
+	"github.com/yockii/yoclaw/internal/constant"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
+
+type BasicJobInfo struct {
+	ID          string     `json:"id"`
+	Schedule    string     `json:"schedule"`
+	Description string     `json:"description"`
+	Status      string     `json:"status"`
+	LastRun     *time.Time `json:"last_run,omitempty"`
+	NextRun     *time.Time `json:"next_run,omitempty"`
+
+	Channel string `json:"channel"`
+	ChatID  string `json:"chat_id"`
+}
 
 type CronTool struct {
 	basic.SimpleTool
@@ -22,12 +39,12 @@ func NewCronTool() *CronTool {
 		"properties": map[string]any{
 			"action": map[string]any{
 				"type":        "string",
-				"description": "Action to perform: add, remove, list, enable, disable, status",
-				"enum":        []string{"add", "remove", "list", "enable", "disable", "status"},
+				"description": "Action to perform: add, list, pause, resume, disable, status",
+				"enum":        []string{"add", "list", "pause", "resume", "disable", "status"},
 			},
-			"name": map[string]any{
+			"id": map[string]any{
 				"type":        "string",
-				"description": "Task name (required for add, remove, enable, disable, status)",
+				"description": "Job ID (required for pause, resume, disable, status)",
 			},
 			"description": map[string]any{
 				"type":        "string",
@@ -36,10 +53,6 @@ func NewCronTool() *CronTool {
 			"schedule": map[string]any{
 				"type":        "string",
 				"description": "Cron schedule expression (e.g., '0 9 * * *' for daily at 9am, '*/5 * * * *' for every 5 minutes). Supports standard cron format with 6 fields (seconds, minutes, hours, day of month, month, day of week).",
-			},
-			"owner": map[string]any{
-				"type":        "string",
-				"description": "Owner ID to notify when task executes (optional, defaults to current user)",
 			},
 		},
 		"required": []string{"action"},
@@ -57,12 +70,12 @@ func (t *CronTool) execute(ctx context.Context, params map[string]string) (strin
 	switch action {
 	case "add":
 		return t.addTask(params)
-	case "remove":
-		return t.removeTask(params)
 	case "list":
-		return t.listTasks()
-	case "enable":
-		return t.enableTask(params)
+		return t.listTasks(params)
+	case "pause":
+		return t.pauseTask(params)
+	case "resume":
+		return t.resumeTask(params)
 	case "disable":
 		return t.disableTask(params)
 	case "status":
@@ -84,109 +97,96 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	}
 
 	description := params["description"]
-	owner := params["owner"]
+	workspace := params[constant.ToolCallParamWorkspace]
+	channel := params[constant.ToolCallParamChannel]
+	chatID := params[constant.ToolCallParamChatID]
 
-	// Get current agent
-	ag, err := t.getCurrentAgent()
+	jobInfo := &BasicJobInfo{
+		ID:          uuid.NewString(),
+		Schedule:    schedule,
+		Description: description,
+		Status:      "enabled",
+
+		Channel: channel,
+		ChatID:  chatID,
+	}
+
+	// 写入workspace/cron/{id}.json文件中
+	cronDir := filepath.Join(workspace, "cron")
+	os.MkdirAll(cronDir, 0755)
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", jobInfo.ID))
+	data, err := json.Marshal(jobInfo)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to marshal job: %w", err)
+	}
+	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write job file: %w", err)
 	}
 
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
-	}
-
-	// Add task
-	task, err := cronMgr.AddTask(name, description, schedule, owner)
-	if err != nil {
-		return "", fmt.Errorf("failed to add task: %w", err)
-	}
-
-	return fmt.Sprintf("✅ 定时任务已创建\n任务名: %s\n调度: %s\n下次执行: %s\n任务ID: %s",
-		task.Name, task.Schedule,
-		task.NextRun.Format("2006-01-02 15:04:05"),
-		task.ID), nil
+	return fmt.Sprintf("✅ 定时任务已创建\n任务ID: %s",
+		jobInfo.ID), nil
 }
 
-func (t *CronTool) removeTask(params map[string]string) (string, error) {
-	name := params["name"]
-	if name == "" {
-		return "", fmt.Errorf("name is required for remove action")
-	}
-
-	// Get current agent
-	ag, err := t.getCurrentAgent()
+func (t *CronTool) listTasks(params map[string]string) (string, error) {
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
+	entries, err := os.ReadDir(cronDir)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read cron directory: %w", err)
 	}
-
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
-	}
-
-	// Find task by name
-	tasks := cronMgr.ListTasks()
-	var taskID string
-	for _, task := range tasks {
-		if task.Name == name {
-			taskID = task.ID
-			break
+	var jobs []BasicJobInfo
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		jobJsonPath := filepath.Join(cronDir, entry.Name())
+		data, err := os.ReadFile(jobJsonPath)
+		if err != nil {
+			slog.Warn("Failed to read job", "jobFile", jobJsonPath)
+			continue
+		}
+		var job BasicJobInfo
+		if err := json.Unmarshal(data, &job); err != nil {
+			slog.Warn("Failed to unmarshal job", "jobFile", jobJsonPath)
+			continue
+		}
+		if job.ID == "" {
+			slog.Warn("Job ID is empty", "jobFile", jobJsonPath)
+			continue
+		}
+		if job.Status != "disabled" {
+			jobs = append(jobs, job)
 		}
 	}
 
-	if taskID == "" {
-		return "", fmt.Errorf("task '%s' not found", name)
-	}
-
-	// Remove task
-	if err := cronMgr.RemoveTask(taskID); err != nil {
-		return "", fmt.Errorf("failed to remove task: %w", err)
-	}
-
-	return fmt.Sprintf("✅ 定时任务 '%s' 已删除", name), nil
-}
-
-func (t *CronTool) listTasks() (string, error) {
-	// Get current agent
-	ag, err := t.getCurrentAgent()
-	if err != nil {
-		return "", err
-	}
-
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
-	}
-
-	tasks := cronMgr.ListTasks()
-
-	if len(tasks) == 0 {
+	if len(jobs) == 0 {
 		return "暂无定时任务", nil
 	}
 
-	result := fmt.Sprintf("定时任务列表 (%d 个):\n\n", len(tasks))
-	for _, task := range tasks {
+	result := fmt.Sprintf("定时任务列表 (%d 个):\n\n", len(jobs))
+	for _, job := range jobs {
 		status := "❌ 已禁用"
-		if task.Enabled {
+		switch job.Status {
+		case "enabled":
 			status = "✅ 已启用"
+		case "paused":
+			status = "⏸ 已暂停"
 		}
 
-		result += fmt.Sprintf("- %s\n", task.Name)
+		result += fmt.Sprintf("- %s\n", job.ID)
 		result += fmt.Sprintf("  状态: %s\n", status)
-		result += fmt.Sprintf("  调度: %s\n", task.Schedule)
-		if task.Description != "" {
-			result += fmt.Sprintf("  描述: %s\n", task.Description)
+		result += fmt.Sprintf("  调度: %s\n", job.Schedule)
+		if job.Description != "" {
+			result += fmt.Sprintf("  描述: %s\n", job.Description)
 		}
-		if task.NextRun != nil {
-			result += fmt.Sprintf("  下次执行: %s\n", task.NextRun.Format("2006-01-02 15:04:05"))
+		if job.NextRun != nil {
+			result += fmt.Sprintf("  下次执行: %s\n", job.NextRun.Format("2006-01-02 15:04:05"))
 		}
-		if task.LastRun != nil {
-			result += fmt.Sprintf("  上次执行: %s\n", task.LastRun.Format("2006-01-02 15:04:05"))
-		}
-		if task.OwnerID != "" {
-			result += fmt.Sprintf("  所有者: %s\n", task.OwnerID)
+		if job.LastRun != nil {
+			result += fmt.Sprintf("  上次执行: %s\n", job.LastRun.Format("2006-01-02 15:04:05"))
 		}
 		result += "\n"
 	}
@@ -194,152 +194,146 @@ func (t *CronTool) listTasks() (string, error) {
 	return result, nil
 }
 
-func (t *CronTool) enableTask(params map[string]string) (string, error) {
-	name := params["name"]
-	if name == "" {
-		return "", fmt.Errorf("name is required for enable action")
+func (t *CronTool) pauseTask(params map[string]string) (string, error) {
+	id := params["id"]
+	if id == "" {
+		return "", fmt.Errorf("id is required for pause action")
 	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
 
-	// Get current agent
-	ag, err := t.getCurrentAgent()
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read job file: %w", err)
+	}
+	var job BasicJobInfo
+	if err := json.Unmarshal(data, &job); err != nil {
+		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+	}
+	if job.ID == "" {
+		return "", fmt.Errorf("job ID is empty")
 	}
 
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
+	if job.Status != "enabled" {
+		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
 	}
 
-	// Find task by name
-	tasks := cronMgr.ListTasks()
-	var taskID string
-	for _, task := range tasks {
-		if task.Name == name {
-			taskID = task.ID
-			break
-		}
+	job.Status = "paused"
+	data, err = json.Marshal(job)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal job: %w", err)
+	}
+	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write job file: %w", err)
 	}
 
-	if taskID == "" {
-		return "", fmt.Errorf("task '%s' not found", name)
+	return fmt.Sprintf("✅ 定时任务 '%s' 已暂停", id), nil
+}
+
+func (t *CronTool) resumeTask(params map[string]string) (string, error) {
+	id := params["id"]
+	if id == "" {
+		return "", fmt.Errorf("id is required for pause action")
+	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
+
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	data, err := os.ReadFile(jobJsonPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read job file: %w", err)
+	}
+	var job BasicJobInfo
+	if err := json.Unmarshal(data, &job); err != nil {
+		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+	}
+	if job.ID == "" {
+		return "", fmt.Errorf("job ID is empty")
 	}
 
-	// Enable task
-	if err := cronMgr.EnableTask(taskID); err != nil {
-		return "", fmt.Errorf("failed to enable task: %w", err)
+	if job.Status != "paused" {
+		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
 	}
 
-	return fmt.Sprintf("✅ 定时任务 '%s' 已启用", name), nil
+	job.Status = "enabled"
+	data, err = json.Marshal(job)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal job: %w", err)
+	}
+	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write job file: %w", err)
+	}
+
+	return fmt.Sprintf("✅ 定时任务 '%s' 已启用", id), nil
 }
 
 func (t *CronTool) disableTask(params map[string]string) (string, error) {
-	name := params["name"]
-	if name == "" {
-		return "", fmt.Errorf("name is required for disable action")
+	id := params["id"]
+	if id == "" {
+		return "", fmt.Errorf("id is required for disable action")
 	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
 
-	// Get current agent
-	ag, err := t.getCurrentAgent()
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read job file: %w", err)
+	}
+	var job BasicJobInfo
+	if err := json.Unmarshal(data, &job); err != nil {
+		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+	}
+	if job.ID == "" {
+		return "", fmt.Errorf("job ID is empty")
+	}
+	job.Status = "disabled"
+
+	data, err = json.Marshal(job)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal job: %w", err)
+	}
+	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write job file: %w", err)
 	}
 
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
-	}
-
-	// Find task by name
-	tasks := cronMgr.ListTasks()
-	var taskID string
-	for _, task := range tasks {
-		if task.Name == name {
-			taskID = task.ID
-			break
-		}
-	}
-
-	if taskID == "" {
-		return "", fmt.Errorf("task '%s' not found", name)
-	}
-
-	// Disable task
-	if err := cronMgr.DisableTask(taskID); err != nil {
-		return "", fmt.Errorf("failed to disable task: %w", err)
-	}
-
-	return fmt.Sprintf("✅ 定时任务 '%s' 已禁用", name), nil
+	return fmt.Sprintf("✅ 定时任务 '%s' 已禁用", id), nil
 }
 
 func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
-	name := params["name"]
-	if name == "" {
-		return "", fmt.Errorf("name is required for status action")
+	id := params["id"]
+	if id == "" {
+		return "", fmt.Errorf("id is required for status action")
 	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
 
-	// Get current agent
-	ag, err := t.getCurrentAgent()
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read job file: %w", err)
+	}
+	var job BasicJobInfo
+	if err := json.Unmarshal(data, &job); err != nil {
+		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+	}
+	if job.ID == "" {
+		return "", fmt.Errorf("job ID is empty")
 	}
 
-	cronMgr := ag.GetCronManager()
-	if cronMgr == nil {
-		return "", fmt.Errorf("cron manager not initialized")
-	}
-
-	// Find task by name
-	tasks := cronMgr.ListTasks()
-	var targetTask *cron.Task
-	for _, task := range tasks {
-		if task.Name == name {
-			targetTask = task
-			break
-		}
-	}
-
-	if targetTask == nil {
-		return "", fmt.Errorf("task '%s' not found", name)
-	}
-
-	result := fmt.Sprintf("定时任务状态: %s\n\n", targetTask.Name)
-	result += fmt.Sprintf("状态: ")
-	if targetTask.Enabled {
+	result := fmt.Sprintf("定时任务状态: %s\n\n", job.ID)
+	result += "状态: "
+	switch job.Status {
+	case "enabled":
 		result += "✅ 已启用\n"
-	} else {
-		result += "❌ 已禁用\n"
-	}
-	result += fmt.Sprintf("调度: %s\n", targetTask.Schedule)
-	if targetTask.Description != "" {
-		result += fmt.Sprintf("描述: %s\n", targetTask.Description)
-	}
-	result += fmt.Sprintf("创建时间: %s\n", targetTask.CreatedAt.Format("2006-01-02 15:04:05"))
-	result += fmt.Sprintf("更新时间: %s\n", targetTask.UpdatedAt.Format("2006-01-02 15:04:05"))
-	if targetTask.NextRun != nil {
-		result += fmt.Sprintf("下次执行: %s\n", targetTask.NextRun.Format("2006-01-02 15:04:05"))
-	}
-	if targetTask.LastRun != nil {
-		result += fmt.Sprintf("上次执行: %s\n", targetTask.LastRun.Format("2006-01-02 15:04:05"))
-	}
-	if targetTask.OwnerID != "" {
-		result += fmt.Sprintf("所有者: %s\n", targetTask.OwnerID)
+	case "paused":
+		result += "⚠️ 已暂停\n"
+	case "disabled":
+		result += "⛔ 已禁用\n"
+	default:
+		result += fmt.Sprintf("未知状态: %s\n", job.Status)
 	}
 
 	return result, nil
-}
-
-// getCurrentAgent returns the current agent executing this tool
-// In a real implementation, this would get the agent from context
-func (t *CronTool) getCurrentAgent() (*agent.Agent, error) {
-	// Get default agent
-	ag, exists := agent.GetDefaultAgent()
-	if !exists {
-		// Try to get any agent
-		ag, exists = agent.GetAnyAgent()
-		if !exists {
-			return nil, fmt.Errorf("no agents available")
-		}
-	}
-	return ag, nil
 }

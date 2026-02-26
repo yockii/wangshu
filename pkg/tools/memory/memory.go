@@ -5,6 +5,6 @@ import (
 )
 
 // RegisterMemoryTools registers all memory-related tools
-func RegisterMemoryTools(registry *tools.Registry) {
-	registry.Register(NewMemoryTool())
+func RegisterMemoryTools() {
+	tools.GetDefaultToolRegistry().Register(NewMemoryTool())
 }

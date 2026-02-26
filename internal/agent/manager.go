@@ -1,19 +1,45 @@
 package agent
 
 import (
+	"log/slog"
 	"sync"
+	"time"
+
+	"github.com/yockii/yoclaw/internal/config"
+	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/llm"
 )
 
 var (
-	globalAgents map[string]*Agent
+	globalAgents = make(map[string]*Agent)
 	agentsMutex  sync.RWMutex
 )
 
 // InitializeAgentManager initializes the global agent manager with all agents
-func InitializeAgentManager(agents map[string]*Agent) {
+func InitializeAgentManager() (defaultAgent *Agent) {
 	agentsMutex.Lock()
 	defer agentsMutex.Unlock()
-	globalAgents = agents
+
+	for name, ac := range config.DefaultCfg.Agents {
+		agent, err := NewAgent(
+			llm.GetProvider(ac.Provider),
+			name,
+			ac.Model,
+			24*time.Hour,
+			10,
+			ac.Workspace,
+		)
+		if err != nil {
+			slog.Error("Failed to initialize agent, this agent will not be available", "agent", name, "error", err)
+			continue
+		}
+		// Set agent name and start cron manager
+		globalAgents[name] = agent
+		if name == constant.Default || defaultAgent == nil {
+			defaultAgent = globalAgents[name]
+		}
+	}
+	return
 }
 
 // GetAgent retrieves an agent by name
@@ -39,7 +65,7 @@ func GetAllAgents() map[string]*Agent {
 
 // GetDefaultAgent returns the default agent
 func GetDefaultAgent() (*Agent, bool) {
-	return GetAgent("default")
+	return GetAgent(constant.Default)
 }
 
 // GetAnyAgent returns any available agent (tries default first, then first available)
@@ -77,4 +103,13 @@ func GetAgentNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+func StopAllAgents() {
+	agentsMutex.Lock()
+	defer agentsMutex.Unlock()
+
+	for _, ag := range globalAgents {
+		ag.Stop()
+	}
 }

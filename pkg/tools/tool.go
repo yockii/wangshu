@@ -10,11 +10,6 @@ type Tool interface {
 	Execute(ctx context.Context, params map[string]string) (string, error)
 }
 
-// ContextSetter sets channel and chat ID context
-type ContextSetter interface {
-	SetContext(channel, chatID string)
-}
-
 // AsyncCallback is called when an async tool completes
 type AsyncCallback func(ctx context.Context, result *ToolResult)
 

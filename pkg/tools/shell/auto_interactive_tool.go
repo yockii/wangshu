@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/yockii/yoclaw/internal/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/tools"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
@@ -52,6 +53,16 @@ type AutoInteractiveSession struct {
 	inputWaitThreshold time.Duration   // Output silence threshold (default 2 seconds)
 	preferences       map[string]string // User preferences
 	lastOutput        time.Time
+
+	// Captured context from args
+	workspace   string
+	channel     string
+	chatID      string
+	agentName   string
+
+	// LLM context for analysis
+	llmProvider llm.Provider
+	llmModel    string
 }
 
 // AutoInteractiveTool provides intelligent interactive shell capabilities
@@ -62,7 +73,9 @@ type AutoInteractiveTool struct {
 	menuAnalyzer *MenuAnalyzer
 	keySeq      *TerminalKeySequence
 	nextID      int
-	toolCtx     *tools.ToolContext // Captured at first ExecuteWithContext call
+	// LLM provider and model (set from first ExecuteWithContext call)
+	provider llm.Provider
+	model    string
 }
 
 // NewAutoInteractiveTool creates a new auto-interactive tool
@@ -109,7 +122,7 @@ func NewAutoInteractiveTool() *AutoInteractiveTool {
 			},
 			"working_dir": map[string]any{
 				"type":        "string",
-				"description": "Working directory (optional, for start action)",
+				"description": "Working directory (optional, defaults to workspace from context)",
 			},
 		},
 		"required": []string{"action"},
@@ -124,33 +137,45 @@ func NewAutoInteractiveTool() *AutoInteractiveTool {
 	return tool
 }
 
-// ExecuteWithContext implements ContextualTool interface
-// This captures the tool context for LLM calls
-func (t *AutoInteractiveTool) ExecuteWithContext(ctx context.Context, params map[string]string, toolCtx *tools.ToolContext) *tools.ToolResult {
-	// Save the tool context for later use
-	t.toolCtx = toolCtx
+// Name returns the tool name
+func (t *AutoInteractiveTool) Name() string {
+	return t.Name_
+}
 
-	// Call the original execute method
+// Description returns the tool description
+func (t *AutoInteractiveTool) Description() string {
+	return t.Desc_
+}
+
+// Parameters returns the tool parameters
+func (t *AutoInteractiveTool) Parameters() map[string]any {
+	return t.Params_
+}
+
+// ExecuteWithContext implements the extended tool interface with context support
+func (t *AutoInteractiveTool) ExecuteWithContext(ctx context.Context, args map[string]interface{}, toolCtx *tools.ToolContext) *tools.ToolResult {
+	// Save LLM provider and model from context
+	if toolCtx != nil {
+		t.provider = toolCtx.LLM
+		t.model = toolCtx.Model
+	}
+
+	// Convert args to params
+	params := make(map[string]string)
+	for k, v := range args {
+		if strVal, ok := v.(string); ok {
+			params[k] = strVal
+		} else if v != nil {
+			params[k] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Call execute
 	result, err := t.execute(ctx, params)
 	if err != nil {
 		return tools.ErrorResult(err.Error())
 	}
 	return tools.NewToolResult(result)
-}
-
-// Name implements ContextualTool interface
-func (t *AutoInteractiveTool) Name() string {
-	return t.Name_
-}
-
-// Description implements ContextualTool interface
-func (t *AutoInteractiveTool) Description() string {
-	return t.Desc_
-}
-
-// Parameters implements ContextualTool interface
-func (t *AutoInteractiveTool) Parameters() map[string]any {
-	return t.Params_
 }
 
 func (t *AutoInteractiveTool) execute(ctx context.Context, params map[string]string) (string, error) {
@@ -173,6 +198,14 @@ func (t *AutoInteractiveTool) execute(ctx context.Context, params map[string]str
 	}
 }
 
+// extractContext extracts context information from params
+func (t *AutoInteractiveTool) extractContext(params map[string]string) (workspace, channel, chatID string) {
+	workspace = params[constant.ToolCallParamWorkspace]
+	channel = params[constant.ToolCallParamChannel]
+	chatID = params[constant.ToolCallParamChatID]
+	return
+}
+
 // startSession starts a new auto-interactive session
 func (t *AutoInteractiveTool) startSession(ctx context.Context, params map[string]string) (string, error) {
 	command := params["command"]
@@ -181,6 +214,12 @@ func (t *AutoInteractiveTool) startSession(ctx context.Context, params map[strin
 	}
 
 	workingDir := params["working_dir"]
+	workspace, channel, chatID := t.extractContext(params)
+
+	// Use working_dir if specified, otherwise use workspace
+	if workingDir == "" && workspace != "" {
+		workingDir = workspace
+	}
 
 	// Parse max_iterations
 	maxIterations := 10
@@ -249,6 +288,11 @@ func (t *AutoInteractiveTool) startSession(ctx context.Context, params map[strin
 		inputWaitThreshold: 2 * time.Second,
 		preferences:       preferences,
 		lastOutput:        time.Now(),
+		workspace:         workspace,
+		channel:           channel,
+		chatID:            chatID,
+		llmProvider:       t.provider,  // Capture from tool
+		llmModel:          t.model,     // Capture from tool
 	}
 
 	t.sessions[sessionID] = session
@@ -268,145 +312,37 @@ func (t *AutoInteractiveTool) startSession(ctx context.Context, params map[strin
 	result := fmt.Sprintf("✅ Auto-interactive session started\nSession ID: %s\nCommand: %s\nAuto Mode: %v\n\n",
 		sessionID, command, autoMode)
 
-	// Check if there's already a result
-	select {
-	case r := <-resultChan:
-		if r.needsConfirmation {
-			return t.formatConfirmationRequest(sessionID, r), nil
+	// Try to get initial output
+	initialOutput := t.getIncrementalOutput(session)
+	if initialOutput != "" {
+		result += "=== Initial Output ===\n" + initialOutput
+		if len(initialOutput) > 500 {
+			result += "\n... (output may be truncated, use get_output to see full)"
 		}
-		result += r.message
-	default:
+	} else {
 		result += "(Waiting for output...)"
 	}
 
 	return result, nil
 }
 
-// autoInteractiveResult holds the result from auto-interactive loop
-type autoInteractiveResult struct {
-	message           string
-	needsConfirmation bool
-	llmResponse       *InteractionResponse
-	output            string
-}
-
-// runAutoInteractiveLoop runs the main auto-interactive loop
-func (t *AutoInteractiveTool) runAutoInteractiveLoop(ctx context.Context, session *AutoInteractiveSession, resultChan chan<- *autoInteractiveResult) {
-	for session.iteration < session.maxIterations {
-		// Wait for and detect input waiting
-		waitDetected, _, pattern := t.waitForInput(ctx, session)
-
-		if !waitDetected {
-			if t.isSessionEnded(session) {
-				resultChan <- &autoInteractiveResult{
-					message: t.formatFinalResult(session, "Command completed"),
-				}
-				return
-			}
-			continue
-		}
-
-		// Get incremental output
-		currentOutput := t.getIncrementalOutput(session)
-
-		// LLM analysis
-		llmResp, err := t.analyzeWithLLM(ctx, session, currentOutput, pattern)
-		if err != nil {
-			// If LLM fails, return confirmation request
-			resultChan <- &autoInteractiveResult{
-				message:           fmt.Sprintf("⚠️ LLM analysis failed: %v\n\nOutput:\n%s", err, currentOutput),
-				needsConfirmation: true,
-				output:            currentOutput,
-			}
-			return
-		}
-
-		session.lastLLMResponse = llmResp
-
-		// Determine if confirmation is needed
-		requiresConfirmation := !session.autoMode && llmResp.Confidence < 0.8
-
-		if requiresConfirmation {
-			// Return confirmation request to Agent
-			resultChan <- &autoInteractiveResult{
-				needsConfirmation: true,
-				llmResponse:       llmResp,
-				output:            currentOutput,
-			}
-			return
-		}
-
-		// Auto-execute suggestion
-		t.executeSuggestion(session, llmResp)
-		session.iteration++
-	}
-
-	resultChan <- &autoInteractiveResult{
-		message: t.formatFinalResult(session, "Maximum iterations reached"),
-	}
-}
-
-// waitForInput waits for input prompt detection
-func (t *AutoInteractiveTool) waitForInput(ctx context.Context, session *AutoInteractiveSession) (bool, InputWaitType, string) {
-	session.mu.RLock()
-	initialLen := session.Output.Len()
-	session.mu.RUnlock()
-
-	// Wait for output or timeout
-	timeout := time.NewTimer(session.inputWaitThreshold)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return false, WaitTypeContentPattern, ""
-		case <-timeout.C:
-			// Check if output changed
-			session.mu.RLock()
-			currentLen := session.Output.Len()
-			output := session.Output.String()
-			session.mu.RUnlock()
-
-			if currentLen > initialLen {
-				// Got new output, check for patterns
-				if waitDetected, waitType, pattern := t.menuAnalyzer.DetectInputWaiting(output); waitDetected {
-					return true, waitType, pattern
-				}
-				// Reset timer and continue waiting
-				timeout.Reset(session.inputWaitThreshold)
-			} else if currentLen > 0 {
-				// Output exists but no new content for threshold time - likely waiting
-				return true, WaitTypeOutputSilence, ""
-			}
-		}
-	}
-}
-
-// analyzeWithLLM analyzes output using LLM
+// analyzeWithLLM analyzes output using LLM with structured JSON output
+// It uses the LLM provider captured in the session
 func (t *AutoInteractiveTool) analyzeWithLLM(ctx context.Context, session *AutoInteractiveSession, output, pattern string) (*InteractionResponse, error) {
-	// Use the tool context to get LLM access
-	if t.toolCtx == nil || t.toolCtx.LLM == nil {
-		return nil, fmt.Errorf("LLM provider not available in tool context")
+	// Use the LLM provider and model from the session
+	if session.llmProvider == nil {
+		return nil, fmt.Errorf("LLM provider not available - session was created without LLM context")
 	}
 
 	// Build system prompt
 	systemPrompt := `You are an expert at analyzing interactive command-line interfaces.
 Your task is to analyze the command output and suggest an appropriate response.
 
-Respond in JSON format:
-{
-  "suggestion": "text or key sequence to send",
-  "reasoning": "why this response is appropriate",
-  "confidence": 0.0-1.0,
-  "input_type": "text|arrow|enter",
-  "menu_detected": true/false,
-  "menu_options": [{"index": 1, "text": "...", "input_value": "..."}]
-}
-
 Key sequences:
 - "UP", "DOWN", "LEFT", "RIGHT" for arrow navigation
 - "ENTER" for confirmation
 - Numbers for numbered menus (e.g., "1" for first option)
-- "y"/"n" for yes/no prompts
+- "y"/"n" for yes/no
 - Plain text for other input
 
 Guidelines:
@@ -416,7 +352,7 @@ Guidelines:
 - Extract menu options when a menu is detected
 - Consider user preferences when provided`
 
-	// Add user preferences if available
+	// Add user preferences to system prompt if available
 	if len(session.preferences) > 0 {
 		prefsJSON, _ := json.Marshal(session.preferences)
 		systemPrompt += fmt.Sprintf("\n\nUser Preferences: %s", string(prefsJSON))
@@ -424,46 +360,82 @@ Guidelines:
 
 	userPrompt := fmt.Sprintf("Analyze this command output and suggest a response:\n\n%s", output)
 
-	// Call LLM
+	// Build JSON schema for structured output
+	jsonSchema := &llm.JSONSchema{
+		Name:        "interaction_response",
+		Description: "Analysis of interactive command-line interface output with suggested response",
+		Strict:      true,
+		Schema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"suggestion": map[string]any{
+					"type":        "string",
+					"description": "The suggested input text or key sequence to send",
+				},
+				"reasoning": map[string]any{
+					"type":        "string",
+					"description": "Explanation of why this response is appropriate",
+				},
+				"confidence": map[string]any{
+					"type":        "number",
+					"description": "Confidence score from 0.0 to 1.0",
+				},
+				"input_type": map[string]any{
+					"type":        "string",
+					"enum":        []string{"text", "arrow", "enter"},
+					"description": "Type of input being suggested",
+				},
+				"menu_detected": map[string]any{
+					"type":        "boolean",
+					"description": "Whether a menu was detected in the output",
+				},
+				"menu_options": map[string]any{
+					"type":        "array",
+					"description": "List of detected menu options (if menu_detected is true)",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"index": map[string]any{
+								"type":        "integer",
+								"description": "Option index (1-based)",
+							},
+							"text": map[string]any{
+								"type":        "string",
+								"description": "Option text description",
+							},
+							"input_value": map[string]any{
+								"type":        "string",
+								"description": "Value to input to select this option",
+							},
+						},
+						"required": []string{"index", "text", "input_value"},
+					},
+				},
+			},
+			"required": []string{"suggestion", "reasoning", "confidence", "input_type", "menu_detected"},
+			"additionalProperties": false,
+		},
+	}
+
+	// Call LLM using structured output
 	msgs := []llm.Message{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
 
-	resp, err := t.toolCtx.CallLLM(ctx, session.ID, msgs)
+	resp, err := session.llmProvider.ChatWithJSONSchema(ctx, session.llmModel, msgs, jsonSchema, nil)
 	if err != nil {
 		return nil, fmt.Errorf("LLM call failed: %w", err)
 	}
 
-	// Parse response
-	return t.parseLLMResponse(resp.Message.Content, output)
-}
-
-// parseLLMResponse parses LLM response into InteractionResponse
-func (t *AutoInteractiveTool) parseLLMResponse(content, output string) (*InteractionResponse, error) {
-	// Extract JSON from content (may be wrapped in markdown code blocks)
-	jsonStr := content
-	if strings.Contains(content, "```json") {
-		start := strings.Index(content, "```json") + 7
-		end := strings.Index(content[start:], "```")
-		if end > 0 {
-			jsonStr = strings.TrimSpace(content[start : start+end])
-		}
-	} else if strings.Contains(content, "```") {
-		start := strings.Index(content, "```") + 3
-		end := strings.Index(content[start:], "```")
-		if end > 0 {
-			jsonStr = strings.TrimSpace(content[start : start+end])
-		}
-	}
-
-	var resp InteractionResponse
-	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
+	// Parse JSON response - with structured output, we should get clean JSON
+	var llmResp InteractionResponse
+	if err := json.Unmarshal([]byte(resp.Message.Content), &llmResp); err != nil {
 		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
 
-	resp.Context = output
-	return &resp, nil
+	llmResp.Context = output
+	return &llmResp, nil
 }
 
 // executeSuggestion executes the LLM suggestion
@@ -625,6 +597,62 @@ func (t *AutoInteractiveTool) endSession(params map[string]string) (string, erro
 	return result, nil
 }
 
+// runAutoInteractiveLoop runs the main auto-interactive loop
+func (t *AutoInteractiveTool) runAutoInteractiveLoop(ctx context.Context, session *AutoInteractiveSession, resultChan chan<- *autoInteractiveResult) {
+	for session.iteration < session.maxIterations {
+		// Wait for and detect input waiting
+		waitDetected, _, pattern := t.waitForInput(ctx, session)
+
+		if !waitDetected {
+			if t.isSessionEnded(session) {
+				resultChan <- &autoInteractiveResult{
+					message: t.formatFinalResult(session, "Command completed"),
+				}
+				return
+			}
+			continue
+		}
+
+		// Get incremental output
+		currentOutput := t.getIncrementalOutput(session)
+
+		// LLM analysis (using session's LLM provider)
+		llmResp, err := t.analyzeWithLLM(ctx, session, currentOutput, pattern)
+		if err != nil {
+			// If LLM fails, return confirmation request
+			resultChan <- &autoInteractiveResult{
+				message:           fmt.Sprintf("⚠️ LLM analysis failed: %v\n\nOutput:\n%s", err, currentOutput),
+				needsConfirmation: true,
+				output:            currentOutput,
+			}
+			return
+		}
+
+		session.lastLLMResponse = llmResp
+
+		// Determine if confirmation is needed
+		requiresConfirmation := !session.autoMode && llmResp.Confidence < 0.8
+
+		if requiresConfirmation {
+			// Return confirmation request to Agent
+			resultChan <- &autoInteractiveResult{
+				needsConfirmation: true,
+				llmResponse:       llmResp,
+				output:            currentOutput,
+			}
+			return
+		}
+
+		// Auto-execute suggestion
+		t.executeSuggestion(session, llmResp)
+		session.iteration++
+	}
+
+	resultChan <- &autoInteractiveResult{
+		message: t.formatFinalResult(session, "Maximum iterations reached"),
+	}
+}
+
 // Helper functions
 
 func (t *AutoInteractiveTool) readSessionOutput(session *AutoInteractiveSession) {
@@ -653,6 +681,40 @@ func (t *AutoInteractiveTool) isSessionEnded(session *AutoInteractiveSession) bo
 		return true
 	}
 	return false
+}
+
+func (t *AutoInteractiveTool) waitForInput(ctx context.Context, session *AutoInteractiveSession) (bool, InputWaitType, string) {
+	session.mu.RLock()
+	initialLen := session.Output.Len()
+	session.mu.RUnlock()
+
+	// Wait for output or timeout
+	timeout := time.NewTimer(session.inputWaitThreshold)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, WaitTypeContentPattern, ""
+		case <-timeout.C:
+			// Check if output changed
+			session.mu.RLock()
+			currentLen := session.Output.Len()
+			output := session.Output.String()
+			session.mu.RUnlock()
+
+			if currentLen > initialLen {
+				// Got new output, check for patterns
+				if waitDetected, waitType, pattern := t.menuAnalyzer.DetectInputWaiting(output); waitDetected {
+					return true, waitType, pattern
+				}
+				// Reset timer and continue waiting
+				timeout.Reset(session.inputWaitThreshold)
+			} else if currentLen > 0 {
+				// Output exists but no new content for threshold time - likely waiting
+				return true, WaitTypeOutputSilence, ""
+			}
+		}
+	}
 }
 
 func (t *AutoInteractiveTool) getIncrementalOutput(session *AutoInteractiveSession) string {
@@ -701,4 +763,12 @@ func (t *AutoInteractiveTool) formatConfirmationRequest(sessionID string, r *aut
 	}
 	result += "\nUse confirm_action='confirm' to accept, 'modify' for custom input, or 'auto_continue' to switch to auto mode"
 	return result
+}
+
+// autoInteractiveResult holds the result from auto-interactive loop
+type autoInteractiveResult struct {
+	message           string
+	needsConfirmation bool
+	llmResponse       *InteractionResponse
+	output            string
 }

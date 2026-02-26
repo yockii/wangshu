@@ -96,11 +96,6 @@ func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map
 		return ErrorResult(fmt.Sprintf("tool %s not found", name))
 	}
 
-	// Set channel/chat context for legacy tools
-	if contextSetter, ok := tool.(ContextSetter); ok {
-		contextSetter.SetContext(channel, chatID)
-	}
-
 	// Try ContextualTool first (new interface)
 	if ctxTool, ok := tool.(ContextualTool); ok {
 		return ctxTool.ExecuteWithContext(ctx, argsToStringMap(args), toolCtx)

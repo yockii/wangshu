@@ -7,16 +7,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/yockii/yoclaw/pkg/tools"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
 
 type MemoryTool struct {
 	basic.SimpleTool
-	workspaceDir string
-	mu           sync.RWMutex
 }
 
 func NewMemoryTool() *MemoryTool {
@@ -52,13 +50,6 @@ func NewMemoryTool() *MemoryTool {
 	}
 	tool.ExecFunc = tool.execute
 	return tool
-}
-
-// SetWorkspace sets the workspace directory for memory storage
-func (t *MemoryTool) SetWorkspace(dir string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.workspaceDir = dir
 }
 
 func (t *MemoryTool) execute(ctx context.Context, params map[string]string) (string, error) {
@@ -101,9 +92,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 		}
 	}
 
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
+	workspaceDir := params[tools.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -167,9 +156,7 @@ func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
 		return "", fmt.Errorf("invalid date format: %w", err)
 	}
 
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
+	workspaceDir := params[tools.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -197,9 +184,7 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 		}
 	}
 
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
+	workspaceDir := params[tools.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -315,11 +300,7 @@ func (t *MemoryTool) extractSnippets(content, query string, maxSnippets int) []s
 }
 
 // SaveMemory saves a memory entry for the current day
-func (t *MemoryTool) SaveMemory(content string) error {
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
-
+func (t *MemoryTool) SaveMemory(workspaceDir, content string) error {
 	if workspaceDir == "" {
 		return fmt.Errorf("workspace directory not set")
 	}
@@ -351,15 +332,11 @@ func (t *MemoryTool) SaveMemory(content string) error {
 }
 
 // SearchByPattern searches memories using regex pattern
-func (t *MemoryTool) SearchByPattern(pattern string, daysBack int) (string, error) {
+func (t *MemoryTool) SearchByPattern(workspaceDir, pattern string, daysBack int) (string, error) {
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return "", fmt.Errorf("invalid regex pattern: %w", err)
 	}
-
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
 
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
@@ -396,11 +373,7 @@ func (t *MemoryTool) SearchByPattern(pattern string, daysBack int) (string, erro
 }
 
 // GetMemoryStats returns statistics about stored memories
-func (t *MemoryTool) GetMemoryStats() (string, error) {
-	t.mu.RLock()
-	workspaceDir := t.workspaceDir
-	t.mu.RUnlock()
-
+func (t *MemoryTool) GetMemoryStats(workspaceDir string) (string, error) {
 	if workspaceDir == "" {
 		return "", fmt.Errorf("workspace directory not set")
 	}

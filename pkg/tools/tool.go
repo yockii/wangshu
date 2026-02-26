@@ -2,6 +2,10 @@ package tools
 
 import "context"
 
+const (
+	ToolCallParamWorkspace = "workspace"
+)
+
 type Tool interface {
 	Name() string
 	Description() string

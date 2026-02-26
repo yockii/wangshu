@@ -165,7 +165,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 			EmitToolStart(sess.ID, tc.Name, tc.ID, args)
 
-			toolResult, err := a.executeToolCall(ctx, tc)
+			toolResult, err := a.executeToolCall(ctx, tc, sess.Channel, sess.ChatID)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 				EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, true)
@@ -192,7 +192,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 	return finalContent, nil
 }
 
-func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) (string, error) {
+func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, chatID string) (string, error) {
 	var args map[string]any
 	if tc.Arguments != "" {
 		err := json.Unmarshal([]byte(tc.Arguments), &args)
@@ -205,7 +205,9 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) (string, e
 		args = make(map[string]any)
 	}
 
-	result := a.tools.ExecuteExtended(ctx, tc.Name, args, "", "")
+	args[tools.ToolCallParamWorkspace] = a.workspaceDir
+
+	result := a.tools.ExecuteExtended(ctx, tc.Name, args, channel, chatID)
 	if result.IsError {
 		return result.ForLLM, fmt.Errorf("Tool execution failed")
 	}

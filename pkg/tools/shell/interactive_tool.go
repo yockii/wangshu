@@ -20,7 +20,7 @@ type SessionState string
 
 const (
 	SessionRunning SessionState = "running"
-	SessionClosed SessionState = "closed"
+	SessionClosed  SessionState = "closed"
 )
 
 // InteractiveSession manages an interactive shell session
@@ -31,7 +31,7 @@ type InteractiveSession struct {
 	Output     strings.Builder
 	StartTime  time.Time
 	State      SessionState
-	mu         sync.Mutex
+	mu         sync.RWMutex
 	timeout    time.Duration
 	lastOutput time.Time
 }

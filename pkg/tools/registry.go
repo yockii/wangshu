@@ -77,19 +77,43 @@ func (r *Registry) GetProviderDefs() []llm.ToolDefinition {
 	return defs
 }
 
+// ExecuteExtended executes a tool with extended arguments
+// Deprecated: Use ExecuteWithContext instead
 func (r *Registry) ExecuteExtended(ctx context.Context, name string, args map[string]interface{}, channel, chatID string) *ToolResult {
+	return r.ExecuteWithContext(ctx, name, args, nil, channel, chatID)
+}
+
+// ExecuteWithContext executes a tool with full tool context
+func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map[string]interface{}, toolCtx *ToolContext, channel, chatID string) *ToolResult {
 	tool, ok := r.Get(name)
 	if !ok {
 		return ErrorResult(fmt.Sprintf("tool %s not found", name))
 	}
 
+	// Set channel/chat context for legacy tools
 	if contextSetter, ok := tool.(ContextSetter); ok {
 		contextSetter.SetContext(channel, chatID)
 	}
 
+	// Try ContextualTool first (new interface)
+	if ctxTool, ok := tool.(ContextualTool); ok {
+		return ctxTool.ExecuteWithContext(ctx, argsToStringMap(args), toolCtx)
+	}
+
+	// Fall back to ExtendedTool (legacy interface)
 	if extTool, ok := tool.(ExtendedTool); ok {
 		return extTool.ExecuteExtended(ctx, args)
 	}
 
+	// Fall back to basic Tool
 	return ExtendedToolAdapter{Tool: tool}.ExecuteExtended(ctx, args)
+}
+
+// argsToStringMap converts args to string map for legacy tools
+func argsToStringMap(args map[string]interface{}) map[string]string {
+	result := make(map[string]string)
+	for k, v := range args {
+		result[k] = fmt.Sprintf("%v", v)
+	}
+	return result
 }

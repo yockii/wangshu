@@ -14,8 +14,17 @@ import (
 	"github.com/yockii/yoclaw/internal/notification"
 )
 
-// TaskExecutor is a function that executes a cron task
+// TaskExecutor is a function that executes a cron task (kept for backwards compatibility but no longer used)
 type TaskExecutor func(ctx context.Context, sessionID, prompt string) (string, error)
+
+// TaskCreator is a function that creates a task for cron execution
+type TaskCreator func(name, description, ownerID, agentName string) (taskID string, err error)
+
+// CronEventHandler handles cron events (fired when tasks are due)
+type CronEventHandler interface {
+	// OnCronTaskDue is called when a cron task is due for execution
+	OnCronTaskDue(task *Task) error
+}
 
 // Task represents a cron task stored in workspace
 type Task struct {
@@ -32,52 +41,58 @@ type Task struct {
 	Metadata    map[string]string `json:"metadata,omitempty"`
 }
 
-// Manager manages cron tasks for an agent
+// Manager manages cron tasks for an agent (lightweight recorder - no longer executes tasks)
 type Manager struct {
-	agentName  string
-	workspace  string
-	tasks      map[string]*Task // taskID -> Task
-	mu         sync.RWMutex
-	cron       *cron.Cron
-	stopCh     chan struct{}
-	executor   TaskExecutor // Function to execute tasks
+	workspace    string
+	tasks        map[string]*Task // taskID -> Task
+	mu           sync.RWMutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	agentName    string  // Track which agent this manager belongs to
+	taskCreator  TaskCreator // Function to create tasks for cron execution (deprecated, use eventHandler)
+	eventHandler CronEventHandler // New: event-based approach
 }
 
-// NewManager creates a new cron manager for an agent
-func NewManager(agentName, workspace string, executor TaskExecutor) *Manager {
+// NewManager creates a new cron manager
+func NewManager(workspace string, executor TaskExecutor, taskCreator TaskCreator) *Manager {
 	// Create cron directory
 	cronDir := filepath.Join(workspace, "cron")
 	os.MkdirAll(cronDir, 0755)
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	mgr := &Manager{
-		agentName: agentName,
-		workspace: workspace,
-		tasks:     make(map[string]*Task),
-		cron:      cron.New(cron.WithSeconds()),
-		stopCh:    make(chan struct{}),
-		executor:  executor,
+		workspace:   workspace,
+		tasks:       make(map[string]*Task),
+		ctx:         ctx,
+		cancel:      cancel,
+		taskCreator: taskCreator,
 	}
 
 	// Load existing tasks
 	if err := mgr.loadTasks(); err != nil {
-		fmt.Printf("Failed to load cron tasks for agent %s: %v\n", agentName, err)
+		fmt.Printf("Failed to load cron tasks: %v\n", err)
 	}
+
+	// Start periodic scanner
+	go mgr.scanPeriodically()
 
 	return mgr
 }
 
-// Start begins the cron scanner
-func (m *Manager) Start() {
-	m.cron.Start()
-
-	// Start periodic scanner (every minute)
-	go m.scanPeriodically()
+// SetAgentName sets the agent name for this cron manager
+func (m *Manager) SetAgentName(name string) {
+	m.agentName = name
 }
 
 // Stop stops the cron manager
 func (m *Manager) Stop() {
-	close(m.stopCh)
-	m.cron.Stop()
+	m.cancel()
+}
+
+// SetEventHandler sets the event handler for cron events
+func (m *Manager) SetEventHandler(handler CronEventHandler) {
+	m.eventHandler = handler
 }
 
 // scanPeriodically scans for tasks to run every minute
@@ -87,15 +102,15 @@ func (m *Manager) scanPeriodically() {
 
 	for {
 		select {
+		case <-m.ctx.Done():
+			return
 		case <-ticker.C:
 			m.scanAndExecute()
-		case <-m.stopCh:
-			return
 		}
 	}
 }
 
-// scanAndExecute scans for tasks that need to run
+// scanAndExecute scans for tasks that need to run and executes them
 func (m *Manager) scanAndExecute() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -109,8 +124,8 @@ func (m *Manager) scanAndExecute() {
 
 		// Check if next run time is reached
 		if task.NextRun != nil && now.After(*task.NextRun) {
-			// Execute the task
-			go m.executeTask(task)
+			// Execute the task by creating a Task in TaskManager
+			go m.executeCronTask(task)
 
 			// Update last run time
 			now := time.Now()
@@ -134,44 +149,99 @@ func (m *Manager) scanAndExecute() {
 	}
 }
 
-// executeTask executes a cron task by sending it to the agent
-func (m *Manager) executeTask(task *Task) {
-	fmt.Printf("[Cron] Executing task '%s' for agent '%s'\n", task.Name, m.agentName)
+// executeCronTask executes a cron task by creating a task via the event handler
+func (m *Manager) executeCronTask(task *Task) {
+	fmt.Printf("[Cron] Executing task '%s'\n", task.Name)
 
-	if m.executor == nil {
-		fmt.Printf("[Cron] No executor configured for agent %s\n", m.agentName)
+	// Try event handler first (new approach)
+	if m.eventHandler != nil {
+		if err := m.eventHandler.OnCronTaskDue(task); err != nil {
+			fmt.Printf("[Cron] Failed to handle cron task %s: %v\n", task.Name, err)
+		}
 		return
 	}
 
-	// Create a unique session ID for this cron task
-	sessionID := fmt.Sprintf("cron_%s_%s", task.ID, time.Now().Format("20060102_150405"))
+	// Fall back to taskCreator (legacy, for compatibility)
+	if m.taskCreator != nil {
+		agentName := m.agentName
+		if agentName == "" {
+			agentName = "default"
+		}
 
-	// Build the prompt for the agent
-	prompt := fmt.Sprintf("执行定时任务: %s\n描述: %s\n\n请执行这个任务。", task.Name, task.Description)
-	if task.Description == "" {
-		prompt = fmt.Sprintf("执行定时任务: %s\n\n请执行这个任务。", task.Name)
-	}
+		taskID, err := m.taskCreator(
+			fmt.Sprintf("[Cron] %s", task.Name),
+			task.Description,
+			task.OwnerID,
+			agentName,
+		)
+		if err != nil {
+			fmt.Printf("[Cron] Failed to create task for %s: %v\n", task.Name, err)
+			return
+		}
 
-	// Execute using the provided executor
-	ctx := context.Background()
-	response, err := m.executor(ctx, sessionID, prompt)
+		fmt.Printf("[Cron] Task '%s' started as task %s\n", task.Name, taskID)
 
-	if err != nil {
-		fmt.Printf("[Cron] Task '%s' failed: %v\n", task.Name, err)
+		// Notify the owner if specified
+		if task.OwnerID != "" {
+			message := fmt.Sprintf("🔔 定时任务已启动\n任务: %s\n时间: %s\n任务ID: %s",
+				task.Name, time.Now().Format("2006-01-02 15:04:05"), taskID)
+			if err := notifyOwner(task.OwnerID, message); err != nil {
+				fmt.Printf("Failed to notify owner: %v\n", err)
+			}
+		}
 		return
 	}
 
-	fmt.Printf("[Cron] Task '%s' completed: %s\n", task.Name, response)
+	fmt.Printf("[Cron] No event handler or task creator configured for task %s\n", task.Name)
+}
 
-	// Notify the owner if specified
-	if task.OwnerID != "" {
-		// Use notification manager to send result
-		message := fmt.Sprintf("🔔 定时任务已执行\n任务: %s\n时间: %s\n结果: %s",
-			task.Name, time.Now().Format("2006-01-02 15:04:05"), response)
-		if err := notification.GetManager().Notify(task.OwnerID, message); err != nil {
-			fmt.Printf("Failed to notify owner: %v\n", err)
+// notifyOwner notifies the task owner
+func notifyOwner(ownerID, message string) error {
+	return notification.GetManager().Notify(ownerID, message)
+}
+
+// GetPendingTasks returns a list of tasks that should be executed
+func (m *Manager) GetPendingTasks() ([]*Task, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	now := time.Now()
+	pending := make([]*Task, 0)
+
+	for _, task := range m.tasks {
+		if !task.Enabled {
+			continue
+		}
+		if task.NextRun != nil && now.After(*task.NextRun) {
+			pending = append(pending, task)
 		}
 	}
+
+	return pending, nil
+}
+
+// UpdateTaskRunTimes updates the last run and next run times for a task
+func (m *Manager) UpdateTaskRunTimes(taskID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	task, exists := m.tasks[taskID]
+	if !exists {
+		return fmt.Errorf("task not found")
+	}
+
+	now := time.Now()
+	task.LastRun = &now
+	task.UpdatedAt = now
+
+	nextRun, err := m.calculateNextRun(task.Schedule)
+	if err != nil {
+		task.Enabled = false
+		return fmt.Errorf("failed to calculate next run: %w", err)
+	}
+	task.NextRun = &nextRun
+
+	return m.saveTask(task)
 }
 
 // AddTask adds a new cron task

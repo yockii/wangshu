@@ -8,5 +8,5 @@ import (
 func RegisterShellTools(registry *tools.Registry) {
 	registry.Register(NewExecTool())
 	registry.Register(NewProcessTool())
-	registry.Register(NewInteractiveTool())
+	registry.Register(NewAutoInteractiveTool())
 }

@@ -43,31 +43,19 @@ func NewAgent(provider llm.Provider, model string, tools *tools.Registry, sessio
 		skillLoader:  skillLoader,
 	}
 
-	// Create executor function for cron tasks
-	executor := func(ctx context.Context, sessionID, prompt string) (string, error) {
-		return agent.RunWithChannel(ctx, sessionID, "", "", prompt, "cron")
-	}
-
-	// Initialize cron manager (will be started later when agent name is set)
-	agent.cronManager = cron.NewManager("default", workspaceDir, executor)
+	// Initialize cron manager (without task creator - will be set via event handler)
+	agent.cronManager = cron.NewManager(workspaceDir, nil, nil)
 
 	return agent
 }
 
-// SetName sets the agent name and restarts cron manager with correct name
+// SetName sets the agent name
 func (a *Agent) SetName(name string) {
 	a.agentName = name
-	// Stop old cron manager
+	// Update cron manager with agent name
 	if a.cronManager != nil {
-		a.cronManager.Stop()
+		a.cronManager.SetAgentName(name)
 	}
-	// Create executor function for cron tasks
-	executor := func(ctx context.Context, sessionID, prompt string) (string, error) {
-		return a.RunWithChannel(ctx, sessionID, "", "", prompt, "cron")
-	}
-	// Create new cron manager with correct name
-	a.cronManager = cron.NewManager(name, a.workspaceDir, executor)
-	a.cronManager.Start()
 }
 
 // GetName returns the agent name
@@ -85,10 +73,7 @@ func (a *Agent) GetWorkspace() string {
 }
 
 func (a *Agent) Stop() {
-	// Stop cron manager
-	if a.cronManager != nil {
-		a.cronManager.Stop()
-	}
+	// Cron manager no longer needs to be stopped (it's now a lightweight recorder)
 }
 
 func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, userInput, senderID string) (string, error) {
@@ -207,7 +192,19 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 
 	args[tools.ToolCallParamWorkspace] = a.workspaceDir
 
-	result := a.tools.ExecuteExtended(ctx, tc.Name, args, channel, chatID)
+	// Create ToolContext with agent information
+	toolCtx := tools.NewToolContext(
+		a.agentName,
+		"", // agent owner - can be added later
+		a.workspaceDir,
+		"", // sessionID - can be passed separately if needed
+		channel,
+		chatID,
+		a.provider,
+		a.model,
+	)
+
+	result := a.tools.ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
 	if result.IsError {
 		return result.ForLLM, fmt.Errorf("Tool execution failed")
 	}
@@ -368,6 +365,11 @@ func (a *Agent) CallProvider(ctx context.Context, sessionID string, msgs []llm.M
 // GetTools returns the tool registry
 func (a *Agent) GetTools() *tools.Registry {
 	return a.tools
+}
+
+// GetLLMProvider returns the LLM provider and model
+func (a *Agent) GetLLMProvider() (llm.Provider, string) {
+	return a.provider, a.model
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {

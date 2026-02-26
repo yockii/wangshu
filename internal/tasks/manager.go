@@ -10,10 +10,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yockii/yoclaw/internal/agent"
 	"github.com/yockii/yoclaw/internal/notification"
 	"github.com/yockii/yoclaw/pkg/llm"
+	"github.com/yockii/yoclaw/pkg/tools"
 )
+
+// AgentExecutor is an interface that defines what TaskManager needs from an agent
+type AgentExecutor interface {
+	GetTools() *tools.Registry
+	CallProvider(ctx context.Context, sessionID string, msgs []llm.Message) (*llm.ChatResponse, error)
+	GetLLMProvider() (llm.Provider, string) // Returns LLM provider and model
+}
+
 
 // Status represents the status of a task
 type Status string
@@ -68,10 +76,12 @@ type ToolCallInfo struct {
 
 // Manager manages long-running tasks
 type Manager struct {
-	runningTasks    map[string]*TaskMeta        // taskID -> task metadata
-	agentWorkspaces map[string]string           // agentName -> workspace path
-	taskAgents      map[string]string           // taskID -> agentName mapping for quick lookup
-	mu              sync.RWMutex
+	runningTasks        map[string]*TaskMeta        // taskID -> task metadata
+	agentWorkspaces     map[string]string           // agentName -> workspace path
+	taskAgents          map[string]string           // taskID -> agentName mapping for quick lookup
+	agentExecutors      map[string]AgentExecutor    // agentName -> executor for running tasks
+	mu                  sync.RWMutex
+	zombieTaskThreshold time.Duration               // zombie task detection threshold (default 5 minutes)
 }
 
 var globalManager *Manager
@@ -82,19 +92,18 @@ func GetManager() *Manager {
 }
 
 // Initialize creates and initializes the global task manager
-func Initialize() (*Manager, error) {
+func Initialize(agents map[string]AgentExecutor, workspaces map[string]string) (*Manager, error) {
 	if globalManager != nil {
 		return globalManager, nil
 	}
 
-	// Get all agents from global agent manager
-	agents := agent.GetAllAgents()
-
 	// Build agent workspace mapping
 	agentWorkspaces := make(map[string]string)
+	agentExecutors := make(map[string]AgentExecutor)
 	for name, ag := range agents {
-		ws := ag.GetWorkspace()
+		ws := workspaces[name]
 		agentWorkspaces[name] = ws
+		agentExecutors[name] = ag
 
 		// Ensure tasks directory exists for each agent
 		tasksDir := filepath.Join(ws, "tasks")
@@ -104,9 +113,11 @@ func Initialize() (*Manager, error) {
 	}
 
 	mgr := &Manager{
-		runningTasks:    make(map[string]*TaskMeta),
-		agentWorkspaces: agentWorkspaces,
-		taskAgents:      make(map[string]string),
+		runningTasks:        make(map[string]*TaskMeta),
+		agentWorkspaces:     agentWorkspaces,
+		taskAgents:          make(map[string]string),
+		agentExecutors:      agentExecutors,
+		zombieTaskThreshold: 5 * time.Minute, // default 5 minutes
 	}
 
 	// Scan task folders from all agents and resume any interrupted running tasks
@@ -257,8 +268,8 @@ func (m *Manager) runTask(task *TaskMeta) {
 		m.mu.Unlock()
 	}()
 
-	// Get the assigned agent from global agent manager
-	ag, exists := agent.GetAgent(task.AgentName)
+	// Get the assigned agent executor
+	ag, exists := m.agentExecutors[task.AgentName]
 	if !exists {
 		m.failTask(task.ID, fmt.Sprintf("agent %s not found", task.AgentName))
 		return
@@ -325,12 +336,23 @@ Previous messages have been loaded from the task log. Continue from where we lef
 	maxIterations := 20 // Limit iterations for long-running tasks
 	var finalContent string
 
+	// Start heartbeat ticker
+	heartbeatTicker := time.NewTicker(1 * time.Minute)
+	defer heartbeatTicker.Stop()
+
 	for i := 0; i < maxIterations; i++ {
 		// Check if task was cancelled or paused
 		select {
 		case <-ctx.Done():
 			m.appendTaskEvent(task.ID, "system", "Task was cancelled or paused")
 			return
+		case <-heartbeatTicker.C:
+			// Update heartbeat
+			task.mu.Lock()
+			task.UpdatedAt = time.Now()
+			task.mu.Unlock()
+			m.saveTaskMeta(task)
+			continue
 		default:
 		}
 
@@ -377,7 +399,7 @@ Previous messages have been loaded from the task log. Continue from where we lef
 			m.notifyTaskUser(task.ID, fmt.Sprintf("🔧 执行工具: %s", tc.Name))
 
 			// Execute tool
-			toolResult, err := m.executeToolCall(ctx, ag, tc)
+			toolResult, err := m.executeToolCall(ctx, ag, tc, task)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 			}
@@ -411,7 +433,7 @@ Previous messages have been loaded from the task log. Continue from where we lef
 }
 
 // executeToolCall executes a tool call for a task
-func (m *Manager) executeToolCall(ctx context.Context, ag *agent.Agent, tc llm.ToolCall) (string, error) {
+func (m *Manager) executeToolCall(ctx context.Context, ag AgentExecutor, tc llm.ToolCall, task *TaskMeta) (string, error) {
 	// Parse tool arguments
 	var args map[string]interface{}
 	if tc.Arguments != "" {
@@ -424,9 +446,31 @@ func (m *Manager) executeToolCall(ctx context.Context, ag *agent.Agent, tc llm.T
 		args = make(map[string]interface{})
 	}
 
-	// Execute tool using agent's tool registry
+	// Get workspace for this task
+	ws := m.agentWorkspaces[task.AgentName]
+	if ws == "" {
+		return "", fmt.Errorf("workspace not found for agent %s", task.AgentName)
+	}
+	args[tools.ToolCallParamWorkspace] = ws
+
+	// Get tool registry
 	toolsRegistry := ag.GetTools()
-	result := toolsRegistry.ExecuteExtended(ctx, tc.Name, args, "", "")
+
+	// Create ToolContext for tools that need LLM access
+	llmProvider, model := ag.GetLLMProvider()
+	toolCtx := tools.NewToolContext(
+		task.AgentName,
+		task.OwnerID,
+		ws,
+		task.ID,
+		"", // channel - not used in task execution
+		"", // chatID - not used in task execution
+		llmProvider,
+		model,
+	)
+
+	// Execute tool with context
+	result := toolsRegistry.ExecuteWithContext(ctx, tc.Name, args, toolCtx, "", "")
 
 	if result.IsError {
 		return result.ForLLM, fmt.Errorf("tool execution failed: %s", result.ForLLM)
@@ -776,6 +820,11 @@ func (m *Manager) saveTaskMeta(task *TaskMeta) error {
 	return os.WriteFile(taskFile, data, 0644)
 }
 
+// SaveTaskMeta is the public version of saveTaskMeta
+func (m *Manager) SaveTaskMeta(task *TaskMeta) error {
+	return m.saveTaskMeta(task)
+}
+
 // loadTaskMeta loads task metadata from task.json
 func (m *Manager) loadTaskMeta(taskDir string) (*TaskMeta, error) {
 	taskFile := filepath.Join(taskDir, "task.json")
@@ -958,8 +1007,14 @@ func (m *Manager) scanAndResumeTasks() error {
 			// Store taskID -> agentName mapping
 			m.taskAgents[task.ID] = agentName
 
-			// If task was running, resume it
+			// If task was running, check if it's a zombie or resume it
 			if task.Status == StatusRunning {
+				// Check if task is a zombie
+				if m.isZombieTask(task) {
+					m.markTaskAsFailed(task.ID, "Task detected as zombie (no heartbeat for over 5 minutes)")
+					continue
+				}
+				// Resume non-zombie running tasks
 				fmt.Printf("Resuming interrupted task: %s (%s) for agent %s\n", task.Name, task.ID, agentName)
 				m.ExecuteTask(task.ID)
 			}
@@ -1004,7 +1059,13 @@ func (m *Manager) periodicCheck() {
 		for _, task := range allTasks {
 			// Resume interrupted running tasks
 			if task.Status == StatusRunning {
+				// Check if task is a zombie
 				if _, exists := m.runningTasks[task.ID]; !exists {
+					if m.isZombieTask(task) {
+						m.markTaskAsFailed(task.ID, "Task detected as zombie (not in running tasks map)")
+						continue
+					}
+					// Resume non-zombie running tasks
 					fmt.Printf("Resuming task: %s\n", task.Name)
 					m.mu.Unlock()
 					go m.ExecuteTask(task.ID)
@@ -1039,6 +1100,49 @@ func (m *Manager) shouldRunRecurringTask(task *TaskMeta) bool {
 	}
 
 	return time.Now().After(*task.NextRun)
+}
+
+// isZombieTask checks if a task is a zombie process
+func (m *Manager) isZombieTask(task *TaskMeta) bool {
+	if task.Status != StatusRunning {
+		return false
+	}
+	if task.UpdatedAt.IsZero() {
+		return false
+	}
+	return time.Since(task.UpdatedAt) > m.zombieTaskThreshold
+}
+
+// markTaskAsFailed marks a task as failed with a reason
+func (m *Manager) markTaskAsFailed(taskID, reason string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	agentName, ok := m.taskAgents[taskID]
+	if !ok {
+		return
+	}
+
+	taskDir := m.getTaskDirByIDs(taskID, agentName)
+	if taskDir == "" {
+		return
+	}
+
+	task, err := m.loadTaskMeta(taskDir)
+	if err != nil {
+		return
+	}
+
+	task.Status = StatusFailed
+	task.UpdatedAt = time.Now()
+
+	if err := m.saveTaskMeta(task); err != nil {
+		fmt.Printf("Failed to mark zombie task %s as failed: %v\n", taskID, err)
+		return
+	}
+
+	m.appendTaskEvent(taskID, "error", fmt.Sprintf("Task marked as failed: %s", reason))
+	fmt.Printf("Zombie task %s marked as failed: %s\n", taskID, reason)
 }
 
 // DeleteCompletedTask removes a completed task folder

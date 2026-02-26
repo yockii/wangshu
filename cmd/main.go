@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/yockii/yoclaw/internal/agent"
 	"github.com/yockii/yoclaw/internal/config"
 	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/internal/cron"
 	"github.com/yockii/yoclaw/internal/tasks"
 	systemTools "github.com/yockii/yoclaw/internal/tools/system"
 	taskTools "github.com/yockii/yoclaw/internal/tools/tasks"
@@ -98,11 +100,33 @@ func main() {
 	// Initialize global agent manager
 	agent.InitializeAgentManager(agents)
 
-	// Initialize task manager (uses global agents)
-	_, err = tasks.Initialize()
+	// Build workspaces map for task manager
+	workspaces := make(map[string]string)
+	for name, ac := range config.DefaultCfg.Agents {
+		workspaces[name] = ac.Workspace
+	}
+
+	// Build agent executors map for task manager
+	agentExecutors := make(map[string]tasks.AgentExecutor)
+	for name, ag := range agents {
+		agentExecutors[name] = ag
+	}
+
+	// Initialize task manager with agents and workspaces
+	taskMgr, err := tasks.Initialize(agentExecutors, workspaces)
 	if err != nil {
 		slog.Error("Failed to initialize task manager", "error", err)
 		return
+	}
+
+	// Connect CronManager with TaskManager via event handler
+	for name, ag := range agents {
+		// Create event handler for this agent's cron manager
+		cronEventHandler := &cronTaskEventHandler{
+			taskManager: taskMgr,
+			agentName:   name,
+		}
+		ag.GetCronManager().SetEventHandler(cronEventHandler)
 	}
 
 	// 初始化channel
@@ -158,4 +182,48 @@ func expandPath(path string) string {
 		return home
 	}
 	return path
+}
+
+// cronTaskEventHandler handles cron task events by creating tasks in TaskManager
+type cronTaskEventHandler struct {
+	taskManager *tasks.Manager
+	agentName   string
+}
+
+func (h *cronTaskEventHandler) OnCronTaskDue(cronTask *cron.Task) error {
+	// Build the prompt for the task
+	prompt := fmt.Sprintf("执行定时任务: %s\n描述: %s\n\n请执行这个任务。", cronTask.Name, cronTask.Description)
+	if cronTask.Description == "" {
+		prompt = fmt.Sprintf("执行定时任务: %s\n\n请执行这个任务。", cronTask.Name)
+	}
+
+	// Create the task
+	taskMeta, err := h.taskManager.CreateTask(
+		fmt.Sprintf("[Cron] %s", cronTask.Name),
+		cronTask.Description,
+		cronTask.OwnerID,
+		h.agentName,
+		"", // No schedule - this is a one-time execution
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create task: %w", err)
+	}
+
+	// Add cron metadata to the task
+	taskMeta.Metadata = map[string]string{
+		"cron_task_id": cronTask.ID,
+		"cron_task":    "true",
+	}
+	h.taskManager.SaveTaskMeta(taskMeta)
+
+	// Add initial message
+	h.taskManager.AddTaskMessage(taskMeta.ID, prompt)
+
+	// Execute the task
+	if err := h.taskManager.ExecuteTask(taskMeta.ID); err != nil {
+		return fmt.Errorf("failed to execute task: %w", err)
+	}
+
+	slog.Info("Cron task started", "task", cronTask.Name, "taskID", taskMeta.ID)
+	return nil
 }

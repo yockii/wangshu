@@ -7,10 +7,10 @@ import (
 )
 
 type Config struct {
-	Agents    map[string]AgentConfig `json:"agents"`
-	Providers ProvidersConfig        `json:"providers"`
-	Channels  ChannelsConfig         `json:"channels"`
-	Skill     SkillConfig            `json:"skill"`
+	Agents       map[string]AgentConfig `json:"agents"`
+	Providers    ProvidersConfig        `json:"providers"`
+	Channels     ChannelsConfig         `json:"channels"`
+	Skill        SkillConfig            `json:"skill"`
 	mu        sync.RWMutex
 }
 

@@ -12,11 +12,17 @@ import (
 	"github.com/yockii/yoclaw/internal/agent"
 	"github.com/yockii/yoclaw/internal/config"
 	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/internal/tasks"
+	systemTools "github.com/yockii/yoclaw/internal/tools/system"
+	taskTools "github.com/yockii/yoclaw/internal/tools/tasks"
 	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/channel"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/skills"
 	"github.com/yockii/yoclaw/pkg/tools"
+	memoryTools "github.com/yockii/yoclaw/pkg/tools/memory"
+	networkTools "github.com/yockii/yoclaw/pkg/tools/network"
+	shellTools "github.com/yockii/yoclaw/pkg/tools/shell"
 )
 
 func main() {
@@ -47,6 +53,16 @@ func main() {
 	toolsRegistry := tools.NewRegistry()
 	tools.RegisterBuiltinTools(toolsRegistry)
 	tools.RegisterFileSystemTools(toolsRegistry)
+	// Register shell tools
+	shellTools.RegisterShellTools(toolsRegistry)
+	// Register network tools
+	networkTools.RegisterNetworkTools(toolsRegistry)
+	// Register system tools
+	systemTools.RegisterSystemTools(toolsRegistry)
+	// Register memory tools
+	memoryTools.RegisterMemoryTools(toolsRegistry)
+	// Register task tools
+	taskTools.RegisterTaskTools(toolsRegistry)
 	// TODO 实现并注册更多工具
 
 	// 确保各个agent的workspace完整性
@@ -72,9 +88,21 @@ func main() {
 			ac.Workspace,
 			skillLoader,
 		)
+		// Set agent name and start cron manager
+		agents[name].SetName(name)
 		if name == constant.Default || defaultAgent == nil {
 			defaultAgent = agents[name]
 		}
+	}
+
+	// Initialize global agent manager
+	agent.InitializeAgentManager(agents)
+
+	// Initialize task manager (uses global agents)
+	_, err = tasks.Initialize()
+	if err != nil {
+		slog.Error("Failed to initialize task manager", "error", err)
+		return
 	}
 
 	// 初始化channel
@@ -107,6 +135,13 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigCh
+
+	// Stop all cron managers
+	for name, ag := range agents {
+		slog.Info("Stopping agent", "name", name)
+		ag.Stop()
+	}
+	slog.Info("All agents stopped")
 }
 
 // expandPath expands ~ to user's home directory

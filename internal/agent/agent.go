@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/yockii/yoclaw/internal/cron"
+	"github.com/yockii/yoclaw/internal/notification"
 	"github.com/yockii/yoclaw/internal/session"
 	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/llm"
@@ -26,10 +28,12 @@ type Agent struct {
 	maxIter      int
 	workspaceDir string
 	skillLoader  *skills.Loader
+	cronManager  *cron.Manager
+	agentName    string
 }
 
 func NewAgent(provider llm.Provider, model string, tools *tools.Registry, sessionTTL time.Duration, maxIter int, workspaceDir string, skillLoader *skills.Loader) *Agent {
-	return &Agent{
+	agent := &Agent{
 		provider:     provider,
 		model:        model,
 		tools:        tools,
@@ -38,9 +42,61 @@ func NewAgent(provider llm.Provider, model string, tools *tools.Registry, sessio
 		workspaceDir: workspaceDir,
 		skillLoader:  skillLoader,
 	}
+
+	// Create executor function for cron tasks
+	executor := func(ctx context.Context, sessionID, prompt string) (string, error) {
+		return agent.RunWithChannel(ctx, sessionID, "", "", prompt, "cron")
+	}
+
+	// Initialize cron manager (will be started later when agent name is set)
+	agent.cronManager = cron.NewManager("default", workspaceDir, executor)
+
+	return agent
+}
+
+// SetName sets the agent name and restarts cron manager with correct name
+func (a *Agent) SetName(name string) {
+	a.agentName = name
+	// Stop old cron manager
+	if a.cronManager != nil {
+		a.cronManager.Stop()
+	}
+	// Create executor function for cron tasks
+	executor := func(ctx context.Context, sessionID, prompt string) (string, error) {
+		return a.RunWithChannel(ctx, sessionID, "", "", prompt, "cron")
+	}
+	// Create new cron manager with correct name
+	a.cronManager = cron.NewManager(name, a.workspaceDir, executor)
+	a.cronManager.Start()
+}
+
+// GetName returns the agent name
+func (a *Agent) GetName() string {
+	return a.agentName
+}
+
+// GetCronManager returns the cron manager
+func (a *Agent) GetCronManager() *cron.Manager {
+	return a.cronManager
+}
+
+func (a *Agent) GetWorkspace() string {
+	return a.workspaceDir
+}
+
+func (a *Agent) Stop() {
+	// Stop cron manager
+	if a.cronManager != nil {
+		a.cronManager.Stop()
+	}
 }
 
 func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, userInput, senderID string) (string, error) {
+	// Record user for proactive notifications
+	if senderID != "" {
+		notification.GetManager().RecordUser(channel, ChatID, senderID, a.GetWorkspace())
+	}
+
 	sess := a.sessions.GetOrCreate(a.workspaceDir, sessionID, channel, ChatID, senderID)
 	sess.AddMessage("user", userInput)
 
@@ -300,6 +356,16 @@ func (a *Agent) loadAgentContextInfo() string {
 	}
 
 	return content
+}
+
+// CallProvider calls the LLM provider directly (for task execution)
+func (a *Agent) CallProvider(ctx context.Context, sessionID string, msgs []llm.Message) (*llm.ChatResponse, error) {
+	return a.provider.Chat(ctx, a.model, msgs, a.tools.GetProviderDefs(), nil)
+}
+
+// GetTools returns the tool registry
+func (a *Agent) GetTools() *tools.Registry {
+	return a.tools
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {

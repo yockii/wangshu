@@ -35,10 +35,34 @@ func main() {
 		return
 	}
 
+	if err = config.DefaultCfg.Validate(); err != nil {
+		slog.Error("Config validation failed", "error", err)
+		return
+	}
+
 	// 初始化大模型
-	if config.DefaultCfg.Providers.OpenAI.APIKey != "" {
-		llm.RegisterProvider("openai", llm.NewOpenAIProvider(config.DefaultCfg.Providers.OpenAI.APIKey, config.DefaultCfg.Providers.OpenAI.BaseURL))
-	} else {
+	providerCount := 0
+	for providerName, providerCfg := range config.DefaultCfg.Providers {
+		if providerCfg.Type == "" {
+			slog.Error("LLM provider type is empty", "provider", providerName)
+			continue
+		}
+		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
+			slog.Error("LLM provider API key is empty", "provider", providerName)
+			continue
+		}
+		switch providerCfg.Type {
+		case "openai":
+			llm.RegisterProvider(providerName, llm.NewOpenAIProvider(providerCfg.APIKey, providerCfg.BaseURL))
+			providerCount++
+		// case "ollama":
+		// 	llm.RegisterProvider(providerName, llm.NewOllamaProvider(providerCfg.APIKey, providerCfg.BaseURL))
+		default:
+			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
+		}
+	}
+
+	if providerCount == 0 {
 		slog.Error("No LLM provider configured")
 		return
 	}

@@ -341,6 +341,7 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 		slog.Error("Failed to run with channel", "error", err)
 		response = fmt.Sprintf("Agent dealing failed: %+v", err)
 	}
+
 	bus.Default().PublishOutbound(bus.OutboundMessage{
 		Channel: msg.Channel,
 		ChatID:  msg.ChatID,

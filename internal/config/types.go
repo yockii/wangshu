@@ -7,10 +7,10 @@ import (
 )
 
 type Config struct {
-	Agents       map[string]AgentConfig `json:"agents"`
-	Providers    ProvidersConfig        `json:"providers"`
-	Channels     ChannelsConfig         `json:"channels"`
-	Skill        SkillConfig            `json:"skill"`
+	Agents    map[string]AgentConfig    `json:"agents"`
+	Providers map[string]ProviderConfig `json:"providers"`
+	Channels  ChannelsConfig            `json:"channels"`
+	Skill     SkillConfig               `json:"skill"`
 	mu        sync.RWMutex
 }
 
@@ -26,11 +26,8 @@ type AgentConfig struct {
 	Temperature float64 `json:"temperature"`
 }
 
-type ProvidersConfig struct {
-	OpenAI OpenAIProviderConfig `json:"openai"`
-}
-
-type OpenAIProviderConfig struct {
+type ProviderConfig struct {
+	Type    string `json:"type"` // openai/anthropic/ollama/...
 	APIKey  string `json:"api_key"`
 	BaseURL string `json:"base_url,omitempty"`
 }
@@ -50,19 +47,21 @@ type FeishuConfig struct {
 	AppSecret string `json:"app_secret"`
 }
 
-func DefaultConfig() *Config {
+func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]AgentConfig{
 			constant.Default: {
 				Workspace:   "~/.yoClaw/workspace",
-				Provider:    "openai",
+				Provider:    "myProvider",
 				Model:       "qwen3-max",
 				Temperature: 0.7,
 			},
 		},
-		Providers: ProvidersConfig{
-			OpenAI: OpenAIProviderConfig{
-				APIKey: "",
+		Providers: map[string]ProviderConfig{
+			"myProvider": {
+				Type:    "openai",
+				APIKey:  "",
+				BaseURL: "",
 			},
 		},
 		Channels: ChannelsConfig{

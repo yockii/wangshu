@@ -22,7 +22,7 @@ func Initialize(cfgFilePath string) error {
 }
 
 func LoadConfig(cfgFilePath string) (*Config, error) {
-	cfg := DefaultConfig()
+	cfg := defaultConfig()
 
 	data, err := os.ReadFile(cfgFilePath)
 	if err != nil {
@@ -66,13 +66,8 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("provider is required for agent %s", agentName)
 		}
 
-		hasProviderKey := false
-		switch agent.Provider {
-		case "openai":
-			hasProviderKey = c.Providers.OpenAI.APIKey != ""
-		}
-
-		if !hasProviderKey && agent.Provider != "ollama" {
+		providerCfg := c.Providers[agent.Provider]
+		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
 			return fmt.Errorf("provider '%s' requires API key", agent.Provider)
 		}
 	}

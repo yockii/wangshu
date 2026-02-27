@@ -3,6 +3,8 @@ package bus
 import (
 	"context"
 	"sync"
+
+	"github.com/yockii/yoclaw/internal/constant"
 )
 
 type InboundHandler func(ctx context.Context, msg InboundMessage)
@@ -94,6 +96,11 @@ func (b *MessageBus) PublishInbound(msg InboundMessage) error {
 }
 
 func (b *MessageBus) PublishOutbound(msg OutboundMessage) error {
+	// 如果仅仅是HEARTBEAT_OK, 则不发送
+	if msg.Content == constant.HEARTBEAT_OK {
+		return nil
+	}
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	if b.closed {

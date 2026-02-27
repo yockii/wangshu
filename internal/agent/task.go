@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/yockii/yoclaw/internal/session"
@@ -27,6 +28,7 @@ func (a *Agent) startTaskLoop() {
 
 func (a *Agent) processTask() {
 	tasksDir := filepath.Join(a.workspaceDir, "tasks")
+	os.MkdirAll(tasksDir, 0755)
 	taskFiles, err := os.ReadDir(tasksDir)
 	if err != nil {
 		slog.Error("Failed to read tasks directory", "agent", a.agentName, "error", err)
@@ -200,16 +202,26 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 			toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 		}
 		result += "\n" + toolResult
-		a.appendTaskHistory(taskInfo, llm.Message{
+		toolMsg := llm.Message{
 			Role:       "tool",
 			Content:    toolResult,
 			ToolCallID: tc.ID,
-		})
-		msgs = append(msgs, llm.Message{
-			Role:       "tool",
-			Content:    toolResult,
-			ToolCallID: tc.ID,
-		})
+		}
+		a.appendTaskHistory(taskInfo, toolMsg)
+		msgs = append(msgs, toolMsg)
+	}
+
+	if isFinished {
+		// 再次检查完成标记，确保不会提前完成任务
+		if !strings.Contains(result, "TASK_COMPLETED") {
+			isFinished = false
+			userMsg := llm.Message{
+				Role:    "user",
+				Content: "任务尚未完成，你必须调用工具继续执行任务。如果认为任务已完成，请输出`TASK_COMPLETED`。",
+			}
+			a.appendTaskHistory(taskInfo, userMsg)
+			msgs = append(msgs, userMsg)
+		}
 	}
 
 	return result, isFinished, nil

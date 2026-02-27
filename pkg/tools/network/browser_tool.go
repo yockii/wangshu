@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -21,13 +22,13 @@ type BrowserTool struct {
 func NewBrowserTool() *BrowserTool {
 	tool := new(BrowserTool)
 	tool.Name_ = "browser"
-	tool.Desc_ = "Browser automation using Playwright. Supports: open, screenshot, close, click, fill, text, html, wait, list_tabs"
+	tool.Desc_ = "Browser automation tool (Playwright installed, ready to use). Actions: open(url), click(selector), fill(selector,text), text(selector), html(), screenshot(path), wait(selector), close()."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"action": map[string]any{
-				"type":        "string",
-				"enum":        []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs"},
+				"type": "string",
+				"enum": []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs"},
 			},
 			"url":             map[string]any{"type": "string"},
 			"selector":        map[string]any{"type": "string"},
@@ -80,13 +81,43 @@ func (t *BrowserTool) execute(ctx context.Context, params map[string]string) (st
 func (t *BrowserTool) init() error {
 	pw, err := playwright.Run()
 	if err != nil {
-		return err
+		if installErr := playwright.Install(); installErr != nil {
+			return fmt.Errorf("playwright install failed: %w", installErr)
+		}
+		pw, err = playwright.Run()
+		if err != nil {
+			return err
+		}
 	}
-	t.pw = pw
 
-	browser, err := pw.Chromium.Launch()
-	if err != nil {
-		return err
+	var browser playwright.Browser
+	var launchErr error
+
+	if runtime.GOOS == "windows" {
+		browser, launchErr = pw.Chromium.Launch(
+			playwright.BrowserTypeLaunchOptions{
+				Channel:  playwright.String("msedge"),
+				Headless: playwright.Bool(false),
+			},
+		)
+		if launchErr != nil {
+			fmt.Printf("msedge not available, falling back to chromium: %v\n", launchErr)
+			browser, launchErr = pw.Chromium.Launch(
+				playwright.BrowserTypeLaunchOptions{
+					Headless: playwright.Bool(false),
+				},
+			)
+		}
+	} else {
+		browser, launchErr = pw.Chromium.Launch(
+			playwright.BrowserTypeLaunchOptions{
+				Headless: playwright.Bool(false),
+			},
+		)
+	}
+
+	if launchErr != nil {
+		return launchErr
 	}
 
 	page, err := browser.NewPage()

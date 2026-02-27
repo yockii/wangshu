@@ -21,7 +21,7 @@ type ExecTool struct {
 func NewExecTool() *ExecTool {
 	tool := new(ExecTool)
 	tool.Name_ = "exec"
-	tool.Desc_ = "Execute a shell command and return its output. Supports PTY for interactive commands that require TTY."
+	tool.Desc_ = "Execute a shell command and return its output. Supports PTY for interactive commands that require TTY. Note: For PowerShell commands that may return non-zero exit codes even when successful (e.g., Clear-RecycleBin), use '-ErrorAction SilentlyContinue' and append '; exit 0' to force successful exit code."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -82,7 +82,12 @@ func (t *ExecTool) executeWithPTY(ctx context.Context, command string, workingDi
 	if runtime.GOOS == "windows" {
 		// Windows: use conhost for PTY-like behavior
 		// Note: Windows PTY support is limited, using winpty as fallback
-		cmd = exec.Command("cmd")
+		if strings.HasPrefix(strings.ToLower(command), "powershell") {
+			args := t.dealPowershellCommand(command)
+			cmd = exec.CommandContext(ctx, "powershell", args...)
+		} else {
+			cmd = exec.Command("cmd", "/c", command)
+		}
 	} else {
 		// Unix: use sh -c with PTY
 		cmd = exec.Command("sh", "-c", command)
@@ -157,12 +162,39 @@ func (t *ExecTool) executeWithPTY(ctx context.Context, command string, workingDi
 	}
 }
 
+func (t *ExecTool) dealPowershellCommand(command string) []string {
+	var commandArgs []string
+	commandBody := strings.TrimSpace(strings.TrimPrefix(command, "powershell"))
+	if strings.HasPrefix(commandBody, "-Command") {
+		commandBody = strings.TrimSpace(strings.TrimPrefix(commandBody, "-Command"))
+		commandArgs = append(commandArgs, "-Command")
+	} else if strings.HasPrefix(commandBody, "-c") {
+		commandBody = strings.TrimSpace(commandBody[2:])
+		commandArgs = append(commandArgs, "-Command")
+	}
+	if len(commandBody) >= 2 {
+		first := commandBody[0]
+		last := commandBody[len(commandBody)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			commandBody = commandBody[1 : len(commandBody)-1]
+		}
+	}
+	safeCommand := fmt.Sprintf("%s; if ($?) { exit 0 } else { exit 1 }", commandBody)
+	commandArgs = append(commandArgs, safeCommand)
+	return commandArgs
+}
+
 // executeStandard executes a command without PTY
 func (t *ExecTool) executeStandard(ctx context.Context, command string, workingDir string) (string, error) {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "cmd", "/c", command)
+		if strings.HasPrefix(strings.ToLower(command), "powershell") {
+			args := t.dealPowershellCommand(command)
+			cmd = exec.CommandContext(ctx, "powershell", args...)
+		} else {
+			cmd = exec.CommandContext(ctx, "cmd", "/c", command)
+		}
 	} else {
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}

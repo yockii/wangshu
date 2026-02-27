@@ -1,0 +1,17 @@
+.git
+.gitignore
+.github
+.vscode
+*.md
+!README.md
+workspace/
+*.log
+.DS_Store
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+docs/
+skills/

@@ -1,9 +1,3 @@
----
-read_when:
-  - 存在这段话时
-summary: 新智能体的首次启动流程规范
----
-
 # BOOTSTRAP.md - Hello, World!
 
 _你刚刚醒来。是时候弄清楚自己是谁了。_

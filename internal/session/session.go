@@ -27,7 +27,6 @@ type Message struct {
 	Content   string
 	Timestamp time.Time
 	ToolCalls []ToolCall
-	// ToolCallID string
 }
 type ToolCall struct {
 	ID        string

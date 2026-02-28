@@ -156,7 +156,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 }
 
 func (c *FeishuChannel) SubscribeOutbound(ctx context.Context, msg bus.OutboundMessage) {
-	if msg.Channel == "feishu" {
+	if msg.Channel == c.name {
 		c.SendMessage(ctx, msg.ChatID, msg.Content)
 	}
 }

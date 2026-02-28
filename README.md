@@ -1,5 +1,42 @@
 # YoClaw
 
+> **⚠️ 重要提示：v0.2.0 版本包含破坏性更新**
+>
+> 配置文件格式已发生重大变化，从 v0.1.0 升级到 v0.2.0 需要手动更新配置文件。
+>
+> **主要变化：**
+> - `channels` 配置从固定字段改为 `map[string]ChannelConfig`，支持动态配置多个 channel
+> - 每个 channel 配置需要指定 `type` 字段（如 `"web"`、`"feishu"`）
+> - channel 名称可以自定义（如 `"webTest"`、`"feishuProd"`）
+>
+> **迁移指南：**
+> ```json
+> // v0.1.0 配置（旧格式）
+> {
+>   "channels": {
+>     "web": {
+>       "enabled": true,
+>       "agent": "default",
+>       "host_address": "localhost:8080",
+>       "token": "your-token"
+>     }
+>   }
+> }
+>
+> // v0.2.0 配置（新格式）
+> {
+>   "channels": {
+>     "webTest": {
+>       "type": "web",
+>       "enabled": true,
+>       "agent": "default",
+>       "host_address": "localhost:8080",
+>       "token": "your-token"
+>     }
+>   }
+> }
+> ```
+
 YoClaw 是一个功能强大的智能对话机器人框架，支持多种通信渠道接入，提供丰富的工具和灵活的任务执行能力。
 
 ## 快速开始
@@ -40,7 +77,8 @@ cat > ~/.yoClaw/config.json << EOF
     }
   },
   "channels": {
-    "feishu": {
+    "feishuProd": {
+      "type": "feishu",
       "enabled": true,
       "agent": "default",
       "app_id": "your-app-id",
@@ -77,7 +115,140 @@ docker run -d --name yoclaw -v ~/.yoClaw:/root/.yoClaw ghcr.io/yockii/yoclaw:v0.
 
 ### 配置指南
 
-#### 1. 飞书渠道配置
+> **⚠️ 重要提示：路径配置建议**
+>
+> 配置文件中的所有目录路径（如 `workspace`、`global_path`、`builtin_path` 等）**强烈建议使用绝对路径**。
+>
+> **为什么？**
+> - 相对路径是相对于**程序运行时的工作目录**，而不是程序文件所在的目录
+> - 例如：在 `C:\` 目录下运行 `D:\aa\bbb\yoclaw.exe`，相对路径 `./skills` 实际指向 `C:\skills`，而不是 `D:\aa\bbb\skills`
+> - 使用绝对路径可以避免因运行目录不同导致的路径错误
+>
+> **推荐做法：**
+> ```json
+> {
+>   "agents": {
+>     "default": {
+>       "workspace": "C:/Users/YourName/.yoClaw/workspace"
+>     }
+>   },
+>   "skill": {
+>     "global_path": "C:/Users/YourName/.yoClaw/skills",
+>     "builtin_path": "D:/path/to/yoclaw/skills"
+>   }
+> }
+> ```
+>
+> **支持波浪号扩展：**
+> 配置文件支持 `~` 符号，会自动扩展为用户主目录：
+> ```json
+> {
+>   "agents": {
+>     "default": {
+>       "workspace": "~/.yoClaw/workspace"
+>     }
+>   }
+> }
+> ```
+> 上述配置在 Windows 上会自动展开为 `C:\Users\YourName\.yoClaw\workspace`
+
+#### 1. Web界面配置（推荐）
+
+YoClaw 提供了独立的 Web 管理程序 [YoClaw-Manager](https://github.com/yockii/YoClaw-Manager)，支持通过浏览器进行聊天和管理。
+
+**安装和启动 Web 管理程序：**
+
+**方式一：下载二进制包（推荐）**
+
+```bash
+# 1. 从 YoClaw-Manager Releases 页面下载对应平台的二进制包
+# 访问：https://github.com/yockii/YoClaw-Manager/releases
+# 下载的 zip 包包含：
+#   - yoclaw-manager（可执行文件）
+#   - static/（Web 界面静态文件目录）
+
+# 2. 解压 zip 包
+# Windows
+# 解压后得到：yoclaw-manager.exe 和 static/ 目录
+
+# Linux/macOS
+unzip yoclaw-manager-linux-amd64.zip
+# 解压后得到：yoclaw-manager 和 static/ 目录
+
+# 3. 运行
+# Windows
+yoclaw-manager.exe
+
+# Linux/macOS
+chmod +x yoclaw-manager
+./yoclaw-manager
+```
+
+**方式二：从源码编译**
+
+```bash
+# 克隆仓库
+git clone https://github.com/yockii/YoClaw-Manager.git
+cd YoClaw-Manager
+
+# 编译
+go build -o yoclaw-manager
+
+# 运行（默认监听8080端口）
+./yoclaw-manager
+```
+
+**运行配置：**
+
+```bash
+# 默认配置（监听8080端口，使用默认token）
+./yoclaw-manager
+
+# 自定义配置
+./yoclaw-manager -addr :9000 -token my-secret-token -yoclaw-path ~/.yoClaw
+```
+
+**重要提示：**
+
+1. **目录结构**：确保 `yoclaw-manager` 可执行文件和 `static/` 目录在同一级目录下，否则 Web 界面无法正常加载。
+2. **实例管理**：为了让 Web 管理程序能够识别和管理 YoClaw 实例，建议将 `yoclaw` 和 `yoclaw-manager` 放置在**同一目录**下。这样管理器可以自动发现 YoClaw 可执行文件，并提供启动/停止/重启等管理功能。
+
+**配置 YoClaw 使用 Web Channel：**
+
+在 `~/.yoClaw/config.json` 中添加 Web Channel 配置：
+
+```json
+{
+  "channels": {
+    "webTest": {
+      "type": "web",
+      "enabled": true,
+      "agent": "default",
+      "host_address": "localhost:8080",
+      "token": "your-secret-token"
+    }
+  }
+}
+```
+
+**访问 Web 界面：**
+
+打开浏览器访问 `http://localhost:8080?token=your-secret-token`
+
+**Web 管理程序功能：**
+- 💬 实时聊天界面
+- 🖥️ YoClaw 实例管理（启动/停止/重启）
+- 📋 会话管理
+- 📝 任务管理
+- ⏰ 定时任务管理
+- ⚙️ 配置管理
+- 🔌 完整的 REST API
+
+**API 开发：**
+
+Web 管理程序提供完整的 REST API 和 WebSocket 接口，支持第三方开发自己的界面。详细的 API 文档请参考 [YoClaw-Manager 仓库](https://github.com/yockii/YoClaw-Manager)。
+
+#### 2. 飞书渠道配置
 
 1. 访问 [飞书开放平台](https://open.feishu.cn/) 并登录
 2. 创建企业自建应用：
@@ -217,7 +388,7 @@ YoClaw 采用模块化设计，核心组件包括：
 <!-- - [ ] 数据库操作工具 -->
 - [ ] 更多内置技能
 - [ ] 技能市场（在线安装）
-- [ ] Web 管理界面
+- [x] Web 管理界面（已迁移至独立仓库 [YoClaw-Manager](https://github.com/yockii/YoClaw-Manager)）
 
 ## 许可证
 

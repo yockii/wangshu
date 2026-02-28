@@ -9,7 +9,7 @@ import (
 type Config struct {
 	Agents    map[string]AgentConfig    `json:"agents"`
 	Providers map[string]ProviderConfig `json:"providers"`
-	Channels  ChannelsConfig            `json:"channels"`
+	Channels  map[string]ChannelConfig  `json:"channels"`
 	Skill     SkillConfig               `json:"skill"`
 	mu        sync.RWMutex
 }
@@ -32,19 +32,16 @@ type ProviderConfig struct {
 	BaseURL string `json:"base_url,omitempty"`
 }
 
-type ChannelsConfig struct {
-	Feishu FeishuConfig `json:"feishu"`
-}
-
-type ChannelBaseConfig struct {
+type ChannelConfig struct {
+	Type    string `json:"type"`
 	Enabled bool   `json:"enabled"`
 	Agent   string `json:"agent"`
-}
-
-type FeishuConfig struct {
-	ChannelBaseConfig
-	AppID     string `json:"app_id"`
-	AppSecret string `json:"app_secret"`
+	// feishu
+	AppID     string `json:"app_id,omitempty"`
+	AppSecret string `json:"app_secret,omitempty"`
+	// web
+	HostAddress string `json:"host_address,omitempty"`
+	Token       string `json:"token,omitempty"`
 }
 
 func defaultConfig() *Config {
@@ -60,18 +57,24 @@ func defaultConfig() *Config {
 		Providers: map[string]ProviderConfig{
 			"myProvider": {
 				Type:    "openai",
-				APIKey:  "",
-				BaseURL: "",
+				APIKey:  "sk-your-openai-api-key",
+				BaseURL: "your custom base url, blank if use openai official",
 			},
 		},
-		Channels: ChannelsConfig{
-			Feishu: FeishuConfig{
-				ChannelBaseConfig: ChannelBaseConfig{
-					Enabled: true,
-					Agent:   constant.Default,
-				},
-				AppID:     "",
-				AppSecret: "",
+		Channels: map[string]ChannelConfig{
+			"feishuTest": ChannelConfig{
+				Type:      "feishu",
+				Enabled:   false,
+				Agent:     constant.Default,
+				AppID:     "your feishu app id",
+				AppSecret: "your feishu app secret",
+			},
+			"webTest": ChannelConfig{
+				Type:        "web",
+				Enabled:     false,
+				Agent:       constant.Default,
+				HostAddress: "localhost:8080",
+				Token:       "custom defined token",
 			},
 		},
 		Skill: SkillConfig{

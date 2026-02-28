@@ -89,27 +89,54 @@ func main() {
 	// 初始化agents
 	defaultAgent := agent.InitializeAgentManager()
 
+	noChannelFound := true
 	// 初始化channel
-	if config.DefaultCfg.Channels.Feishu.Enabled {
-		if config.DefaultCfg.Channels.Feishu.AppID != "" && config.DefaultCfg.Channels.Feishu.AppSecret != "" {
-			feishuChannel := channel.NewFeishuChannel("feishu", config.DefaultCfg.Channels.Feishu.AppID, config.DefaultCfg.Channels.Feishu.AppSecret)
-			channel.RegisterChannel("feishu", feishuChannel)
-			var feishuAgent *agent.Agent
-			if config.DefaultCfg.Channels.Feishu.Agent != "" {
-				a, has := agent.GetAgent(config.DefaultCfg.Channels.Feishu.Agent)
-				if has {
-					feishuAgent = a
+	for name, ch := range config.DefaultCfg.Channels {
+		if ch.Enabled {
+			switch ch.Type {
+			case "web":
+				if ch.HostAddress != "" && ch.Token != "" {
+					noChannelFound = false
+					webChannel := channel.NewWebChannel(name, ch.HostAddress, ch.Token)
+					channel.RegisterChannel(name, webChannel)
+					var webAgent *agent.Agent
+					if ch.Agent != "" {
+						a, has := agent.GetAgent(ch.Agent)
+						if has {
+							webAgent = a
+						}
+					}
+					if webAgent == nil {
+						webAgent = defaultAgent
+					}
+					bus.Default().RegisterInboundHandler(name, webAgent.SubscribeInbound)
+					bus.Default().RegisterOutboundHandler(webChannel.SubscribeOutbound)
+				} else {
+					slog.Warn("Web channel enabled but hostAddress or token not configured")
+				}
+			case "feishu":
+				if ch.AppID != "" && ch.AppSecret != "" {
+					noChannelFound = false
+					feishuChannel := channel.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
+					channel.RegisterChannel(name, feishuChannel)
+					var feishuAgent *agent.Agent
+					if ch.Agent != "" {
+						a, has := agent.GetAgent(ch.Agent)
+						if has {
+							feishuAgent = a
+						}
+					}
+					if feishuAgent == nil {
+						feishuAgent = defaultAgent
+					}
+					bus.Default().RegisterInboundHandler(name, feishuAgent.SubscribeInbound)
+					bus.Default().RegisterOutboundHandler(feishuChannel.SubscribeOutbound)
 				}
 			}
-			if feishuAgent == nil {
-				feishuAgent = defaultAgent
-			}
-			bus.Default().RegisterInboundHandler(feishuAgent.SubscribeInbound)
-			bus.Default().RegisterOutboundHandler(feishuChannel.SubscribeOutbound)
-		} else {
-			slog.Warn("Feishu channel enabled but appId or appSecret not configured")
 		}
-	} else {
+	}
+
+	if noChannelFound {
 		slog.Error("No channel configured")
 		return
 	}

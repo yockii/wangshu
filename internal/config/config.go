@@ -72,13 +72,26 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Validate Feishu config
-	if c.Channels.Feishu.Enabled {
-		if c.Channels.Feishu.AppID == "" {
-			return fmt.Errorf("feishu.app_id is required when enabled")
+	// Validate channel config
+	for name, ch := range c.Channels {
+		if !ch.Enabled {
+			continue
 		}
-		if c.Channels.Feishu.AppSecret == "" {
-			return fmt.Errorf("feishu.app_secret is required when enabled")
+		switch ch.Type {
+		case "web":
+			if ch.HostAddress == "" {
+				return fmt.Errorf("%s host_address is required when enabled", name)
+			}
+			if ch.Token == "" {
+				return fmt.Errorf("%s token is required when enabled", name)
+			}
+		case "feishu":
+			if ch.AppID == "" {
+				return fmt.Errorf("%s app_id is required when enabled", name)
+			}
+			if ch.AppSecret == "" {
+				return fmt.Errorf("%s app_secret is required when enabled", name)
+			}
 		}
 	}
 

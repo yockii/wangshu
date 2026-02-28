@@ -14,7 +14,7 @@ type OutboundHandler func(ctx context.Context, msg OutboundMessage)
 type MessageBus struct {
 	inbound          chan InboundMessage
 	outbound         chan OutboundMessage
-	inboundHandlers  []InboundHandler
+	inboundHandlers  map[string]InboundHandler
 	outboundHandlers []OutboundHandler
 	mu               sync.RWMutex
 	closed           bool
@@ -25,7 +25,7 @@ func NewMessageBus(bufferSize int) *MessageBus {
 	return &MessageBus{
 		inbound:          make(chan InboundMessage, bufferSize),
 		outbound:         make(chan OutboundMessage, bufferSize),
-		inboundHandlers:  make([]InboundHandler, 0),
+		inboundHandlers:  make(map[string]InboundHandler),
 		outboundHandlers: make([]OutboundHandler, 0),
 	}
 }
@@ -34,10 +34,10 @@ func (b *MessageBus) Start(ctx context.Context) {
 	go b.processInboundMessages(ctx)
 	go b.processOutboundMessages(ctx)
 }
-func (b *MessageBus) RegisterInboundHandler(handler InboundHandler) {
+func (b *MessageBus) RegisterInboundHandler(channel string, handler InboundHandler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.inboundHandlers = append(b.inboundHandlers, handler)
+	b.inboundHandlers[channel] = handler
 }
 func (b *MessageBus) RegisterOutboundHandler(handler OutboundHandler) {
 	b.mu.Lock()
@@ -55,10 +55,9 @@ func (b *MessageBus) processInboundMessages(ctx context.Context) {
 			}
 			// 防止动态新增
 			b.mu.RLock()
-			handlers := make([]InboundHandler, len(b.inboundHandlers))
-			copy(handlers, b.inboundHandlers)
+			handler, ok := b.inboundHandlers[msg.Channel]
 			b.mu.RUnlock()
-			for _, handler := range handlers {
+			if ok {
 				go handler(ctx, msg)
 			}
 		}

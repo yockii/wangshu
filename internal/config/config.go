@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/yockii/yoclaw/pkg/utils"
 )
 
 var DefaultCfg *Config
@@ -17,6 +19,7 @@ func Initialize(cfgFilePath string) error {
 	if err != nil {
 		return err
 	}
+
 	DefaultCfg = cfg
 	return nil
 }
@@ -46,6 +49,17 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, err
+	}
+
+	for _, agent := range cfg.Agents {
+		agent.Workspace = utils.ExpandPath(agent.Workspace)
+	}
+
+	if cfg.Skill.GlobalPath != "" {
+		cfg.Skill.GlobalPath = utils.ExpandPath(cfg.Skill.GlobalPath)
+	}
+	if cfg.Skill.BuiltInPath != "" {
+		cfg.Skill.BuiltInPath = utils.ExpandPath(cfg.Skill.BuiltInPath)
 	}
 
 	return cfg, nil
@@ -147,8 +161,8 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 			relPath = path[len("workspace/"):]
 		}
 
-		if relPath == "BOOTSTRAP.md" {
-			targetLockFile := filepath.Join(workspaceDir, "BOOTSTRAP.lock")
+		if relPath == "profile/BOOTSTRAP.md" {
+			targetLockFile := filepath.Join(workspaceDir, "profile", "BOOTSTRAP.lock")
 			if _, err := os.Stat(targetLockFile); err == nil {
 				return nil // lock文件存在，跳过
 			}

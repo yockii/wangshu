@@ -303,7 +303,7 @@ func (a *Agent) loadAgentContextInfo() string {
 	}
 	hasSoul := false
 	for _, fileName := range mdFiles {
-		fp := filepath.Join(a.workspaceDir, fileName)
+		fp := filepath.Join(a.workspaceDir, "profile", fileName)
 		mdFile, err := filepath.Abs(fp)
 		if err != nil {
 			continue

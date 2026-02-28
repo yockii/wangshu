@@ -1,41 +1,11 @@
 # YoClaw
 
-> **⚠️ 重要提示：v0.2.0 版本包含破坏性更新**
+> **⚠️ 升级提示**
 >
-> 配置文件格式已发生重大变化，从 v0.1.0 升级到 v0.2.0 需要手动更新配置文件。
+> 如果你正在从旧版本升级，请查看 [UPGRADE.md](UPGRADE.md) 了解详细的升级指南。
 >
-> **主要变化：**
-> - `channels` 配置从固定字段改为 `map[string]ChannelConfig`，支持动态配置多个 channel
-> - 每个 channel 配置需要指定 `type` 字段（如 `"web"`、`"feishu"`）
-> - channel 名称可以自定义（如 `"webTest"`、`"feishuProd"`）
->
-> **迁移指南：**
-> ```json
-> // v0.1.0 配置（旧格式）
-> {
->   "channels": {
->     "web": {
->       "enabled": true,
->       "agent": "default",
->       "host_address": "localhost:8080",
->       "token": "your-token"
->     }
->   }
-> }
->
-> // v0.2.0 配置（新格式）
-> {
->   "channels": {
->     "webTest": {
->       "type": "web",
->       "enabled": true,
->       "agent": "default",
->       "host_address": "localhost:8080",
->       "token": "your-token"
->     }
->   }
-> }
-> ```
+> - **v0.2.1+**: Workspace 目录结构调整（配置文件移至 `workspace/profile/`）
+> - **v0.2.0+**: 配置文件格式变更（channels 支持动态配置）
 
 YoClaw 是一个功能强大的智能对话机器人框架，支持多种通信渠道接入，提供丰富的工具和灵活的任务执行能力。
 

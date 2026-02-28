@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/yockii/yoclaw/internal/agent"
@@ -20,6 +19,7 @@ import (
 	memoryTools "github.com/yockii/yoclaw/pkg/tools/memory"
 	networkTools "github.com/yockii/yoclaw/pkg/tools/network"
 	shellTools "github.com/yockii/yoclaw/pkg/tools/shell"
+	"github.com/yockii/yoclaw/pkg/utils"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}
-	cfgPath = expandPath(cfgPath)
+	cfgPath = utils.ExpandPath(cfgPath)
 
 	err := config.Initialize(cfgPath)
 	if err != nil {
@@ -151,20 +151,4 @@ func main() {
 	// Stop all agent
 	agent.StopAllAgents()
 	slog.Info("All agents stopped")
-}
-
-// expandPath expands ~ to user's home directory
-func expandPath(path string) string {
-	if len(path) > 0 && path[0] == '~' {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return path
-		}
-		// Handle both / and \ as path separators
-		if len(path) > 1 && (path[1] == '/' || path[1] == '\\') {
-			return filepath.Join(home, path[2:])
-		}
-		return home
-	}
-	return path
 }

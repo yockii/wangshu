@@ -164,7 +164,7 @@ func (s *Session) saveMessage(msg Message) {
 	}
 }
 func (s *Session) loadMessage() error {
-	sessionFile := filepath.Join(s.workspace, "sessions", s.ID+".jsonl")
+	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
 	// 如果文件不存在则直接返回
 	if _, err := os.Stat(sessionFile); os.IsNotExist(err) {
 		return nil
@@ -187,8 +187,56 @@ func (s *Session) loadMessage() error {
 			slog.Warn("message decode failed", "error", err)
 			continue
 		}
-		s.AddMessage(msg.Role, msg.Content, msg.ToolCalls...)
+
+		s.Messages = append(s.Messages, msg)
 	}
 
 	return nil
+}
+
+func (s *Session) TrimMessages(summary string, keptHistory int) []Message {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.Messages) <= keptHistory {
+		return s.Messages
+	}
+
+	trimmedMessages := make([]Message, 0, keptHistory+1)
+	trimmedMessages = append(trimmedMessages, Message{
+		Role:    "assistant",
+		Content: summary,
+	})
+	trimmedMessages = append(trimmedMessages, s.Messages[len(s.Messages)-keptHistory:]...)
+	// 保存到文件
+	s.Messages = trimmedMessages
+	s.UpdatedAt = time.Now()
+
+	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
+	// 如果目录不存在则创建
+	if err := os.MkdirAll(filepath.Dir(sessionFile), 0755); err != nil {
+		slog.Error("Failed to create session directory", "error", err)
+		return trimmedMessages
+	}
+	// 清空文件内容
+	if err := os.Truncate(sessionFile, 0); err != nil {
+		slog.Error("Failed to truncate session file", "error", err)
+		return trimmedMessages
+	}
+	// 写入新内容
+	file, err := os.OpenFile(sessionFile, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		slog.Error("Failed to open session file", "error", err)
+		return trimmedMessages
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetEscapeHTML(false)
+	for _, msg := range trimmedMessages {
+		if err := encoder.Encode(msg); err != nil {
+			slog.Error("Failed to encode message", "error", err)
+			return trimmedMessages
+		}
+	}
+	return trimmedMessages
 }

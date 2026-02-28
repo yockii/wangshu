@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/yockii/yoclaw/internal/config"
@@ -240,8 +241,62 @@ type SkillsParent struct {
 	SkillList []*skills.Skill `xml:"skill"`
 }
 
+func formatMessages(messages []session.Message) string {
+	var sb strings.Builder
+	for _, msg := range messages {
+		if msg.Role == "user" || msg.Role == "assistant" {
+			sb.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, msg.Content))
+		}
+	}
+	return sb.String()
+}
+
+func (a *Agent) compressHistory(sessionMsgs []session.Message) (string, error) {
+	// 压缩历史消息
+	toCompress := sessionMsgs[:len(sessionMsgs)-constant.KeptHistory]
+	prompt := fmt.Sprintf(`请对以下混合了任务执行、情感交流和个性互动的历史对话进行“沉浸式压缩”。
+
+**输入内容**：
+"""
+%s
+"""
+
+**执行要求**：
+1. **人设优先**：务必捕捉智能体独特的性格色彩和当前的情感基调，不要让摘要变得像客服工单。
+2. **情感无损**：重点保留用户的情绪变化轨迹和双方建立的“关系感”（如默契、玩笑、安慰过程）。
+3. **任务清晰**：在保持情感连贯的前提下，清晰梳理多线任务的进度。
+4. **直接输出**：不要输出任何前言后语，直接按照 System Prompt 定义的【角色状态】、【关系与情感脉络】、【核心任务板】、【关键事实库】格式输出 Markdown 内容。
+
+`, formatMessages(toCompress))
+	response, err := a.provider.Chat(context.Background(), a.model, []llm.Message{
+		{
+			Role:    "system",
+			Content: CompressHistoryPrompt,
+		},
+		{
+			Role:    "user",
+			Content: prompt,
+		},
+	}, nil, nil)
+
+	if err != nil {
+		return "", err
+	}
+	return response.Message.Content, nil
+}
+
 func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	sessionMessages := sess.GetMessages()
+
+	if len(sessionMessages) > constant.ReachCompressHistory {
+		summary, err := a.compressHistory(sessionMessages)
+		if err != nil {
+			slog.Warn("Failed to compress history", "error", err)
+			sessionMessages = sess.GetLastN(constant.KeptHistory)
+		} else {
+			sessionMessages = sess.TrimMessages(summary, constant.KeptHistory)
+		}
+	}
 
 	msgs := make([]llm.Message, 0, len(sessionMessages)+1)
 

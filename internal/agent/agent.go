@@ -135,6 +135,15 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 			ToolCalls: resp.Message.ToolCalls,
 		})
 
+		if resp.Message.Content != "" && len(resp.Message.ToolCalls) > 0 {
+			// 有内容，且调用工具，则说明还需要循环，但内容可以先直接发送给用户
+			bus.Default().PublishOutbound(bus.OutboundMessage{
+				Channel: sess.Channel,
+				ChatID:  sess.ChatID,
+				Content: resp.Message.Content,
+			})
+		}
+
 		// 执行所有的工具调用
 		for _, tc := range resp.Message.ToolCalls {
 			// EmitToolStart(sess.ID, tc.Name, tc.ID, args)
@@ -301,7 +310,8 @@ func (a *Agent) loadAgentContextInfo() string {
 		"USER.md",
 		"MEMORY.md",
 	}
-	hasSoul := false
+	needSoul := false
+	bootstraped := false
 	for _, fileName := range mdFiles {
 		fp := filepath.Join(a.workspaceDir, "profile", fileName)
 		mdFile, err := filepath.Abs(fp)
@@ -310,6 +320,9 @@ func (a *Agent) loadAgentContextInfo() string {
 		}
 
 		if fi, err := os.Stat(mdFile); err != nil {
+			if fileName == "BOOTSTRAP.md" && os.IsNotExist(err) {
+				bootstraped = true
+			}
 			continue
 		} else if fi.IsDir() {
 			continue
@@ -320,11 +333,11 @@ func (a *Agent) loadAgentContextInfo() string {
 		}
 		content += fmt.Sprintf("\n## %s\n%s\n", mdFile, string(data))
 		if fileName == "SOUL.md" {
-			hasSoul = true
+			needSoul = true
 		}
 	}
 
-	if hasSoul {
+	if bootstraped && needSoul {
 		content += "\n因存在SOUL.md文件，需体现其人格特质与语气风格。避免生硬、千篇一律的回复；遵循其指导原则，除非有更高优先级指令覆盖。\n"
 	}
 

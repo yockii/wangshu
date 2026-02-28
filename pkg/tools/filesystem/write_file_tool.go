@@ -29,6 +29,10 @@ func NewWriteFileTool() *WriteFileTool {
 				"type":        "string",
 				"description": "The content to write to the file",
 			},
+			"append": map[string]any{
+				"type":        "boolean",
+				"description": "If true, append content to the file instead of overwriting. Default is false.",
+			},
 		},
 		"required": []string{"path", "content"},
 	}
@@ -56,6 +60,22 @@ func (t *WriteFileTool) Execute(ctx context.Context, params map[string]string) (
 	}
 
 	// Write file
+	appendMode := params["append"] == "true" || params["append"] == "1"
+
+	if appendMode {
+		// Open file in append mode
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return "", fmt.Errorf("failed to open file: %w", err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(content); err != nil {
+			return "", fmt.Errorf("failed to append to file: %w", err)
+		}
+		return fmt.Sprintf("Successfully appended %d bytes to %s", len(content), path), nil
+	}
+
+	// Overwrite mode
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}

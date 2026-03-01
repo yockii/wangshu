@@ -41,7 +41,7 @@ func (l *Loader) LoadSkills() ([]*Skill, error) {
 	return skills, nil
 }
 
-var frontmatterReg = regexp.MustCompile(`^---\n(.*?)\n---\n`)
+var frontmatterReg = regexp.MustCompile(`---\s*\n([\s\S]*?)\n---\s*|\n`)
 
 func (l *Loader) loadSkillsFromDir(dir string) []*Skill {
 	skills := []*Skill{}

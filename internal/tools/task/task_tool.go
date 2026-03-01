@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
 
@@ -38,7 +38,7 @@ func NewTaskTool() *TaskTool {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "Action to perform on the task",
-				"enum":        []string{"create", "list", "status", "cancel", "clean"},
+				"enum":        []string{"create", "list", "status", "cancel", "clean", "restart"},
 			},
 			"id": map[string]any{
 				"type":        "string",
@@ -80,6 +80,8 @@ func (t *TaskTool) execute(ctx context.Context, params map[string]string) (strin
 		return t.cancel(params)
 	case "clean":
 		return t.clean(params)
+	case "restart":
+		return t.restart(params)
 	default:
 		return "", fmt.Errorf("invalid action: %s", action)
 	}
@@ -279,4 +281,42 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 		}
 	}
 	return "Completed & Cancelled Tasks Cleaned", nil
+}
+
+func (t *TaskTool) restart(params map[string]string) (string, error) {
+	id, ok := params["id"]
+	if !ok || id == "" {
+		return "", fmt.Errorf("id parameter is required")
+	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	taskDir := filepath.Join(workspace, "tasks", id)
+	if _, err := os.Stat(taskDir); err != nil {
+		return "", fmt.Errorf("task not found: %w", err)
+	}
+	taskFilePath := filepath.Join(taskDir, "task.json")
+	data, err := os.ReadFile(taskFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read task file: %w", err)
+	}
+	var at TaskInfo
+	if err := json.Unmarshal(data, &at); err != nil {
+		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+	}
+
+	// 只有已完成、失败或已取消的任务可以重启
+	if at.Status != "completed" && at.Status != "failed" && at.Status != "cancelled" {
+		return "", fmt.Errorf("cannot restart task with status '%s', only completed, failed or cancelled tasks can be restarted", at.Status)
+	}
+
+	at.Status = "pending"
+	at.LastResult = ""
+	data, err = json.Marshal(at)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal task: %w", err)
+	}
+	if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write task file: %w", err)
+	}
+
+	return fmt.Sprintf("Task Restarted: %s", at.ID), nil
 }

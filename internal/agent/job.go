@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/yockii/yoclaw/internal/cron"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/tools"
 )
@@ -13,11 +14,11 @@ import (
 func (a *Agent) executionJob(job *cron.CronJob) {
 	msgs := []llm.Message{
 		{
-			Role:    "system",
+			Role:    constant.RoleSystem,
 			Content: CronJobExecutionPrompt,
 		},
 		{
-			Role: "user",
+			Role: constant.RoleUser,
 			Content: fmt.Sprintf(`## 当前任务信息
 任务ID: %s
 任务描述: %s
@@ -39,7 +40,7 @@ func (a *Agent) executionJob(job *cron.CronJob) {
 			return
 		}
 		msgs = append(msgs, llm.Message{
-			Role:      "assistant",
+			Role:      constant.RoleAssistant,
 			Content:   resp.Message.Content,
 			ToolCalls: resp.Message.ToolCalls,
 		})
@@ -55,7 +56,7 @@ func (a *Agent) executionJob(job *cron.CronJob) {
 			}
 
 			msgs = append(msgs, llm.Message{
-				Role:       "tool",
+				Role:       constant.RoleTool,
 				Content:    toolResult,
 				ToolCallID: tc.ID,
 			})

@@ -8,6 +8,7 @@ import (
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/openai/openai-go/v3/shared/constant"
+	selfConstant "github.com/yockii/yoclaw/pkg/constant"
 )
 
 type OpenAIProvider struct {
@@ -33,9 +34,9 @@ func (p *OpenAIProvider) Chat(ctx context.Context, model string, message []Messa
 	msgs := make([]openai.ChatCompletionMessageParamUnion, 0, len(message))
 	for _, msg := range message {
 		switch msg.Role {
-		case "system":
+		case selfConstant.RoleSystem:
 			msgs = append(msgs, openai.SystemMessage(msg.Content))
-		case "assistant":
+		case selfConstant.RoleAssistant:
 			if len(msg.ToolCalls) > 0 {
 				toolCalls := make([]openai.ChatCompletionMessageToolCallUnionParam, 0, len(msg.ToolCalls))
 				for _, tc := range msg.ToolCalls {
@@ -61,9 +62,9 @@ func (p *OpenAIProvider) Chat(ctx context.Context, model string, message []Messa
 			} else {
 				msgs = append(msgs, openai.AssistantMessage(msg.Content))
 			}
-		case "user":
+		case selfConstant.RoleUser:
 			msgs = append(msgs, openai.UserMessage(msg.Content))
-		case "tool":
+		case selfConstant.RoleTool:
 			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCallID))
 		}
 	}
@@ -139,9 +140,9 @@ func (p *OpenAIProvider) ChatWithJSONSchema(ctx context.Context, model string, m
 	msgs := make([]openai.ChatCompletionMessageParamUnion, 0, len(message))
 	for _, msg := range message {
 		switch msg.Role {
-		case "system":
+		case selfConstant.RoleSystem:
 			msgs = append(msgs, openai.SystemMessage(msg.Content))
-		case "assistant":
+		case selfConstant.RoleAssistant:
 			if len(msg.ToolCalls) > 0 {
 				toolCalls := make([]openai.ChatCompletionMessageToolCallUnionParam, 0, len(msg.ToolCalls))
 				for _, tc := range msg.ToolCalls {
@@ -167,9 +168,9 @@ func (p *OpenAIProvider) ChatWithJSONSchema(ctx context.Context, model string, m
 			} else {
 				msgs = append(msgs, openai.AssistantMessage(msg.Content))
 			}
-		case "user":
+		case selfConstant.RoleUser:
 			msgs = append(msgs, openai.UserMessage(msg.Content))
-		case "tool":
+		case selfConstant.RoleTool:
 			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCallID))
 		}
 	}

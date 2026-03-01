@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/yockii/yoclaw/pkg/constant"
 )
 
 type Session struct {
@@ -204,7 +206,7 @@ func (s *Session) TrimMessages(summary string, keptHistory int) []Message {
 
 	trimmedMessages := make([]Message, 0, keptHistory+1)
 	trimmedMessages = append(trimmedMessages, Message{
-		Role:    "assistant",
+		Role:    constant.RoleAssistant,
 		Content: summary,
 	})
 	trimmedMessages = append(trimmedMessages, s.Messages[len(s.Messages)-keptHistory:]...)

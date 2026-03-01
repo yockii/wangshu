@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/tools"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
@@ -21,14 +21,14 @@ import (
 
 // InteractionResponse represents LLM analysis result
 type InteractionResponse struct {
-	SessionID    string          `json:"session_id"`
-	Suggestion   string          `json:"suggestion"`    // Suggested input (text or ANSI sequence)
-	Reasoning    string          `json:"reasoning"`     // Analysis reasoning
-	Confidence   float64         `json:"confidence"`    // Confidence score 0-1
-	InputType    string          `json:"input_type"`    // "text", "arrow", "enter"
-	MenuDetected bool            `json:"menu_detected"`
-	MenuOptions  []MenuOption    `json:"menu_options,omitempty"`
-	Context      string          `json:"context"`       // Current output content
+	SessionID    string       `json:"session_id"`
+	Suggestion   string       `json:"suggestion"` // Suggested input (text or ANSI sequence)
+	Reasoning    string       `json:"reasoning"`  // Analysis reasoning
+	Confidence   float64      `json:"confidence"` // Confidence score 0-1
+	InputType    string       `json:"input_type"` // "text", "arrow", "enter"
+	MenuDetected bool         `json:"menu_detected"`
+	MenuOptions  []MenuOption `json:"menu_options,omitempty"`
+	Context      string       `json:"context"` // Current output content
 }
 
 // AutoInteractiveSession manages an auto-interactive shell session
@@ -37,28 +37,28 @@ type AutoInteractiveSession struct {
 	Cmd           *exec.Cmd
 	Pty           *os.File
 	Output        strings.Builder
-	LastOutputPos int              // Position for incremental output
+	LastOutputPos int // Position for incremental output
 	StartTime     time.Time
 	State         SessionState
 	mu            sync.RWMutex
 
 	// Auto-interactive specific fields
-	maxIterations    int
-	iteration        int
-	autoMode         bool              // true = fully automatic, false = requires confirmation
-	lastLLMResponse  *InteractionResponse
-	lastAnalysis     *MenuAnalysis
+	maxIterations   int
+	iteration       int
+	autoMode        bool // true = fully automatic, false = requires confirmation
+	lastLLMResponse *InteractionResponse
+	lastAnalysis    *MenuAnalysis
 
 	// Detection configuration
-	inputWaitThreshold time.Duration   // Output silence threshold (default 2 seconds)
-	preferences       map[string]string // User preferences
-	lastOutput        time.Time
+	inputWaitThreshold time.Duration     // Output silence threshold (default 2 seconds)
+	preferences        map[string]string // User preferences
+	lastOutput         time.Time
 
 	// Captured context from args
-	workspace   string
-	channel     string
-	chatID      string
-	agentName   string
+	workspace string
+	channel   string
+	chatID    string
+	agentName string
 
 	// LLM context for analysis
 	llmProvider llm.Provider
@@ -68,11 +68,11 @@ type AutoInteractiveSession struct {
 // AutoInteractiveTool provides intelligent interactive shell capabilities
 type AutoInteractiveTool struct {
 	basic.SimpleTool
-	sessions    map[string]*AutoInteractiveSession
-	sessionsMu  sync.RWMutex
+	sessions     map[string]*AutoInteractiveSession
+	sessionsMu   sync.RWMutex
 	menuAnalyzer *MenuAnalyzer
-	keySeq      *TerminalKeySequence
-	nextID      int
+	keySeq       *TerminalKeySequence
+	nextID       int
 	// LLM provider and model (set from first ExecuteWithContext call)
 	provider llm.Provider
 	model    string
@@ -277,22 +277,22 @@ func (t *AutoInteractiveTool) startSession(ctx context.Context, params map[strin
 	t.nextID++
 
 	session := &AutoInteractiveSession{
-		ID:                sessionID,
-		Cmd:               cmd,
-		Pty:               pseudoTerminal,
-		StartTime:         time.Now(),
-		State:             SessionRunning,
-		maxIterations:     maxIterations,
-		iteration:         0,
-		autoMode:          autoMode,
+		ID:                 sessionID,
+		Cmd:                cmd,
+		Pty:                pseudoTerminal,
+		StartTime:          time.Now(),
+		State:              SessionRunning,
+		maxIterations:      maxIterations,
+		iteration:          0,
+		autoMode:           autoMode,
 		inputWaitThreshold: 2 * time.Second,
-		preferences:       preferences,
-		lastOutput:        time.Now(),
-		workspace:         workspace,
-		channel:           channel,
-		chatID:            chatID,
-		llmProvider:       t.provider,  // Capture from tool
-		llmModel:          t.model,     // Capture from tool
+		preferences:        preferences,
+		lastOutput:         time.Now(),
+		workspace:          workspace,
+		channel:            channel,
+		chatID:             chatID,
+		llmProvider:        t.provider, // Capture from tool
+		llmModel:           t.model,    // Capture from tool
 	}
 
 	t.sessions[sessionID] = session
@@ -412,15 +412,15 @@ Guidelines:
 					},
 				},
 			},
-			"required": []string{"suggestion", "reasoning", "confidence", "input_type", "menu_detected"},
+			"required":             []string{"suggestion", "reasoning", "confidence", "input_type", "menu_detected"},
 			"additionalProperties": false,
 		},
 	}
 
 	// Call LLM using structured output
 	msgs := []llm.Message{
-		{Role: "system", Content: systemPrompt},
-		{Role: "user", Content: userPrompt},
+		{Role: constant.RoleSystem, Content: systemPrompt},
+		{Role: constant.RoleUser, Content: userPrompt},
 	}
 
 	resp, err := session.llmProvider.ChatWithJSONSchema(ctx, session.llmModel, msgs, jsonSchema, nil)

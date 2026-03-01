@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 )
 
 type InboundHandler func(ctx context.Context, msg InboundMessage)

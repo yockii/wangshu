@@ -3,7 +3,7 @@ package config
 import (
 	"sync"
 
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 )
 
 type Config struct {

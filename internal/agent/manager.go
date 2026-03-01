@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 )
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/constant"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
 

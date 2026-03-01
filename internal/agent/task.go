@@ -15,6 +15,7 @@ import (
 	"github.com/yockii/yoclaw/internal/session"
 	"github.com/yockii/yoclaw/internal/tools/task"
 	"github.com/yockii/yoclaw/pkg/bus"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/skills"
 	"github.com/yockii/yoclaw/pkg/tools"
@@ -91,6 +92,7 @@ func (a *Agent) processTask() {
 		dealTask.Status = "running"
 		if err != nil {
 			dealTask.Status = "failed"
+			dealTask.LastResult = err.Error()
 		} else {
 			dealTask.LastResult = lastMsg
 		}
@@ -108,7 +110,8 @@ func (a *Agent) processTask() {
 			slog.Error("Failed to write task file", "task", dealTask.ID, "error", err)
 			return
 		}
-		if dealTask.Status == "completed" {
+		switch dealTask.Status {
+		case "completed":
 			if lastMsg != "TASK_COMPLETED" {
 				// 发送任务完成消息
 				bus.Default().PublishOutbound(bus.OutboundMessage{
@@ -119,6 +122,16 @@ func (a *Agent) processTask() {
 			}
 			// 任务完成，让大模型总结任务信息并记入profile/memory/YYYY-MM-DD-{slug}.md
 			a.summaryTask(dealTask)
+		case "failed":
+			// 任务失败，通知用户
+			sess := a.sessions.GetOrCreate(a.workspaceDir, fmt.Sprintf("%s:%s", dealTask.Channel, dealTask.ChatID), dealTask.Channel, dealTask.ChatID, "")
+			sess.AddMessage(constant.RoleAssistant, fmt.Sprintf("任务[%s] %s 执行失败: %s", dealTask.ID, dealTask.Name, dealTask.LastResult))
+
+			bus.Default().PublishOutbound(bus.OutboundMessage{
+				Channel: dealTask.Channel,
+				ChatID:  dealTask.ChatID,
+				Content: fmt.Sprintf("任务[%s] %s 执行失败: %s", dealTask.ID, dealTask.Name, dealTask.LastResult),
+			})
 		}
 	}
 }
@@ -149,7 +162,7 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 
 	msgs := []llm.Message{
 		{
-			Role: "system",
+			Role: constant.RoleSystem,
 			Content: fmt.Sprintf(TaskExecutionPrompt,
 				skillsXML,
 				a.workspaceDir,
@@ -157,7 +170,7 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 			),
 		},
 		{
-			Role: "user",
+			Role: constant.RoleUser,
 			Content: fmt.Sprintf(`## 任务信息
 任务ID: %s
 任务名称: %s
@@ -188,7 +201,7 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 	}
 
 	respMsg := llm.Message{
-		Role:      "assistant",
+		Role:      constant.RoleAssistant,
 		Content:   resp.Message.Content,
 		ToolCalls: resp.Message.ToolCalls,
 	}
@@ -207,7 +220,7 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 		}
 		result += "\n" + toolResult
 		toolMsg := llm.Message{
-			Role:       "tool",
+			Role:       constant.RoleTool,
 			Content:    toolResult,
 			ToolCallID: tc.ID,
 		}
@@ -220,7 +233,7 @@ func (a *Agent) doTask(taskInfo *task.TaskInfo) (string, bool, error) {
 		if !strings.Contains(result, "TASK_COMPLETED") {
 			isFinished = false
 			userMsg := llm.Message{
-				Role:    "user",
+				Role:    constant.RoleUser,
 				Content: "任务尚未完成，你必须调用工具继续执行任务。如果认为任务已完成，请输出`TASK_COMPLETED`。",
 			}
 			a.appendTaskHistory(taskInfo, userMsg)
@@ -316,7 +329,7 @@ func (a *Agent) summaryTask(taskInfo *task.TaskInfo) {
 
 	historyContent := ""
 	for _, msg := range history {
-		if msg.Role == "tool" {
+		if msg.Role == constant.RoleTool {
 			continue
 		}
 		historyContent += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
@@ -324,14 +337,14 @@ func (a *Agent) summaryTask(taskInfo *task.TaskInfo) {
 
 	msgs := []llm.Message{
 		{
-			Role: "system",
+			Role: constant.RoleSystem,
 			Content: fmt.Sprintf(TaskSummaryPrompt,
 				a.workspaceDir,
 				filepath.Join(a.workspaceDir, "profile", "memory"),
 			),
 		},
 		{
-			Role: "user",
+			Role: constant.RoleUser,
 			Content: fmt.Sprintf(`## 要归档的任务信息
 任务ID: %s
 任务名称: %s
@@ -362,7 +375,7 @@ func (a *Agent) summaryTask(taskInfo *task.TaskInfo) {
 			break
 		}
 		msgs = append(msgs, llm.Message{
-			Role:      "assistant",
+			Role:      constant.RoleAssistant,
 			Content:   resp.Message.Content,
 			ToolCalls: resp.Message.ToolCalls,
 		})
@@ -374,7 +387,7 @@ func (a *Agent) summaryTask(taskInfo *task.TaskInfo) {
 			}
 
 			msgs = append(msgs, llm.Message{
-				Role:       "tool",
+				Role:       constant.RoleTool,
 				Content:    toolResult,
 				ToolCallID: tc.ID,
 			})

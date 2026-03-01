@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/internal/constant"
 	"github.com/yockii/yoclaw/internal/cron"
 	"github.com/yockii/yoclaw/internal/session"
 	"github.com/yockii/yoclaw/pkg/bus"
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/skills"
 	"github.com/yockii/yoclaw/pkg/tools"
@@ -80,7 +80,7 @@ func (a *Agent) Stop() {
 
 func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, userInput, senderID string) (string, error) {
 	sess := a.sessions.GetOrCreate(a.workspaceDir, sessionID, channel, ChatID, senderID)
-	sess.AddMessage("user", userInput)
+	sess.AddMessage(constant.RoleUser, userInput)
 
 	msgs, err := a.buildMessages(sess)
 	if err != nil {
@@ -115,7 +115,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 		}
 
 		assistantMsg := session.Message{
-			Role:    "assistant",
+			Role:    constant.RoleAssistant,
 			Content: resp.Message.Content,
 		}
 
@@ -131,7 +131,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 		// 加到发给大模型的对话列表中
 		msgs = append(msgs, llm.Message{
-			Role:      "assistant",
+			Role:      constant.RoleAssistant,
 			Content:   resp.Message.Content,
 			ToolCalls: resp.Message.ToolCalls,
 		})
@@ -157,10 +157,10 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 				// EmitToolEnd(sess.ID, tc.Name, tc.ID, toolResult, false)
 			}
 
-			addToolResultMessage(sess, "tool", toolResult, tc.ID)
+			addToolResultMessage(sess, constant.RoleTool, toolResult, tc.ID)
 
 			msgs = append(msgs, llm.Message{
-				Role:       "tool",
+				Role:       constant.RoleTool,
 				Content:    toolResult,
 				ToolCallID: tc.ID,
 			})
@@ -169,7 +169,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 	}
 
 	if finalContent != "" {
-		sess.AddMessage("assistant", finalContent)
+		sess.AddMessage(constant.RoleAssistant, finalContent)
 	}
 
 	// EmitLifecycle(sess.ID, "end", "")
@@ -244,7 +244,7 @@ type SkillsParent struct {
 func formatMessages(messages []session.Message) string {
 	var sb strings.Builder
 	for _, msg := range messages {
-		if msg.Role == "user" || msg.Role == "assistant" {
+		if msg.Role == constant.RoleUser || msg.Role == constant.RoleAssistant {
 			sb.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, msg.Content))
 		}
 	}
@@ -270,11 +270,11 @@ func (a *Agent) compressHistory(sessionMsgs []session.Message) (string, error) {
 `, formatMessages(toCompress))
 	response, err := a.provider.Chat(context.Background(), a.model, []llm.Message{
 		{
-			Role:    "system",
+			Role:    constant.RoleSystem,
 			Content: CompressHistoryPrompt,
 		},
 		{
-			Role:    "user",
+			Role:    constant.RoleUser,
 			Content: prompt,
 		},
 	}, nil, nil)
@@ -322,7 +322,7 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	agentContextInfo := a.loadAgentContextInfo()
 
 	msgs = append(msgs, llm.Message{
-		Role: "system",
+		Role: constant.RoleSystem,
 		Content: fmt.Sprintf(
 			SystemPrompt,
 			string(skillsXML),

@@ -1,3 +1,7 @@
+[![Build Release](https://github.com/yockii/YoClaw/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/YoClaw/actions/workflows/build.yml) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/YoClaw) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/YoClaw) ![GitHub Release](https://img.shields.io/github/v/release/yockii/YoClaw)
+
+
+
 # YoClaw
 
 > **⚠️ 升级提示**

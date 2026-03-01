@@ -33,12 +33,14 @@ func NewManager(workspace string, executor Executor) *CronManager {
 		executor:  executor,
 		ctx:       ctx,
 		cancel:    cancel,
-		c: cron.New(cron.WithParser(cron.MustNewParser(
-			cron.SecondOptional | cron.Minute | cron.Hour |
-				cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
-		))),
+		c: cron.New(
+			cron.WithParser(cron.MustNewParser(
+				cron.SecondOptional | cron.Minute | cron.Hour |
+					cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+			))),
 	}
 
+	mgr.c.Start()
 	go mgr.start()
 
 	return mgr

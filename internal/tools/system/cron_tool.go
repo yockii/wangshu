@@ -33,26 +33,26 @@ type CronTool struct {
 func NewCronTool() *CronTool {
 	tool := new(CronTool)
 	tool.Name_ = "cron"
-	tool.Desc_ = "Manage scheduled tasks that are stored in the agent workspace and persist across restarts. Supports add, remove, list, enable, disable, and status operations."
+	tool.Desc_ = "Manage scheduled tasks that are stored in the agent workspace and persist across restarts. Supports add, list, pause, resume, disable, status, and update operations."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"action": map[string]any{
 				"type":        "string",
-				"description": "Action to perform: add, list, pause, resume, disable, status",
-				"enum":        []string{"add", "list", "pause", "resume", "disable", "status"},
+				"description": "Action to perform: add, list, pause, resume, disable, status, update",
+				"enum":        []string{"add", "list", "pause", "resume", "disable", "status", "update"},
 			},
 			"id": map[string]any{
 				"type":        "string",
-				"description": "Job ID (required for pause, resume, disable, status)",
+				"description": "Job ID (required for pause, resume, disable, status, update)",
 			},
 			"description": map[string]any{
 				"type":        "string",
-				"description": "Task description (required for add)",
+				"description": "Task description (required for add, optional for update)",
 			},
 			"schedule": map[string]any{
 				"type":        "string",
-				"description": "Cron schedule expression (e.g., '0 9 * * *' for daily at 9am, '*/5 * * * *' for every 5 minutes). Supports standard cron format with 6 fields (seconds, minutes, hours, day of month, month, day of week).",
+				"description": "Cron schedule expression (e.g., '0 9 * * *' for daily at 9am, '*/5 * * * *' for every 5 minutes). Supports standard cron format with 6 fields (seconds, minutes, hours, day of month, month, day of week). Can be updated.",
 			},
 		},
 		"required": []string{"action"},
@@ -80,6 +80,8 @@ func (t *CronTool) execute(ctx context.Context, params map[string]string) (strin
 		return t.disableTask(params)
 	case "status":
 		return t.getTaskStatus(params)
+	case "update":
+		return t.updateTask(params)
 	default:
 		return "", fmt.Errorf("unknown action: %s", action)
 	}
@@ -187,6 +189,45 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 	}
 
 	return result, nil
+}
+
+func (t *CronTool) updateTask(params map[string]string) (string, error) {
+	id := params["id"]
+	if id == "" {
+		return "", fmt.Errorf("id is required for update action")
+	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	cronDir := filepath.Join(workspace, "cron")
+
+	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	data, err := os.ReadFile(jobJsonPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read job file: %w", err)
+	}
+	var job BasicJobInfo
+	if err := json.Unmarshal(data, &job); err != nil {
+		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+	}
+	if job.ID == "" {
+		return "", fmt.Errorf("job ID is empty")
+	}
+
+	if schedule, ok := params["schedule"]; ok && schedule != "" {
+		job.Schedule = schedule
+	}
+	if description, ok := params["description"]; ok && description != "" {
+		job.Description = description
+	}
+
+	data, err = json.Marshal(job)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal job: %w", err)
+	}
+	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write job file: %w", err)
+	}
+
+	return fmt.Sprintf("✅ 定时任务 '%s' 已更新", id), nil
 }
 
 func (t *CronTool) pauseTask(params map[string]string) (string, error) {

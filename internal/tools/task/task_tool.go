@@ -38,23 +38,23 @@ func NewTaskTool() *TaskTool {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "Action to perform on the task",
-				"enum":        []string{"create", "list", "status", "cancel", "clean", "restart"},
+				"enum":        []string{"create", "list", "status", "cancel", "clean", "restart", "update"},
 			},
 			"id": map[string]any{
 				"type":        "string",
-				"description": "Task ID (required for status, cancel, and clean actions). For clean action without id, all completed/failed/cancelled tasks will be cleaned.",
+				"description": "Task ID (required for status, cancel, clean, restart and update actions). For clean action without id, all completed/failed/cancelled tasks will be cleaned.",
 			},
 			"name": map[string]any{
 				"type":        "string",
-				"description": "Task name/identifier (required for create action)",
+				"description": "Task name/identifier (required for create action, optional for update action)",
 			},
 			"description": map[string]any{
 				"type":        "string",
-				"description": "Detailed task description including objectives, instructions, or commands to execute (required for create action)",
+				"description": "Detailed task description including objectives, instructions, or commands to execute (required for create action, optional for update action)",
 			},
 			"priority": map[string]any{
 				"type":        "string",
-				"description": "Task execution priority (optional, defaults to 'normal'). Higher priority tasks are processed first.",
+				"description": "Task execution priority (optional, defaults to 'normal'). Higher priority tasks are processed first. Can be updated.",
 				"enum":        []string{"low", "normal", "high", "urgent"},
 			},
 		},
@@ -82,6 +82,8 @@ func (t *TaskTool) execute(ctx context.Context, params map[string]string) (strin
 		return t.clean(params)
 	case "restart":
 		return t.restart(params)
+	case "update":
+		return t.update(params)
 	default:
 		return "", fmt.Errorf("invalid action: %s", action)
 	}
@@ -319,4 +321,45 @@ func (t *TaskTool) restart(params map[string]string) (string, error) {
 	}
 
 	return fmt.Sprintf("Task Restarted: %s", at.ID), nil
+}
+
+func (t *TaskTool) update(params map[string]string) (string, error) {
+	id, ok := params["id"]
+	if !ok || id == "" {
+		return "", fmt.Errorf("id parameter is required")
+	}
+	workspace := params[constant.ToolCallParamWorkspace]
+	taskDir := filepath.Join(workspace, "tasks", id)
+	if _, err := os.Stat(taskDir); err != nil {
+		return "", fmt.Errorf("task not found: %w", err)
+	}
+	taskFilePath := filepath.Join(taskDir, "task.json")
+	data, err := os.ReadFile(taskFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read task file: %w", err)
+	}
+	var at TaskInfo
+	if err := json.Unmarshal(data, &at); err != nil {
+		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+	}
+
+	if name, ok := params["name"]; ok && name != "" {
+		at.Name = name
+	}
+	if description, ok := params["description"]; ok && description != "" {
+		at.Description = description
+	}
+	if priority, ok := params["priority"]; ok && priority != "" {
+		at.Priority = priority
+	}
+
+	data, err = json.Marshal(at)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal task: %w", err)
+	}
+	if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write task file: %w", err)
+	}
+
+	return fmt.Sprintf("Task Updated: %s", at.ID), nil
 }

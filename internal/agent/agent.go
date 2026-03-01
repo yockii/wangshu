@@ -100,8 +100,8 @@ func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, 
 func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.Message) (string, error) {
 	var finalContent string
 
+	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 	for i := 0; i < a.maxIter; i++ {
-		availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
 		if err != nil {

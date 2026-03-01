@@ -86,11 +86,6 @@ func (t *CronTool) execute(ctx context.Context, params map[string]string) (strin
 }
 
 func (t *CronTool) addTask(params map[string]string) (string, error) {
-	name := params["name"]
-	if name == "" {
-		return "", fmt.Errorf("name is required for add action")
-	}
-
 	schedule := params["schedule"]
 	if schedule == "" {
 		return "", fmt.Errorf("schedule is required for add action")

@@ -109,12 +109,16 @@ func (a *Agent) processTask() {
 			return
 		}
 		if dealTask.Status == "completed" {
-			// 发送任务完成消息
-			bus.Default().PublishOutbound(bus.OutboundMessage{
-				Channel: dealTask.Channel,
-				ChatID:  dealTask.ChatID,
-				Content: lastMsg,
-			})
+			if lastMsg != "TASK_COMPLETED" {
+				// 发送任务完成消息
+				bus.Default().PublishOutbound(bus.OutboundMessage{
+					Channel: dealTask.Channel,
+					ChatID:  dealTask.ChatID,
+					Content: lastMsg,
+				})
+			}
+			// 任务完成，让大模型总结任务信息并记入profile/memory/YYYY-MM-DD-{slug}.md
+			a.summaryTask(dealTask)
 		}
 	}
 }
@@ -299,5 +303,81 @@ func (a *Agent) appendTaskHistory(taskInfo *task.TaskInfo, msg llm.Message) {
 	if err := encoder.Encode(sMsg); err != nil {
 		slog.Error("Failed to write task history file", "error", err)
 		return
+	}
+}
+
+func (a *Agent) summaryTask(taskInfo *task.TaskInfo) {
+	// 任务完成，让大模型总结任务信息并记入profile/memory/YYYY-MM-DD-{slug}.md
+	history, err := a.readTaskHistory(taskInfo)
+	if err != nil {
+		slog.Error("Failed to read task history", "task", taskInfo.ID, "error", err)
+		return
+	}
+
+	historyContent := ""
+	for _, msg := range history {
+		if msg.Role == "tool" {
+			continue
+		}
+		historyContent += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
+	}
+
+	msgs := []llm.Message{
+		{
+			Role: "system",
+			Content: fmt.Sprintf(TaskSummaryPrompt,
+				a.workspaceDir,
+				filepath.Join(a.workspaceDir, "profile", "memory"),
+			),
+		},
+		{
+			Role: "user",
+			Content: fmt.Sprintf(`## 要归档的任务信息
+任务ID: %s
+任务名称: %s
+任务描述: %s
+优先级: %s
+任务执行历史记录:
+%s
+`,
+				taskInfo.ID,
+				taskInfo.Name,
+				taskInfo.Description,
+				taskInfo.Priority,
+				historyContent,
+			),
+		},
+	}
+	msgs = append(msgs, history...)
+
+	ctx := context.Background()
+	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
+	for i := 0; i < 10; i++ {
+		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
+		if err != nil {
+			slog.Error("Failed to summary task memory", "error", err)
+			return
+		}
+		if len(resp.Message.ToolCalls) == 0 {
+			break
+		}
+		msgs = append(msgs, llm.Message{
+			Role:      "assistant",
+			Content:   resp.Message.Content,
+			ToolCalls: resp.Message.ToolCalls,
+		})
+		// 执行所有的工具调用
+		for _, tc := range resp.Message.ToolCalls {
+			toolResult, err := a.executeToolCall(ctx, tc, taskInfo.Channel, taskInfo.ChatID)
+			if err != nil {
+				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
+			}
+
+			msgs = append(msgs, llm.Message{
+				Role:       "tool",
+				Content:    toolResult,
+				ToolCallID: tc.ID,
+			})
+		}
 	}
 }

@@ -52,6 +52,9 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 	}
 
 	for _, agent := range cfg.Agents {
+		if agent == nil {
+			continue
+		}
 		agent.Workspace = utils.ExpandPath(agent.Workspace)
 	}
 

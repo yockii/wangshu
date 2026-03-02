@@ -7,10 +7,10 @@ import (
 )
 
 type Config struct {
-	Agents    map[string]AgentConfig    `json:"agents"`
-	Providers map[string]ProviderConfig `json:"providers"`
-	Channels  map[string]ChannelConfig  `json:"channels"`
-	Skill     SkillConfig               `json:"skill"`
+	Agents    map[string]*AgentConfig    `json:"agents"`
+	Providers map[string]*ProviderConfig `json:"providers"`
+	Channels  map[string]*ChannelConfig  `json:"channels"`
+	Skill     SkillConfig                `json:"skill"`
 	mu        sync.RWMutex
 }
 
@@ -45,7 +45,7 @@ type ChannelConfig struct {
 
 func defaultConfig() *Config {
 	return &Config{
-		Agents: map[string]AgentConfig{
+		Agents: map[string]*AgentConfig{
 			constant.Default: {
 				Workspace:   "~/.yoClaw/workspace",
 				Provider:    "myProvider",
@@ -53,22 +53,22 @@ func defaultConfig() *Config {
 				Temperature: 0.7,
 			},
 		},
-		Providers: map[string]ProviderConfig{
+		Providers: map[string]*ProviderConfig{
 			"myProvider": {
 				Type:    "openai",
 				APIKey:  "sk-your-openai-api-key",
 				BaseURL: "your custom base url, blank if use openai official",
 			},
 		},
-		Channels: map[string]ChannelConfig{
-			"feishuTest": ChannelConfig{
+		Channels: map[string]*ChannelConfig{
+			"feishuTest": {
 				Type:      "feishu",
 				Enabled:   false,
 				Agent:     constant.Default,
 				AppID:     "your feishu app id",
 				AppSecret: "your feishu app secret",
 			},
-			"webTest": ChannelConfig{
+			"webTest": {
 				Type:        "web",
 				Enabled:     false,
 				Agent:       constant.Default,

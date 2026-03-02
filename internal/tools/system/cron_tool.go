@@ -7,25 +7,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/yockii/yoclaw/internal/types"
 	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
-
-type BasicJobInfo struct {
-	ID          string     `json:"id"`
-	Schedule    string     `json:"schedule"`
-	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	LastRun     *time.Time `json:"last_run,omitempty"`
-	NextRun     *time.Time `json:"next_run,omitempty"`
-
-	Channel string `json:"channel"`
-	ChatID  string `json:"chat_id"`
-	Once    bool   `json:"once"` // 是否只执行一次
-}
 
 type CronTool struct {
 	basic.SimpleTool
@@ -104,7 +91,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	chatID := params[constant.ToolCallParamChatID]
 	once := params["once"] == "true" || params["once"] == "1"
 
-	jobInfo := &BasicJobInfo{
+	jobInfo := &types.BasicJobInfo{
 		ID:          uuid.NewString(),
 		Schedule:    schedule,
 		Description: description,
@@ -138,7 +125,7 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read cron directory: %w", err)
 	}
-	var jobs []BasicJobInfo
+	var jobs []types.BasicJobInfo
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -152,7 +139,7 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 			slog.Warn("Failed to read job", "jobFile", jobJsonPath)
 			continue
 		}
-		var job BasicJobInfo
+		job := types.BasicJobInfo{}
 		if err := json.Unmarshal(data, &job); err != nil {
 			slog.Warn("Failed to unmarshal job", "jobFile", jobJsonPath)
 			continue
@@ -211,7 +198,7 @@ func (t *CronTool) updateTask(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
 	}
-	var job BasicJobInfo
+	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
 		return "", fmt.Errorf("failed to unmarshal job: %w", err)
 	}
@@ -253,7 +240,7 @@ func (t *CronTool) pauseTask(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
 	}
-	var job BasicJobInfo
+	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
 		return "", fmt.Errorf("failed to unmarshal job: %w", err)
 	}
@@ -290,7 +277,7 @@ func (t *CronTool) resumeTask(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
 	}
-	var job BasicJobInfo
+	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
 		return "", fmt.Errorf("failed to unmarshal job: %w", err)
 	}
@@ -327,7 +314,7 @@ func (t *CronTool) disableTask(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
 	}
-	var job BasicJobInfo
+	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
 		return "", fmt.Errorf("failed to unmarshal job: %w", err)
 	}
@@ -360,7 +347,7 @@ func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
 	}
-	var job BasicJobInfo
+	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
 		return "", fmt.Errorf("failed to unmarshal job: %w", err)
 	}

@@ -10,14 +10,15 @@ import (
 	"time"
 
 	cron "github.com/netresearch/go-cron"
+	"github.com/yockii/yoclaw/internal/types"
 )
 
-type Executor func(job *CronJob)
+type Executor func(job *types.BasicJobInfo)
 
 type CronManager struct {
 	workspace string
 	mu        sync.RWMutex
-	cronJobs  map[string]*CronJob
+	cronJobs  map[string]*types.BasicJobInfo
 	executor  Executor
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -29,7 +30,7 @@ func NewManager(workspace string, executor Executor) *CronManager {
 	mgr := &CronManager{
 		workspace: workspace,
 		mu:        sync.RWMutex{},
-		cronJobs:  make(map[string]*CronJob),
+		cronJobs:  make(map[string]*types.BasicJobInfo),
 		executor:  executor,
 		ctx:       ctx,
 		cancel:    cancel,
@@ -83,7 +84,7 @@ func (mgr *CronManager) scanJobs() {
 			slog.Warn("Failed to read job", "jobFile", jobJsonPath)
 			continue
 		}
-		var job CronJob
+		job := types.BasicJobInfo{}
 		if err := json.Unmarshal(data, &job); err != nil {
 			slog.Warn("Failed to unmarshal job", "jobFile", jobJsonPath)
 			continue
@@ -118,7 +119,7 @@ func (mgr *CronManager) scanJobs() {
 	}
 }
 
-func (mgr *CronManager) executeJob(job *CronJob) {
+func (mgr *CronManager) executeJob(job *types.BasicJobInfo) {
 	mgr.executor(job)
 
 	entry := mgr.c.EntryByName(job.ID)

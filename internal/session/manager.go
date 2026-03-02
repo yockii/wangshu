@@ -3,6 +3,8 @@ package session
 import (
 	"sync"
 	"time"
+
+	"github.com/yockii/yoclaw/internal/types"
 )
 
 type Manager struct {
@@ -31,7 +33,7 @@ func (m *Manager) GetOrCreate(workspace, id, channel, chatID, senderID string) *
 		Channel:   channel,
 		ChatID:    chatID,
 		SenderID:  senderID,
-		Messages:  []Message{},
+		Messages:  []types.Message{},
 		Metadata:  make(map[string]string),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),

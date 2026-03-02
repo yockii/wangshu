@@ -1,4 +1,4 @@
-package skills
+package types
 
 type Skill struct {
 	Name        string   `yaml:"name" xml:"name"`

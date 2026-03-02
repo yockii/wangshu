@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/yockii/yoclaw/internal/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,8 +34,8 @@ func NewLoader(globalPath, builtInPath string) *Loader {
 	}
 }
 
-func (l *Loader) LoadSkills() ([]*Skill, error) {
-	skills := []*Skill{}
+func (l *Loader) LoadSkills() ([]*types.Skill, error) {
+	skills := []*types.Skill{}
 	// 从globalPath和builtInPath读取skill元数据
 	skills = append(skills, l.loadSkillsFromDir(l.builtinPath)...)
 	skills = append(skills, l.loadSkillsFromDir(l.globalPath)...)
@@ -43,8 +44,8 @@ func (l *Loader) LoadSkills() ([]*Skill, error) {
 
 var frontmatterReg = regexp.MustCompile(`---\s*\n([\s\S]*?)\n---\s*|\n`)
 
-func (l *Loader) loadSkillsFromDir(dir string) []*Skill {
-	skills := []*Skill{}
+func (l *Loader) loadSkillsFromDir(dir string) []*types.Skill {
+	skills := []*types.Skill{}
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -66,7 +67,7 @@ func (l *Loader) loadSkillsFromDir(dir string) []*Skill {
 		if len(matches) < 2 {
 			return nil
 		}
-		skill := Skill{}
+		skill := types.Skill{}
 		if err := yaml.NewDecoder(strings.NewReader(matches[1])).Decode(&skill); err != nil {
 			slog.Error("Failed to decode skill metadata", "error", err, "file", skillMdPath)
 			return nil

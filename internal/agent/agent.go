@@ -15,6 +15,8 @@ import (
 	"github.com/yockii/yoclaw/internal/config"
 	"github.com/yockii/yoclaw/internal/cron"
 	"github.com/yockii/yoclaw/internal/session"
+	"github.com/yockii/yoclaw/internal/task"
+	"github.com/yockii/yoclaw/internal/types"
 	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
@@ -29,9 +31,8 @@ type Agent struct {
 	maxIter      int
 	workspaceDir string
 	cronManager  *cron.CronManager
+	taskManager  *task.TaskManager
 	agentName    string
-
-	taskTicker *time.Ticker
 }
 
 func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duration, maxIter int, workspaceDir string) (*Agent, error) {
@@ -53,8 +54,7 @@ func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duratio
 	// Initialize cron manager (without task creator - will be set via event handler)
 	agent.cronManager = cron.NewManager(workspaceDir, agent.executionJob)
 
-	agent.taskTicker = time.NewTicker(7 * time.Second)
-	go agent.startTaskLoop()
+	agent.taskManager = task.NewTaskManager(workspaceDir, model, provider)
 
 	return agent, nil
 }
@@ -74,7 +74,7 @@ func (a *Agent) GetWorkspace() string {
 }
 
 func (a *Agent) Stop() {
-	a.taskTicker.Stop()
+	a.taskManager.Stop()
 	a.cronManager.Stop()
 }
 
@@ -114,13 +114,13 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 			break
 		}
 
-		assistantMsg := session.Message{
+		assistantMsg := types.Message{
 			Role:    constant.RoleAssistant,
 			Content: resp.Message.Content,
 		}
 
 		for _, tc := range resp.Message.ToolCalls {
-			assistantMsg.ToolCalls = append(assistantMsg.ToolCalls, session.ToolCall{
+			assistantMsg.ToolCalls = append(assistantMsg.ToolCalls, types.ToolCall{
 				ID:        tc.ID,
 				Name:      tc.Name,
 				Arguments: tc.Arguments,
@@ -220,7 +220,7 @@ func addToolResultMessage(sess *session.Session, role, content, toolCallID strin
 			for _, tc := range messages[i].ToolCalls {
 				if tc.ID == toolCallID {
 					// Add the result to the tool call
-					sess.AddMessage(role, content, session.ToolCall{
+					sess.AddMessage(role, content, types.ToolCall{
 						ID:        toolCallID,
 						Name:      tc.Name,
 						Arguments: tc.Arguments,
@@ -236,12 +236,7 @@ func addToolResultMessage(sess *session.Session, role, content, toolCallID strin
 	sess.AddMessage(role, content)
 }
 
-type SkillsParent struct {
-	XMLName   xml.Name        `xml:"skills"`
-	SkillList []*skills.Skill `xml:"skill"`
-}
-
-func formatMessages(messages []session.Message) string {
+func formatMessages(messages []types.Message) string {
 	var sb strings.Builder
 	for _, msg := range messages {
 		if msg.Role == constant.RoleUser || msg.Role == constant.RoleAssistant {
@@ -251,7 +246,7 @@ func formatMessages(messages []session.Message) string {
 	return sb.String()
 }
 
-func (a *Agent) compressHistory(sessionMsgs []session.Message) (string, error) {
+func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 	// 压缩历史消息
 	toCompress := sessionMsgs[:len(sessionMsgs)-constant.KeptHistory]
 	prompt := fmt.Sprintf(`请对以下混合了任务执行、情感交流和个性互动的历史对话进行“沉浸式压缩”。
@@ -271,7 +266,7 @@ func (a *Agent) compressHistory(sessionMsgs []session.Message) (string, error) {
 	response, err := a.provider.Chat(context.Background(), a.model, []llm.Message{
 		{
 			Role:    constant.RoleSystem,
-			Content: CompressHistoryPrompt,
+			Content: constant.CompressHistoryPrompt,
 		},
 		{
 			Role:    constant.RoleUser,
@@ -306,7 +301,7 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 		return nil, err
 	}
 	// 将skills转为xml字符串
-	parent := SkillsParent{
+	parent := types.SkillsParent{
 		SkillList: skillList,
 	}
 	skillsXML, err := xml.Marshal(parent)
@@ -324,7 +319,7 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	msgs = append(msgs, llm.Message{
 		Role: constant.RoleSystem,
 		Content: fmt.Sprintf(
-			SystemPrompt,
+			constant.SystemPrompt,
 			string(skillsXML),
 			a.workspaceDir,
 			agentContextInfo, // 各种个性化信息，包含路径

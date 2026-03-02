@@ -3,6 +3,9 @@
 
 
 # YoClaw
+当前项目处于快速演进过程，欢迎大家试用并提出问题和建议，当前主要精力会集中在功能的完善和优化上。
+
+对于channel和llm部分，已实现了2个channel（feishu和web）和1个llm（openai）已经能够满足一般的试用和运行，更多的channel和llm，欢迎pull request，或等我基础功能完善到一定程度后逐渐增加。
 
 > **⚠️ 升级提示**
 >

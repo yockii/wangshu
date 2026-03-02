@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yockii/yoclaw/internal/types"
 	"github.com/yockii/yoclaw/pkg/constant"
 )
 
@@ -16,7 +17,7 @@ type Session struct {
 	Channel   string
 	ChatID    string
 	SenderID  string
-	Messages  []Message
+	Messages  []types.Message
 	Metadata  map[string]string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -24,25 +25,12 @@ type Session struct {
 	mu        sync.RWMutex
 }
 
-type Message struct {
-	Role      string
-	Content   string
-	Timestamp time.Time
-	ToolCalls []ToolCall
-}
-type ToolCall struct {
-	ID        string
-	Name      string
-	Arguments string
-	Result    string
-}
-
 // func (s *Session) AddMessage(role, content string, toolCallID string, toolCalls ...ToolCall) {
-func (s *Session) AddMessage(role, content string, toolCalls ...ToolCall) {
+func (s *Session) AddMessage(role, content string, toolCalls ...types.ToolCall) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	msg := Message{
+	msg := types.Message{
 		Role:      role,
 		Content:   content,
 		Timestamp: time.Now(),
@@ -56,34 +44,34 @@ func (s *Session) AddMessage(role, content string, toolCalls ...ToolCall) {
 
 	s.saveMessage(msg)
 }
-func (s *Session) GetMessages() []Message {
+func (s *Session) GetMessages() []types.Message {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	if len(s.Messages) == 0 {
-		return []Message{}
+		return []types.Message{}
 	}
 
-	messages := make([]Message, len(s.Messages))
+	messages := make([]types.Message, len(s.Messages))
 	copy(messages, s.Messages)
 	return messages
 }
-func (s *Session) GetLastN(n int) []Message {
+func (s *Session) GetLastN(n int) []types.Message {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	if n <= 0 || len(s.Messages) == 0 {
-		return []Message{}
+		return []types.Message{}
 	}
 
 	if n >= len(s.Messages) {
-		messages := make([]Message, len(s.Messages))
+		messages := make([]types.Message, len(s.Messages))
 		copy(messages, s.Messages)
 		return messages
 	}
 
 	start := len(s.Messages) - n
-	messages := make([]Message, n)
+	messages := make([]types.Message, n)
 	copy(messages, s.Messages[start:])
 	return messages
 }
@@ -91,7 +79,7 @@ func (s *Session) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.Messages = []Message{}
+	s.Messages = []types.Message{}
 	s.UpdatedAt = time.Now()
 }
 func (s *Session) SetMetadata(key, value string) {
@@ -139,7 +127,7 @@ func (s *Session) Touch() {
 	s.UpdatedAt = time.Now()
 }
 
-func (s *Session) saveMessage(msg Message) {
+func (s *Session) saveMessage(msg types.Message) {
 	if s.ID == "" {
 		return
 	}
@@ -181,7 +169,7 @@ func (s *Session) loadMessage() error {
 	// 使用 Decoder 逐行读取 JSON，正确处理内容中的换行符
 	decoder := json.NewDecoder(file)
 	for {
-		var msg Message
+		var msg types.Message
 		if err := decoder.Decode(&msg); err != nil {
 			if err.Error() == "EOF" {
 				break
@@ -196,7 +184,7 @@ func (s *Session) loadMessage() error {
 	return nil
 }
 
-func (s *Session) TrimMessages(summary string, keptHistory int) []Message {
+func (s *Session) TrimMessages(summary string, keptHistory int) []types.Message {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -204,8 +192,8 @@ func (s *Session) TrimMessages(summary string, keptHistory int) []Message {
 		return s.Messages
 	}
 
-	trimmedMessages := make([]Message, 0, keptHistory+1)
-	trimmedMessages = append(trimmedMessages, Message{
+	trimmedMessages := make([]types.Message, 0, keptHistory+1)
+	trimmedMessages = append(trimmedMessages, types.Message{
 		Role:    constant.RoleAssistant,
 		Content: summary,
 	})

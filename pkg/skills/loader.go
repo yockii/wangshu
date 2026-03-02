@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/yockii/yoclaw/internal/config"
 	"github.com/yockii/yoclaw/internal/types"
 	"gopkg.in/yaml.v3"
 )
@@ -19,25 +20,22 @@ func GetDefaultLoader() *Loader {
 }
 
 type Loader struct {
-	globalPath  string
-	builtinPath string
+	globalPath string
 }
 
-func InitializeSkillLoader(globalPath, builtInPath string) {
-	defaultSkillLoader = NewLoader(globalPath, builtInPath)
+func InitializeSkillLoader() {
+	defaultSkillLoader = NewLoader(config.DefaultCfg.Skill.GlobalPath)
 }
 
-func NewLoader(globalPath, builtInPath string) *Loader {
+func NewLoader(globalPath string) *Loader {
 	return &Loader{
-		globalPath:  globalPath,
-		builtinPath: builtInPath,
+		globalPath: globalPath,
 	}
 }
 
 func (l *Loader) LoadSkills() ([]*types.Skill, error) {
 	skills := []*types.Skill{}
 	// 从globalPath和builtInPath读取skill元数据
-	skills = append(skills, l.loadSkillsFromDir(l.builtinPath)...)
 	skills = append(skills, l.loadSkillsFromDir(l.globalPath)...)
 	return skills, nil
 }

@@ -15,8 +15,7 @@ type Config struct {
 }
 
 type SkillConfig struct {
-	GlobalPath  string `json:"global_path"`
-	BuiltInPath string `json:"builtin_path"`
+	GlobalPath string `json:"global_path"`
 }
 
 type AgentConfig struct {
@@ -48,7 +47,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]AgentConfig{
 			constant.Default: {
-				Workspace:   "~/.yoClaw/workspace",
+				Workspace:   "workspace",
 				Provider:    "myProvider",
 				Model:       "qwen3-max",
 				Temperature: 0.7,
@@ -78,8 +77,7 @@ func defaultConfig() *Config {
 			},
 		},
 		Skill: SkillConfig{
-			GlobalPath:  "~/.yoClaw/skills",
-			BuiltInPath: "./skills",
+			GlobalPath: "skills",
 		},
 	}
 }

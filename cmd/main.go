@@ -23,7 +23,16 @@ import (
 )
 
 func main() {
-	cfgPath := "~/.yoClaw/config.json"
+	run()
+
+	// 阻塞命令行
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	<-ch
+}
+
+func run() {
+	cfgPath := "config.json"
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}
@@ -84,7 +93,7 @@ func main() {
 	taskTools.RegisterTaskTools()
 	// TODO 实现并注册更多工具
 
-	skills.InitializeSkillLoader(config.DefaultCfg.Skill.GlobalPath, config.DefaultCfg.Skill.BuiltInPath)
+	skills.InitializeSkillLoader()
 
 	// 初始化agents
 	defaultAgent := agent.InitializeAgentManager()

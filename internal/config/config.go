@@ -58,9 +58,6 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 	if cfg.Skill.GlobalPath != "" {
 		cfg.Skill.GlobalPath = utils.ExpandPath(cfg.Skill.GlobalPath)
 	}
-	if cfg.Skill.BuiltInPath != "" {
-		cfg.Skill.BuiltInPath = utils.ExpandPath(cfg.Skill.BuiltInPath)
-	}
 
 	return cfg, nil
 }
@@ -178,6 +175,8 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 		if err != nil {
 			return err
 		}
+
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
 
 		return os.WriteFile(targetPath, data, 0644)
 	})

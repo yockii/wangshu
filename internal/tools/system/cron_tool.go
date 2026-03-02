@@ -24,6 +24,7 @@ type BasicJobInfo struct {
 
 	Channel string `json:"channel"`
 	ChatID  string `json:"chat_id"`
+	Once    bool   `json:"once"` // 是否只执行一次
 }
 
 type CronTool struct {
@@ -53,6 +54,10 @@ func NewCronTool() *CronTool {
 			"schedule": map[string]any{
 				"type":        "string",
 				"description": "Cron schedule expression (e.g., '0 9 * * *' for daily at 9am, '*/5 * * * *' for every 5 minutes). Supports standard cron format with 6 fields (seconds, minutes, hours, day of month, month, day of week). Can be updated.",
+			},
+			"once": map[string]any{
+				"type":        "boolean",
+				"description": "Whether the task should only be executed once (optional, defaults to false). If true, the task will be deleted after success execution.",
 			},
 		},
 		"required": []string{"action"},
@@ -97,6 +102,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	workspace := params[constant.ToolCallParamWorkspace]
 	channel := params[constant.ToolCallParamChannel]
 	chatID := params[constant.ToolCallParamChatID]
+	once := params["once"] == "true" || params["once"] == "1"
 
 	jobInfo := &BasicJobInfo{
 		ID:          uuid.NewString(),
@@ -106,6 +112,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 
 		Channel: channel,
 		ChatID:  chatID,
+		Once:    once,
 	}
 
 	// 写入workspace/cron/{id}.json文件中
@@ -217,6 +224,9 @@ func (t *CronTool) updateTask(params map[string]string) (string, error) {
 	}
 	if description, ok := params["description"]; ok && description != "" {
 		job.Description = description
+	}
+	if once, ok := params["once"]; ok {
+		job.Once = once == "true" || once == "1"
 	}
 
 	data, err = json.Marshal(job)

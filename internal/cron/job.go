@@ -14,4 +14,5 @@ type CronJob struct {
 
 	Channel string `json:"channel"`
 	ChatID  string `json:"chat_id"`
+	Once    bool   `json:"once"` // 是否只执行一次
 }

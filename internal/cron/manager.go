@@ -129,6 +129,10 @@ func (mgr *CronManager) executeJob(job *CronJob) {
 	now := time.Now()
 	job.LastRun = &now
 	job.UpdatedAt = now
+	if job.Once {
+		job.Status = "disabled"
+	}
+
 	jobJsonPath := filepath.Join(mgr.workspace, "cron", job.ID+".json")
 	data, err := json.Marshal(job)
 	if err != nil {

@@ -32,7 +32,7 @@ func main() {
 }
 
 func run() {
-	cfgPath := "config.json"
+	cfgPath := "~/.yoClaw/config.json"
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}

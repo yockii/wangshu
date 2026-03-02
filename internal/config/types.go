@@ -47,7 +47,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]AgentConfig{
 			constant.Default: {
-				Workspace:   "workspace",
+				Workspace:   "~/.yoClaw/workspace",
 				Provider:    "myProvider",
 				Model:       "qwen3-max",
 				Temperature: 0.7,
@@ -77,7 +77,7 @@ func defaultConfig() *Config {
 			},
 		},
 		Skill: SkillConfig{
-			GlobalPath: "skills",
+			GlobalPath: "~/.yoClaw/skills",
 		},
 	}
 }

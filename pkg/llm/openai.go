@@ -65,7 +65,10 @@ func (p *OpenAIProvider) Chat(ctx context.Context, model string, message []Messa
 		case selfConstant.RoleUser:
 			msgs = append(msgs, openai.UserMessage(msg.Content))
 		case selfConstant.RoleTool:
-			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCallID))
+			if len(msg.ToolCalls) == 0 {
+				continue
+			}
+			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCalls[0].ID))
 		}
 	}
 
@@ -171,7 +174,10 @@ func (p *OpenAIProvider) ChatWithJSONSchema(ctx context.Context, model string, m
 		case selfConstant.RoleUser:
 			msgs = append(msgs, openai.UserMessage(msg.Content))
 		case selfConstant.RoleTool:
-			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCallID))
+			if len(msg.ToolCalls) == 0 {
+				continue
+			}
+			msgs = append(msgs, openai.ToolMessage(msg.Content, msg.ToolCalls[0].ID))
 		}
 	}
 

@@ -160,9 +160,9 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 			addToolResultMessage(sess, constant.RoleTool, toolResult, tc.ID)
 
 			msgs = append(msgs, llm.Message{
-				Role:       constant.RoleTool,
-				Content:    toolResult,
-				ToolCallID: tc.ID,
+				Role:      constant.RoleTool,
+				Content:   toolResult,
+				ToolCalls: []llm.ToolCall{tc},
 			})
 		}
 

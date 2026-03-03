@@ -363,9 +363,9 @@ func (tm *TaskManager) changeTask(taskInfo *task.TaskInfo, notifyContent string)
 			}
 
 			msgs = append(msgs, llm.Message{
-				Role:       constant.RoleTool,
-				Content:    toolResult,
-				ToolCallID: tc.ID,
+				Role:      constant.RoleTool,
+				Content:   toolResult,
+				ToolCalls: []llm.ToolCall{tc},
 			})
 		}
 	}
@@ -457,9 +457,9 @@ func (tm *TaskManager) doTask(taskInfo *task.TaskInfo, taskDir string) (string, 
 		}
 		result += "\n" + toolResult
 		toolMsg := llm.Message{
-			Role:       constant.RoleTool,
-			Content:    toolResult,
-			ToolCallID: tc.ID,
+			Role:      constant.RoleTool,
+			Content:   toolResult,
+			ToolCalls: []llm.ToolCall{tc},
 		}
 		tm.appendTaskHistory(taskDir, toolMsg)
 		msgs = append(msgs, toolMsg)
@@ -675,9 +675,9 @@ func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
 			}
 
 			msgs = append(msgs, llm.Message{
-				Role:       constant.RoleTool,
-				Content:    toolResult,
-				ToolCallID: tc.ID,
+				Role:      constant.RoleTool,
+				Content:   toolResult,
+				ToolCalls: []llm.ToolCall{tc},
 			})
 		}
 	}

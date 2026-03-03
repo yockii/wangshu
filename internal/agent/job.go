@@ -56,9 +56,9 @@ func (a *Agent) executionJob(job *types.BasicJobInfo) {
 			}
 
 			msgs = append(msgs, llm.Message{
-				Role:       constant.RoleTool,
-				Content:    toolResult,
-				ToolCallID: tc.ID,
+				Role:      constant.RoleTool,
+				Content:   toolResult,
+				ToolCalls: []llm.ToolCall{tc},
 			})
 		}
 	}

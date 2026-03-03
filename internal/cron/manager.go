@@ -11,6 +11,7 @@ import (
 
 	cron "github.com/netresearch/go-cron"
 	"github.com/yockii/yoclaw/internal/types"
+	"github.com/yockii/yoclaw/pkg/constant"
 )
 
 type Executor func(job *types.BasicJobInfo)
@@ -65,7 +66,7 @@ func (mgr *CronManager) scanJobs() {
 	mgr.mu.RLock()
 	defer mgr.mu.RUnlock()
 
-	cronDir := filepath.Join(mgr.workspace, "cron")
+	cronDir := filepath.Join(mgr.workspace, constant.DirCron)
 	os.MkdirAll(cronDir, 0755)
 	entries, err := os.ReadDir(cronDir)
 	if err != nil {
@@ -75,7 +76,7 @@ func (mgr *CronManager) scanJobs() {
 		if entry.IsDir() {
 			continue
 		}
-		if filepath.Ext(entry.Name()) != ".json" {
+		if filepath.Ext(entry.Name()) != constant.ExtJSON {
 			continue
 		}
 		jobJsonPath := filepath.Join(cronDir, entry.Name())
@@ -94,7 +95,7 @@ func (mgr *CronManager) scanJobs() {
 			continue
 		}
 		if _, ok := mgr.cronJobs[job.ID]; !ok {
-			if job.Status == "enabled" {
+			if job.Status == constant.CronStatusEnabled {
 				j := job
 				mgr.cronJobs[j.ID] = &j
 				mgr.c.AddFunc(j.Schedule, func() {
@@ -106,11 +107,11 @@ func (mgr *CronManager) scanJobs() {
 			if !entry.Valid() {
 				continue
 			}
-			if job.Status == "enabled" && entry.Paused {
+			if job.Status == constant.CronStatusEnabled && entry.Paused {
 				mgr.c.ResumeEntryByName(job.ID)
-			} else if job.Status == "paused" && !entry.Paused {
+			} else if job.Status == constant.CronStatusPaused && !entry.Paused {
 				mgr.c.PauseEntryByName(job.ID)
-			} else if job.Status == "disabled" {
+			} else if job.Status == constant.CronStatusDisabled {
 				mgr.c.RemoveByName(job.ID)
 				// 删除文件
 				os.Remove(jobJsonPath)
@@ -131,10 +132,10 @@ func (mgr *CronManager) executeJob(job *types.BasicJobInfo) {
 	job.LastRun = &now
 	job.UpdatedAt = now
 	if job.Once {
-		job.Status = "disabled"
+		job.Status = constant.CronStatusDisabled
 	}
 
-	jobJsonPath := filepath.Join(mgr.workspace, "cron", job.ID+".json")
+	jobJsonPath := filepath.Join(mgr.workspace, constant.DirCron, job.ID+constant.ExtJSON)
 	data, err := json.Marshal(job)
 	if err != nil {
 		slog.Warn("Failed to marshal job", "jobID", job.ID)

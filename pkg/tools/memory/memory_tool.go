@@ -98,7 +98,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 		return "", fmt.Errorf("workspace directory not set")
 	}
 
-	memoryDir := filepath.Join(workspaceDir, "memory")
+	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
 		return "No memories found (memory directory does not exist)", nil
 	}
@@ -110,7 +110,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 	for i := 0; i < daysBack; i++ {
 		date := now.AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
-		memoryFile := filepath.Join(memoryDir, dateStr+".md")
+		memoryFile := filepath.Join(memoryDir, dateStr+constant.ExtMD)
 
 		content, err := os.ReadFile(memoryFile)
 		if err != nil {
@@ -162,7 +162,7 @@ func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
 		return "", fmt.Errorf("workspace directory not set")
 	}
 
-	memoryFile := filepath.Join(workspaceDir, "memory", dateStr+".md")
+	memoryFile := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory, dateStr+constant.ExtMD)
 
 	content, err := os.ReadFile(memoryFile)
 	if err != nil {
@@ -190,7 +190,7 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 		return "", fmt.Errorf("workspace directory not set")
 	}
 
-	memoryDir := filepath.Join(workspaceDir, "memory")
+	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
 		return "No memories found (memory directory does not exist)", nil
 	}
@@ -212,11 +212,11 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 
 		// Check if it's a .md file matching date format
 		name := entry.Name()
-		if !strings.HasSuffix(name, ".md") {
+		if !strings.HasSuffix(name, constant.ExtMD) {
 			continue
 		}
 
-		dateStr := strings.TrimSuffix(name, ".md")
+		dateStr := strings.TrimSuffix(name, constant.ExtMD)
 		date, err := time.Parse("2006-01-02", dateStr)
 		if err != nil {
 			continue
@@ -305,13 +305,13 @@ func (t *MemoryTool) SaveMemory(workspaceDir, content string) error {
 		return fmt.Errorf("workspace directory not set")
 	}
 
-	memoryDir := filepath.Join(workspaceDir, "memory")
+	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if err := os.MkdirAll(memoryDir, 0755); err != nil {
 		return fmt.Errorf("failed to create memory directory: %w", err)
 	}
 
 	dateStr := time.Now().Format("2006-01-02")
-	memoryFile := filepath.Join(memoryDir, dateStr+".md")
+	memoryFile := filepath.Join(memoryDir, dateStr+constant.ExtMD)
 
 	// Append to existing file or create new
 	file, err := os.OpenFile(memoryFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -342,7 +342,7 @@ func (t *MemoryTool) SearchByPattern(workspaceDir, pattern string, daysBack int)
 		return "", fmt.Errorf("workspace directory not set")
 	}
 
-	memoryDir := filepath.Join(workspaceDir, "memory")
+	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
 		return "No memories found", nil
 	}
@@ -353,7 +353,7 @@ func (t *MemoryTool) SearchByPattern(workspaceDir, pattern string, daysBack int)
 	for i := 0; i < daysBack; i++ {
 		date := now.AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
-		memoryFile := filepath.Join(memoryDir, dateStr+".md")
+		memoryFile := filepath.Join(memoryDir, dateStr+constant.ExtMD)
 
 		content, err := os.ReadFile(memoryFile)
 		if err != nil {
@@ -378,7 +378,7 @@ func (t *MemoryTool) GetMemoryStats(workspaceDir string) (string, error) {
 		return "", fmt.Errorf("workspace directory not set")
 	}
 
-	memoryDir := filepath.Join(workspaceDir, "memory")
+	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
 		return "Memory directory does not exist", nil
 	}
@@ -392,7 +392,7 @@ func (t *MemoryTool) GetMemoryStats(workspaceDir string) (string, error) {
 	count := 0
 
 	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), constant.ExtMD) {
 			info, _ := entry.Info()
 			totalSize += info.Size()
 			count++

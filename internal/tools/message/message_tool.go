@@ -15,7 +15,7 @@ type MessageTool struct {
 
 func NewMessageTool() *MessageTool {
 	tool := new(MessageTool)
-	tool.Name_ = "message"
+	tool.Name_ = constant.ToolNameMessage
 	tool.Desc_ = "Send a message/notification to the user. Use this tool when you need to communicate with the user, inform them about progress, report results, or provide any information that the user should see. This is the primary way to send messages to the user interface. Do NOT use write_file or other file operations to send messages to users."
 	tool.Params_ = map[string]any{
 		"type": "object",

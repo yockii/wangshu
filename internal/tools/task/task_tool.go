@@ -13,10 +13,6 @@ import (
 	"github.com/yockii/yoclaw/pkg/tools/basic"
 )
 
-const (
-	ToolNameTask = "task"
-)
-
 type ChangeLogEntry struct {
 	ID         string    `json:"id"`
 	Content    string    `json:"content"` // 用户提出的变更内容
@@ -69,7 +65,7 @@ type TaskTool struct {
 
 func NewTaskTool() *TaskTool {
 	tool := new(TaskTool)
-	tool.Name_ = ToolNameTask
+	tool.Name_ = constant.ToolNameTask
 	tool.Desc_ = "Create and manage asynchronous tasks that execute in the background without blocking the current conversation loop. Unlike synchronous tool calls that wait for completion, tasks created here run independently and do not occupy the current session context. This is ideal for long-running operations, scheduled tasks triggered by cron, or any work that should proceed without keeping the user waiting. Tasks persist in the agent's workspace and their status/results can be queried later."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -77,7 +73,16 @@ func NewTaskTool() *TaskTool {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "Action to perform on the task",
-				"enum":        []string{"create", "list", "status", "cancel", "clean", "restart", "update", "add_change"},
+				"enum": []string{
+					constant.TaskActionCreate,
+					constant.TaskActionList,
+					constant.TaskActionStatus,
+					constant.TaskActionCancel,
+					constant.TaskActionClean,
+					constant.TaskActionRestart,
+					constant.TaskActionUpdate,
+					constant.TaskActionAddChange,
+				},
 			},
 			"id": map[string]any{
 				"type":        "string",
@@ -102,7 +107,7 @@ func NewTaskTool() *TaskTool {
 			"priority": map[string]any{
 				"type":        "string",
 				"description": "Task execution priority (optional, defaults to 'normal'). Higher priority tasks are processed first. Can be updated.",
-				"enum":        []string{"low", "normal", "high", "urgent"},
+				"enum":        []string{constant.TaskPriorityLow, constant.TaskPriorityNormal, constant.TaskPriorityHigh, constant.TaskPriorityUrgent},
 			},
 		},
 		"required": []string{"action"},
@@ -117,21 +122,21 @@ func (t *TaskTool) execute(ctx context.Context, params map[string]string) (strin
 		return "", fmt.Errorf("action parameter is required")
 	}
 	switch action {
-	case "create":
+	case constant.TaskActionCreate:
 		return t.create(params)
-	case "list":
+	case constant.TaskActionList:
 		return t.list(params)
-	case "status":
+	case constant.TaskActionStatus:
 		return t.status(params)
-	case "cancel":
+	case constant.TaskActionCancel:
 		return t.cancel(params)
-	case "clean":
+	case constant.TaskActionClean:
 		return t.clean(params)
-	case "restart":
+	case constant.TaskActionRestart:
 		return t.restart(params)
-	case "update":
+	case constant.TaskActionUpdate:
 		return t.update(params)
-	case "add_change":
+	case constant.TaskActionAddChange:
 		return t.addChange(params)
 	default:
 		return "", fmt.Errorf("invalid action: %s", action)
@@ -149,7 +154,7 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	}
 	priority, ok := params["priority"]
 	if !ok {
-		priority = "normal"
+		priority = constant.TaskPriorityNormal
 	}
 	parentID, ok := params["parent_id"]
 	if !ok {
@@ -166,13 +171,13 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 		Name:        name,
 		Description: description,
 		Priority:    priority,
-		Status:      "pending",
+		Status:      constant.TaskStatusPending,
 
 		Channel: channel,
 		ChatID:  chatID,
 	}
 
-	taskRelationsFilePath := filepath.Join(workspace, "tasks", constant.TaskRelationsFileName)
+	taskRelationsFilePath := filepath.Join(workspace, constant.DirTasks, constant.TaskRelationsFileName)
 	var trs TaskRelations = TaskRelations{
 		Relations: map[string]*TaskRelation{},
 	}
@@ -186,12 +191,12 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	}
 
 	parentDir := t.getParentDir(at.ParentID, trs.Relations)
-	taskDir := filepath.Join(workspace, "tasks", parentDir, at.ID)
+	taskDir := filepath.Join(workspace, constant.DirTasks, parentDir, at.ID)
 
 	stRecord := &SubtasksRecord{
 		Subtasks: map[string]*SubtaskInfo{},
 	}
-	subtasksFilePath := filepath.Join(workspace, "tasks", parentDir, constant.TaskSubtasksInfoFileName)
+	subtasksFilePath := filepath.Join(workspace, constant.DirTasks, parentDir, constant.TaskSubtasksInfoFileName)
 	if at.ParentID != "" {
 		if _, ok := trs.Relations[at.ParentID]; !ok {
 			return "", fmt.Errorf("parent task %s not found", at.ParentID)
@@ -227,7 +232,7 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 		stRecord.Subtasks[at.ID] = &SubtaskInfo{
 			ID:        at.ID,
 			Name:      at.Name,
-			Status:    "pending",
+			Status:    constant.TaskStatusPending,
 			UpdatedAt: now,
 		}
 		stRecord.UpdatedAt = now
@@ -262,7 +267,7 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 
 func (t *TaskTool) list(params map[string]string) (string, error) {
 	workspace := params[constant.ToolCallParamWorkspace]
-	taskDir := filepath.Join(workspace, "tasks")
+	taskDir := filepath.Join(workspace, constant.DirTasks)
 	files, err := os.ReadDir(taskDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read tasks directory: %w", err)
@@ -295,7 +300,7 @@ func (t *TaskTool) status(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id parameter is required")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	taskDir := filepath.Join(workspace, "tasks", id)
+	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
 		return "", fmt.Errorf("task not found: %w", err)
 	}
@@ -318,7 +323,7 @@ func (t *TaskTool) cancel(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id parameter is required")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	taskDir := filepath.Join(workspace, "tasks", id)
+	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
 		return "", fmt.Errorf("task not found: %w", err)
 	}
@@ -332,7 +337,7 @@ func (t *TaskTool) cancel(params map[string]string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal task: %w", err)
 	}
 
-	at.Status = "cancelled"
+	at.Status = constant.TaskStatusCancelled
 	data, err = json.Marshal(at)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal task: %w", err)
@@ -356,7 +361,7 @@ func (t *TaskTool) cancel(params map[string]string) (string, error) {
 	}
 
 	// 从task关系文件中删除该任务的所有子关系
-	taskRelationsFilePath := filepath.Join(workspace, "tasks", constant.TaskRelationsFileName)
+	taskRelationsFilePath := filepath.Join(workspace, constant.DirTasks, constant.TaskRelationsFileName)
 	data, err = os.ReadFile(taskRelationsFilePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read task relations file: %w", err)
@@ -388,7 +393,7 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 	id, _ := params["id"]
 
 	workspace := params[constant.ToolCallParamWorkspace]
-	tasksDir := filepath.Join(workspace, "tasks")
+	tasksDir := filepath.Join(workspace, constant.DirTasks)
 
 	if id != "" {
 		taskFilePath := filepath.Join(tasksDir, id, constant.TaskInfoFileName)
@@ -404,7 +409,7 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 		if err = json.Unmarshal(data, &at); err != nil {
 			return "", fmt.Errorf("failed to unmarshal task: %w", err)
 		}
-		at.Status = "remove"
+		at.Status = constant.TaskStatusRemove
 		data, err = json.Marshal(at)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal task: %w", err)
@@ -434,8 +439,8 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 			if err = json.Unmarshal(data, &at); err != nil {
 				continue
 			}
-			if at.Status == "completed" || at.Status == "cancelled" {
-				at.Status = "remove"
+			if at.Status == constant.TaskStatusCompleted || at.Status == constant.TaskStatusCancelled {
+				at.Status = constant.TaskStatusRemove
 				data, err = json.Marshal(at)
 				if err != nil {
 					continue
@@ -455,7 +460,7 @@ func (t *TaskTool) restart(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id parameter is required")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	taskDir := filepath.Join(workspace, "tasks", id)
+	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
 		return "", fmt.Errorf("task not found: %w", err)
 	}
@@ -470,11 +475,11 @@ func (t *TaskTool) restart(params map[string]string) (string, error) {
 	}
 
 	// 只有已完成、失败或已取消的任务可以重启
-	if at.Status != "completed" && at.Status != "failed" && at.Status != "cancelled" {
+	if at.Status != constant.TaskStatusCompleted && at.Status != constant.TaskStatusCancelled && at.Status != constant.TaskStatusFailed {
 		return "", fmt.Errorf("cannot restart task with status '%s', only completed, failed or cancelled tasks can be restarted", at.Status)
 	}
 
-	at.Status = "pending"
+	at.Status = constant.TaskStatusPending
 	at.LastResult = ""
 	data, err = json.Marshal(at)
 	if err != nil {
@@ -493,7 +498,7 @@ func (t *TaskTool) update(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id parameter is required")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	taskDir := filepath.Join(workspace, "tasks", id)
+	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
 		return "", fmt.Errorf("task not found: %w", err)
 	}
@@ -540,7 +545,7 @@ func (t *TaskTool) addChange(params map[string]string) (string, error) {
 
 	workspace := params[constant.ToolCallParamWorkspace]
 
-	tasksRelationFile := filepath.Join(workspace, "tasks", constant.TaskRelationsFileName)
+	tasksRelationFile := filepath.Join(workspace, constant.DirTasks, constant.TaskRelationsFileName)
 	if _, err := os.Stat(tasksRelationFile); err != nil {
 		return "", fmt.Errorf("task relations file not found: %w", err)
 	}
@@ -557,7 +562,7 @@ func (t *TaskTool) addChange(params map[string]string) (string, error) {
 		return "", fmt.Errorf("task %s is not a root task", id)
 	}
 
-	taskDir := filepath.Join(workspace, "tasks", id)
+	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
 		return "", fmt.Errorf("task not found: %w", err)
 	}

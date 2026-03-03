@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/utils"
 )
 
@@ -162,7 +163,7 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 		}
 
 		if relPath == "profile/BOOTSTRAP.md" {
-			targetLockFile := filepath.Join(workspaceDir, "profile", "BOOTSTRAP.lock")
+			targetLockFile := filepath.Join(workspaceDir, constant.DirProfile, constant.ProfileLockBootstrap)
 			if _, err := os.Stat(targetLockFile); err == nil {
 				return nil // lock文件存在，跳过
 			}
@@ -175,6 +176,51 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 
 		// 复制文件
 		data, err := embeddedFiles.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
+
+		return os.WriteFile(targetPath, data, 0644)
+	})
+}
+
+//go:embed skills
+var embeddedSkills embed.FS
+
+func ReleaseSkills() error {
+	skillsDir := DefaultCfg.Skill.GlobalPath
+	skillsDir = utils.ExpandPath(skillsDir)
+
+	return fs.WalkDir(embeddedSkills, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil // 根目录跳过
+		}
+		if path == "skills" {
+			return nil // skills目录跳过
+		}
+
+		relPath := path
+		if strings.HasPrefix(path, "skills/") {
+			relPath = path[len("skills/"):]
+		}
+
+		targetPath := filepath.Join(skillsDir, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(targetPath, 0755)
+		}
+
+		// 如果已存在，跳过
+		if _, err = os.Stat(targetPath); err == nil {
+			return nil
+		}
+
+		// 复制文件
+		data, err := embeddedSkills.ReadFile(path)
 		if err != nil {
 			return err
 		}

@@ -132,7 +132,7 @@ func (s *Session) saveMessage(msg types.Message) {
 		return
 	}
 
-	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
+	sessionFile := filepath.Join(s.workspace, constant.DirSessions, s.Channel, s.ChatID+constant.ExtJSONL)
 	// 如果目录不存在则创建
 	if err := os.MkdirAll(filepath.Dir(sessionFile), 0755); err != nil {
 		slog.Error("Failed to create session directory", "error", err)
@@ -154,7 +154,7 @@ func (s *Session) saveMessage(msg types.Message) {
 	}
 }
 func (s *Session) loadMessage() error {
-	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
+	sessionFile := filepath.Join(s.workspace, constant.DirSessions, s.Channel, s.ChatID+constant.ExtJSONL)
 	// 如果文件不存在则直接返回
 	if _, err := os.Stat(sessionFile); os.IsNotExist(err) {
 		return nil
@@ -202,7 +202,7 @@ func (s *Session) TrimMessages(summary string, keptHistory int) []types.Message 
 	s.Messages = trimmedMessages
 	s.UpdatedAt = time.Now()
 
-	sessionFile := filepath.Join(s.workspace, "sessions", s.Channel, s.ChatID+".jsonl")
+	sessionFile := filepath.Join(s.workspace, constant.DirSessions, s.Channel, s.ChatID+constant.ExtJSONL)
 	// 如果目录不存在则创建
 	if err := os.MkdirAll(filepath.Dir(sessionFile), 0755); err != nil {
 		slog.Error("Failed to create session directory", "error", err)

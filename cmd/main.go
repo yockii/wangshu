@@ -49,6 +49,9 @@ func run() {
 		return
 	}
 
+	// 释放技能
+	config.ReleaseSkills()
+
 	// 初始化大模型
 	providerCount := 0
 	for providerName, providerCfg := range config.DefaultCfg.Providers {

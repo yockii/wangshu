@@ -351,26 +351,26 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 func (a *Agent) loadAgentContextInfo() string {
 	content := ""
 	mdFiles := []string{
-		"AGENTS.md",
-		"BOOTSTRAP.md",
-		"HEARTBEAT.md",
-		"IDENTITY.md",
-		"SOUL.md",
-		"TOOLS.md",
-		"USER.md",
-		"MEMORY.md",
+		constant.ProfileFileAgents,
+		constant.ProfileFileBootstrap,
+		constant.ProfileFileHeartbeat,
+		constant.ProfileFileIdentity,
+		constant.ProfileFileSoul,
+		constant.ProfileFileTools,
+		constant.ProfileFileUser,
+		constant.ProfileFileMemory,
 	}
 	needSoul := false
 	bootstraped := false
 	for _, fileName := range mdFiles {
-		fp := filepath.Join(a.workspaceDir, "profile", fileName)
+		fp := filepath.Join(a.workspaceDir, constant.DirProfile, fileName)
 		mdFile, err := filepath.Abs(fp)
 		if err != nil {
 			continue
 		}
 
 		if fi, err := os.Stat(mdFile); err != nil {
-			if fileName == "BOOTSTRAP.md" && os.IsNotExist(err) {
+			if fileName == constant.ProfileFileBootstrap && os.IsNotExist(err) {
 				bootstraped = true
 			}
 			continue
@@ -382,7 +382,7 @@ func (a *Agent) loadAgentContextInfo() string {
 			continue
 		}
 		content += fmt.Sprintf("\n## %s\n%s\n", mdFile, string(data))
-		if fileName == "SOUL.md" {
+		if fileName == constant.ProfileFileSoul {
 			needSoul = true
 		}
 	}

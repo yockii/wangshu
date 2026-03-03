@@ -20,7 +20,7 @@ type CronTool struct {
 
 func NewCronTool() *CronTool {
 	tool := new(CronTool)
-	tool.Name_ = "cron"
+	tool.Name_ = constant.ToolNameCron
 	tool.Desc_ = "Manage scheduled tasks that are stored in the agent workspace and persist across restarts. Supports add, list, pause, resume, disable, status, and update operations."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -28,7 +28,15 @@ func NewCronTool() *CronTool {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "Action to perform: add, list, pause, resume, disable, status, update",
-				"enum":        []string{"add", "list", "pause", "resume", "disable", "status", "update"},
+				"enum": []string{
+					constant.CronActionAdd,
+					constant.CronActionList,
+					constant.CronActionPause,
+					constant.CronActionResume,
+					constant.CronActionDisable,
+					constant.CronActionStatus,
+					constant.CronActionUpdate,
+				},
 			},
 			"id": map[string]any{
 				"type":        "string",
@@ -60,19 +68,19 @@ func (t *CronTool) execute(ctx context.Context, params map[string]string) (strin
 	}
 
 	switch action {
-	case "add":
+	case constant.CronActionAdd:
 		return t.addTask(params)
-	case "list":
+	case constant.CronActionList:
 		return t.listTasks(params)
-	case "pause":
+	case constant.CronActionPause:
 		return t.pauseTask(params)
-	case "resume":
+	case constant.CronActionResume:
 		return t.resumeTask(params)
-	case "disable":
+	case constant.CronActionDisable:
 		return t.disableTask(params)
-	case "status":
+	case constant.CronActionStatus:
 		return t.getTaskStatus(params)
-	case "update":
+	case constant.CronActionUpdate:
 		return t.updateTask(params)
 	default:
 		return "", fmt.Errorf("unknown action: %s", action)
@@ -95,7 +103,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 		ID:          uuid.NewString(),
 		Schedule:    schedule,
 		Description: description,
-		Status:      "enabled",
+		Status:      constant.CronStatusEnabled,
 
 		Channel: channel,
 		ChatID:  chatID,
@@ -103,9 +111,9 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	}
 
 	// 写入workspace/cron/{id}.json文件中
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 	os.MkdirAll(cronDir, 0755)
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", jobInfo.ID))
+	jobJsonPath := filepath.Join(cronDir, jobInfo.ID+constant.ExtJSON)
 	data, err := json.Marshal(jobInfo)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal job: %w", err)
@@ -120,7 +128,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 
 func (t *CronTool) listTasks(params map[string]string) (string, error) {
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 	entries, err := os.ReadDir(cronDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read cron directory: %w", err)
@@ -130,7 +138,7 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 		if entry.IsDir() {
 			continue
 		}
-		if filepath.Ext(entry.Name()) != ".json" {
+		if filepath.Ext(entry.Name()) != constant.ExtJSON {
 			continue
 		}
 		jobJsonPath := filepath.Join(cronDir, entry.Name())
@@ -148,7 +156,7 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 			slog.Warn("Job ID is empty", "jobFile", jobJsonPath)
 			continue
 		}
-		if job.Status != "disabled" {
+		if job.Status != constant.CronStatusDisabled {
 			jobs = append(jobs, job)
 		}
 	}
@@ -161,9 +169,9 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 	for _, job := range jobs {
 		status := "❌ 已禁用"
 		switch job.Status {
-		case "enabled":
+		case constant.CronStatusEnabled:
 			status = "✅ 已启用"
-		case "paused":
+		case constant.CronStatusPaused:
 			status = "⏸ 已暂停"
 		}
 
@@ -191,9 +199,9 @@ func (t *CronTool) updateTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id is required for update action")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
@@ -233,9 +241,9 @@ func (t *CronTool) pauseTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id is required for pause action")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
@@ -248,11 +256,11 @@ func (t *CronTool) pauseTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("job ID is empty")
 	}
 
-	if job.Status != "enabled" {
+	if job.Status != constant.CronStatusEnabled {
 		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
 	}
 
-	job.Status = "paused"
+	job.Status = constant.CronStatusPaused
 	data, err = json.Marshal(job)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal job: %w", err)
@@ -270,9 +278,9 @@ func (t *CronTool) resumeTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id is required for pause action")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
@@ -285,11 +293,11 @@ func (t *CronTool) resumeTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("job ID is empty")
 	}
 
-	if job.Status != "paused" {
+	if job.Status != constant.CronStatusPaused {
 		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
 	}
 
-	job.Status = "enabled"
+	job.Status = constant.CronStatusEnabled
 	data, err = json.Marshal(job)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal job: %w", err)
@@ -307,9 +315,9 @@ func (t *CronTool) disableTask(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id is required for disable action")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
@@ -321,7 +329,7 @@ func (t *CronTool) disableTask(params map[string]string) (string, error) {
 	if job.ID == "" {
 		return "", fmt.Errorf("job ID is empty")
 	}
-	job.Status = "disabled"
+	job.Status = constant.CronStatusDisabled
 
 	data, err = json.Marshal(job)
 	if err != nil {
@@ -340,9 +348,9 @@ func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
 		return "", fmt.Errorf("id is required for status action")
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
-	cronDir := filepath.Join(workspace, "cron")
+	cronDir := filepath.Join(workspace, constant.DirCron)
 
-	jobJsonPath := filepath.Join(cronDir, fmt.Sprintf("%s.json", id))
+	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read job file: %w", err)
@@ -358,11 +366,11 @@ func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
 	result := fmt.Sprintf("定时任务状态: %s\n\n", job.ID)
 	result += "状态: "
 	switch job.Status {
-	case "enabled":
+	case constant.CronStatusEnabled:
 		result += "✅ 已启用\n"
-	case "paused":
+	case constant.CronStatusPaused:
 		result += "⚠️ 已暂停\n"
-	case "disabled":
+	case constant.CronStatusDisabled:
 		result += "⛔ 已禁用\n"
 	default:
 		result += fmt.Sprintf("未知状态: %s\n", job.Status)

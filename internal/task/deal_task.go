@@ -14,6 +14,7 @@ import (
 
 	"github.com/yockii/yoclaw/internal/tools/task"
 	"github.com/yockii/yoclaw/internal/types"
+	"github.com/yockii/yoclaw/pkg/bus"
 	"github.com/yockii/yoclaw/pkg/constant"
 	"github.com/yockii/yoclaw/pkg/llm"
 	"github.com/yockii/yoclaw/pkg/skills"
@@ -24,7 +25,7 @@ func (tm *TaskManager) run() {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
-	tasksDir := filepath.Join(tm.workspace, "tasks")
+	tasksDir := filepath.Join(tm.workspace, constant.DirTasks)
 	os.MkdirAll(tasksDir, 0755)
 
 	taskFiles, err := os.ReadDir(tasksDir)
@@ -55,14 +56,14 @@ func (tm *TaskManager) run() {
 			continue
 		}
 
-		if taskInfo.Status == "remove" {
+		if taskInfo.Status == constant.TaskStatusRemove {
 			// 删除该任务目录
 			err = os.RemoveAll(filepath.Join(tasksDir, taskFile.Name()))
 			if err != nil {
 				slog.Error("Failed to remove task directory", "task", taskFile.Name(), "error", err)
 			}
 			// 清理关系记录
-			taskRelationsFilePath := filepath.Join(tm.workspace, "tasks", constant.TaskRelationsFileName)
+			taskRelationsFilePath := filepath.Join(tm.workspace, constant.DirTasks, constant.TaskRelationsFileName)
 			relations := task.TaskRelations{}
 			if _, err := os.Stat(taskRelationsFilePath); err == nil {
 				data, err = os.ReadFile(taskRelationsFilePath)
@@ -96,23 +97,23 @@ func (tm *TaskManager) run() {
 			}
 
 			continue
-		} else if taskInfo.Status == "completed" || taskInfo.Status == "failed" || taskInfo.Status == "cancelled" {
+		} else if taskInfo.Status == constant.TaskStatusCompleted || taskInfo.Status == constant.TaskStatusCancelled || taskInfo.Status == constant.TaskStatusFailed {
 			continue
 		}
 
 		if mainTask == nil {
 			mainTask = &taskInfo
-			if mainTask.Priority == "urgent" {
+			if mainTask.Priority == constant.TaskPriorityUrgent {
 				break
 			}
 		} else {
-			if taskInfo.Priority == "urgent" && mainTask.Priority != "urgent" {
+			if taskInfo.Priority == constant.TaskPriorityUrgent && mainTask.Priority != constant.TaskPriorityUrgent {
 				mainTask = &taskInfo
 				break
 			}
-			if taskInfo.Priority == "high" && (mainTask.Priority == "normal" || mainTask.Priority == "low") {
+			if taskInfo.Priority == constant.TaskPriorityHigh && (mainTask.Priority == constant.TaskPriorityNormal || mainTask.Priority == constant.TaskPriorityLow) {
 				mainTask = &taskInfo
-			} else if taskInfo.Priority == "normal" && mainTask.Priority == "low" {
+			} else if taskInfo.Priority == constant.TaskPriorityNormal && mainTask.Priority == constant.TaskPriorityLow {
 				mainTask = &taskInfo
 			}
 		}
@@ -130,12 +131,20 @@ func (tm *TaskManager) run() {
 		if err != nil {
 			slog.Error("Failed to marshal task file", "task", mainTask.ID, "error", err)
 		}
-		err = os.WriteFile(filepath.Join(tm.workspace, "tasks", mainTask.ID, constant.TaskInfoFileName), data, 0644)
+		err = os.WriteFile(filepath.Join(tm.workspace, constant.DirTasks, mainTask.ID, constant.TaskInfoFileName), data, 0644)
 		if err != nil {
 			slog.Error("Failed to write task file", "task", mainTask.ID, "error", err)
 		}
 
 		if finished {
+			if resp != constant.TaskTagCompleted {
+				bus.Default().PublishOutbound(bus.OutboundMessage{
+					Channel: mainTask.Channel,
+					ChatID:  mainTask.ChatID,
+					Content: resp,
+				})
+			}
+
 			// 完成主任务，进行总结
 			tm.summaryMainTask(mainTask)
 		}
@@ -210,7 +219,7 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 
 		var dealSubtask *task.SubtaskInfo
 		for _, subtask := range subtasksInfo.Subtasks {
-			if subtask.Status == "completed" || subtask.Status == "failed" || subtask.Status == "cancelled" {
+			if subtask.Status == constant.TaskStatusCompleted || subtask.Status == constant.TaskStatusCancelled || subtask.Status == constant.TaskStatusFailed {
 				continue
 			}
 			dealSubtask = subtask
@@ -244,7 +253,7 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 			} else {
 				taskInfo.LastResult = resp
 				if finished {
-					taskInfo.Status = "completed"
+					taskInfo.Status = constant.TaskStatusCompleted
 				}
 			}
 		}
@@ -262,7 +271,7 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 		return
 	}
 
-	if taskInfo.Status == "completed" && taskInfo.ParentID != "" {
+	if taskInfo.Status == constant.TaskStatusCompleted && taskInfo.ParentID != "" {
 		// 任务总结
 		resp, err = tm.summaryTask(taskInfo, taskDir)
 		if err != nil {
@@ -290,7 +299,7 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 			return
 		}
 		if subtask, ok := stRecord.Subtasks[taskInfo.ID]; ok {
-			subtask.Status = "completed"
+			subtask.Status = constant.TaskStatusCompleted
 			subtask.UpdatedAt = now
 			subtask.Summary = resp
 			// 写入文件
@@ -332,7 +341,7 @@ func (tm *TaskManager) changeTask(taskInfo *task.TaskInfo, notifyContent string)
 		},
 	}
 	ctx := context.Background()
-	availableTools := tools.GetDefaultToolRegistry().GetSelectedToolsInProviderDefs(task.ToolNameTask)
+	availableTools := tools.GetDefaultToolRegistry().GetSelectedToolsInProviderDefs(constant.ToolNameTask)
 	for i := 0; i < 10; i++ {
 		resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, nil)
 		if err != nil {
@@ -458,11 +467,11 @@ func (tm *TaskManager) doTask(taskInfo *task.TaskInfo, taskDir string) (string, 
 
 	if isFinished {
 		// 再次检查完成标记，确保不会提前完成任务
-		if !strings.Contains(result, "TASK_COMPLETED") {
+		if !strings.Contains(result, constant.TaskTagCompleted) {
 			isFinished = false
 			userMsg := llm.Message{
 				Role:    constant.RoleUser,
-				Content: "任务尚未完成，你必须调用工具继续执行任务。如果认为任务已完成，请输出`TASK_COMPLETED`。",
+				Content: fmt.Sprintf("任务尚未完成，你必须调用工具继续执行任务。如果认为任务已完成，请输出`%s`。", constant.TaskTagCompleted),
 			}
 			tm.appendTaskHistory(taskDir, userMsg)
 			msgs = append(msgs, userMsg)
@@ -474,7 +483,7 @@ func (tm *TaskManager) doTask(taskInfo *task.TaskInfo, taskDir string) (string, 
 
 func (tm *TaskManager) readTaskHistory(taskDir string) ([]llm.Message, error) {
 	result := make([]llm.Message, 0)
-	taskHistoryFile := filepath.Join(taskDir, "history.jsonl")
+	taskHistoryFile := filepath.Join(taskDir, constant.TaskHistoryFileName)
 	if _, err := os.Stat(taskHistoryFile); err == nil {
 		f, err := os.Open(taskHistoryFile)
 		if err != nil {
@@ -512,7 +521,7 @@ func (tm *TaskManager) readTaskHistory(taskDir string) ([]llm.Message, error) {
 }
 
 func (tm *TaskManager) appendTaskHistory(taskDir string, msg llm.Message) {
-	taskHistoryFile := filepath.Join(taskDir, "history.jsonl")
+	taskHistoryFile := filepath.Join(taskDir, constant.TaskHistoryFileName)
 
 	os.MkdirAll(filepath.Dir(taskHistoryFile), 0755)
 
@@ -597,7 +606,7 @@ func (tm *TaskManager) summaryTask(taskInfo *task.TaskInfo, taskDir string) (str
 }
 
 func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
-	taskDir := filepath.Join(tm.workspace, "tasks", taskInfo.ID)
+	taskDir := filepath.Join(tm.workspace, constant.DirTasks, taskInfo.ID)
 
 	// 任务完成，让大模型总结任务信息并返回
 	history, err := tm.readTaskHistory(taskDir)
@@ -619,7 +628,7 @@ func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
 			Role: constant.RoleSystem,
 			Content: fmt.Sprintf(constant.TaskSummaryArchivePrompt,
 				tm.workspace,
-				filepath.Join(tm.workspace, "profile", "memory"),
+				filepath.Join(tm.workspace, constant.DirProfile, constant.DirMemory),
 			),
 		},
 		{

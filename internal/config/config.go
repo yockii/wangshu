@@ -43,6 +43,9 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 			if err := os.WriteFile(cfgFilePath, cfgJson, 0644); err != nil {
 				return nil, err
 			}
+
+			dealCfgPath(cfg)
+
 			return cfg, nil
 		}
 		return nil, err
@@ -52,6 +55,12 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 		return nil, err
 	}
 
+	dealCfgPath(cfg)
+
+	return cfg, nil
+}
+
+func dealCfgPath(cfg *Config) {
 	for _, agent := range cfg.Agents {
 		if agent == nil {
 			continue
@@ -62,8 +71,6 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 	if cfg.Skill.GlobalPath != "" {
 		cfg.Skill.GlobalPath = utils.ExpandPath(cfg.Skill.GlobalPath)
 	}
-
-	return cfg, nil
 }
 
 // Validate validates the configuration

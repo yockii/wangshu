@@ -1,6 +1,4 @@
-[![Build Release](https://github.com/yockii/YoClaw/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/YoClaw/actions/workflows/build.yml) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/YoClaw) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/YoClaw) ![GitHub Release](https://img.shields.io/github/v/release/yockii/YoClaw)
-
-
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/YoClaw/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/YoClaw)![GitHub last commit](https://img.shields.io/github/last-commit/yockii/YoClaw) [![Build Release](https://github.com/yockii/YoClaw/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/YoClaw/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/YoClaw) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/YoClaw) 
 
 # YoClaw
 当前项目处于快速演进过程，欢迎大家试用并提出问题和建议，当前主要精力会集中在功能的完善和优化上。

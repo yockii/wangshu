@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -250,16 +249,9 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 		chatType = *chatTypePtr
 	}
 	if chatType == "p2p" {
-		if msgType == larkim.MsgTypeText {
-			body := struct {
-				Text string `json:"text"`
-			}{}
-			if err := json.Unmarshal([]byte(content), &body); err != nil {
-				slog.Error("Feishu Channel handleMessage error", "err", err)
-				return
-			}
-			content = body.Text
-		}
+
+		content = c.dealReceivedMessage(msgType, content)
+
 	} else { // group
 		// 看看哪个用户发的，获取用户名
 		senderName := c.getSenderName(chatID, senderID)
@@ -268,20 +260,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			return
 		}
 
-		if msgType == larkim.MsgTypeText {
-			body := struct {
-				Text string `json:"text"`
-			}{}
-			if err := json.Unmarshal([]byte(content), &body); err != nil {
-				slog.Error("Feishu Channel handleMessage error", "err", err)
-				return
-			}
-			content = body.Text
-			// 去掉所有 @_user_{0-100} 格式的字符串
-			content = regexp.MustCompile(`@_user_[0-9]+`).ReplaceAllString(content, "")
-		} else {
-			return
-		}
+		content = c.dealReceivedMessage(msgType, content)
 		// 看看是否@机器人
 		methionMe := false
 		if len(event.Event.Message.Mentions) > 0 {
@@ -297,7 +276,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			historyLen := len(c.groupHistory[chatID])
 			c.groupMu.RUnlock()
 			if historyLen == 0 {
-				c.getGroupHistory(chatID, 10)
+				c.getGroupHistory(chatID)
 			}
 			// 构造消息内容，将历史十条消息拼接起来
 			c.groupMu.RLock()
@@ -393,12 +372,12 @@ func (c *FeishuChannel) getAllGroupMembers(chatID string, pageToken string, resu
 	return nil
 }
 
-func (c *FeishuChannel) getGroupHistory(chatID string, length int) error {
+func (c *FeishuChannel) getGroupHistory(chatID string) error {
 	req := larkim.NewListMessageReqBuilder().
 		ContainerIdType("chat").
 		ContainerId(chatID).
 		SortType("ByCreateTimeDesc").
-		PageSize((length)).
+		PageSize(20).
 		Build()
 	resp, err := c.restClient.Im.V1.Message.List(context.Background(), req)
 	if err != nil {
@@ -413,21 +392,23 @@ func (c *FeishuChannel) getGroupHistory(chatID string, length int) error {
 
 	// 遍历消息列表
 	var msgs []string
-	for _, message := range resp.Data.Items {
+	for i, message := range resp.Data.Items {
+		if i == 0 {
+			continue
+		}
+		if len(msgs) > 9 {
+			break
+		}
 		if message.Body != nil && message.Sender != nil && message.Sender.Id != nil && message.Sender.SenderType != nil {
 			// 只处理文本消息
-			if message.MsgType == nil || *message.MsgType != "text" {
+			if message.MsgType == nil {
 				continue
 			}
-			body := struct {
-				Text string `json:"text"`
-			}{}
-			content := *message.Body.Content
-			if err := json.Unmarshal([]byte(content), &body); err != nil {
-				slog.Error("Feishu Channel getGroupHistory error", "err", err)
+			content := c.dealReceivedMessage(*message.MsgType, *message.Body.Content)
+			if content == "" {
 				continue
 			}
-			msgs = append(msgs, fmt.Sprintf("%s: %s", c.getSenderName(chatID, *message.Sender.Id), body.Text))
+			msgs = append(msgs, fmt.Sprintf("%s: %s", c.getSenderName(chatID, *message.Sender.Id), content))
 		}
 	}
 	// 将msgs倒一下
@@ -436,4 +417,60 @@ func (c *FeishuChannel) getGroupHistory(chatID string, length int) error {
 	c.groupHistory[chatID] = msgs
 	c.groupMu.Unlock()
 	return nil
+}
+
+func (c *FeishuChannel) dealReceivedMessage(messageType, content string) string {
+	switch messageType {
+	case "text":
+		body := struct {
+			Text string `json:"text"`
+		}{}
+		if err := json.Unmarshal([]byte(content), &body); err != nil {
+			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
+			return ""
+		}
+		return body.Text
+	case "post":
+		body := struct {
+			Title   string `json:"title"`
+			Content [][]struct {
+				Tag      string `json:"tag"`
+				Text     string `json:"text"`
+				Href     string `json:"href"`
+				Language string `json:"language"`
+			} `json:"content"`
+		}{}
+		if err := json.Unmarshal([]byte(content), &body); err != nil {
+			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
+			return ""
+		}
+
+		var content strings.Builder
+		content.WriteString(body.Title)
+		for _, item := range body.Content {
+			for _, item := range item {
+				content.WriteString("\n")
+				switch item.Tag {
+				case "text", "md":
+					content.WriteString(item.Text)
+				case "a":
+					content.WriteString("[")
+					content.WriteString(item.Text)
+					content.WriteString("](")
+					content.WriteString(item.Href)
+					content.WriteString(")")
+				case "code_block":
+					content.WriteString("```")
+					content.WriteString(item.Language)
+					content.WriteString("\n")
+					content.WriteString(item.Text)
+					content.WriteString("```")
+				}
+			}
+		}
+
+		return content.String()
+	default:
+		return ""
+	}
 }

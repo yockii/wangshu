@@ -2,12 +2,14 @@ package channel
 
 import (
 	"context"
+
+	"github.com/yockii/yoclaw/pkg/bus"
 )
 
 type Channel interface {
 	Start() error
 	Stop() error
-	SendMessage(ctx context.Context, chatID, content string) error
+	SendMessage(ctx context.Context, msg bus.OutboundMessage) error
 }
 
 type MessageEvent struct {

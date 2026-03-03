@@ -24,6 +24,15 @@ func NewMessageTool() *MessageTool {
 				"type":        "string",
 				"description": "The message to send",
 			},
+			"fileType": map[string]any{
+				"type":        "string",
+				"description": "The type of file to send, e.g. image, file",
+				"enum":        []string{constant.FileTypeImage, constant.FileTypeFile},
+			},
+			"filePath": map[string]any{
+				"type":        "string",
+				"description": "The absolute path to the file to send",
+			},
 		},
 		"required": []string{"content"},
 	}
@@ -39,11 +48,22 @@ func (t *MessageTool) execute(ctx context.Context, params map[string]string) (st
 	channel := params[constant.ToolCallParamChannel]
 	chatID := params[constant.ToolCallParamChatID]
 
-	bus.Default().PublishOutbound(bus.OutboundMessage{
+	om := bus.OutboundMessage{
 		Channel: channel,
 		ChatID:  chatID,
 		Content: content,
-	})
+	}
+
+	fileType := params["fileType"]
+	filePath := params["filePath"]
+	if fileType != "" && filePath != "" {
+		om.Media = append(om.Media, bus.MediaAttachment{
+			Type:     fileType,
+			FilePath: filePath,
+		})
+	}
+
+	bus.Default().PublishOutbound(om)
 
 	return "", nil
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
 	"github.com/yockii/yoclaw/pkg/bus"
+	"github.com/yockii/yoclaw/pkg/constant"
 )
 
 func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
@@ -156,27 +158,13 @@ func (c *FeishuChannel) Stop() error {
 	return nil
 }
 
-func (c *FeishuChannel) SendMessage(ctx context.Context, chatID, message string) error {
-
-	type BodyText struct {
-		Text string `json:"text"`
-	}
-
-	body := BodyText{
-		Text: message,
-	}
-
-	bodyContent, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-
+func (c *FeishuChannel) sendMsg(ctx context.Context, chatID, content string) error {
 	req := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(larkim.ReceiveIdTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeText).
-			Content(string(bodyContent)).
+			Content(content).
 			Build()).
 		Build()
 
@@ -188,9 +176,128 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, chatID, message string)
 
 	if !resp.Success() {
 		slog.Error("Feishu Channel SendMessage error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
+		return resp.CodeError
+	}
+	return nil
+}
+
+func (c *FeishuChannel) SendMessage(ctx context.Context, om bus.OutboundMessage) error {
+	if om.Content != "" {
+		type BodyText struct {
+			Text string `json:"text"`
+		}
+
+		body := BodyText{
+			Text: om.Content,
+		}
+
+		bodyContent, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+
+		err = c.sendMsg(ctx, om.ChatID, string(bodyContent))
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(om.Media) > 0 {
+		// 发送文件
+		for _, m := range om.Media {
+			if m.Type == constant.FileTypeImage {
+				// 发送图片
+				key, err := c.uploadImage(m.FilePath)
+				if err != nil {
+					slog.Error("Feishu Channel upload image error", "err", err)
+					continue
+				}
+				body := struct {
+					ImageKey string `json:"image_key"`
+				}{
+					ImageKey: key,
+				}
+				bodyContent, err := json.Marshal(body)
+				if err != nil {
+					slog.Error("Feishu Channel upload image error", "err", err)
+					continue
+				}
+				err = c.sendMsg(ctx, om.ChatID, string(bodyContent))
+				if err != nil {
+					slog.Error("Feishu Channel send image error", "err", err)
+					continue
+				}
+			} else if m.Type == constant.FileTypeFile {
+				// 发送文件
+				key, err := c.uploadFile(m.FilePath)
+				if err != nil {
+					slog.Error("Feishu Channel upload file error", "err", err)
+					continue
+				}
+				body := struct {
+					FileKey string `json:"file_key"`
+				}{
+					FileKey: key,
+				}
+				bodyContent, err := json.Marshal(body)
+				if err != nil {
+					slog.Error("Feishu Channel upload file error", "err", err)
+					continue
+				}
+				err = c.sendMsg(ctx, om.ChatID, string(bodyContent))
+				if err != nil {
+					slog.Error("Feishu Channel send file error", "err", err)
+					continue
+				}
+			}
+		}
 	}
 
 	return nil
+}
+
+func (c *FeishuChannel) uploadImage(p string) (string, error) {
+	file, err := os.Open(p)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	req := larkim.NewCreateImageReqBuilder().
+		Body(larkim.NewCreateImageReqBodyBuilder().
+			ImageType(`message`).
+			Image(file).
+			Build()).
+		Build()
+	resp, err := c.restClient.Im.V1.Image.Create(context.Background(), req)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success() {
+		return "", resp.CodeError
+	}
+	return *resp.Data.ImageKey, nil
+}
+
+func (c *FeishuChannel) uploadFile(p string) (string, error) {
+	file, err := os.Open(p)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	req := larkim.NewCreateFileReqBuilder().
+		Body(larkim.NewCreateFileReqBodyBuilder().
+			FileName(file.Name()).
+			File(file).
+			Build()).
+		Build()
+	resp, err := c.restClient.Im.V1.File.Create(context.Background(), req)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success() {
+		return "", resp.CodeError
+	}
+	return *resp.Data.FileKey, nil
 }
 
 func (c *FeishuChannel) connectToFeishu() {
@@ -308,7 +415,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 
 func (c *FeishuChannel) SubscribeOutbound(ctx context.Context, msg bus.OutboundMessage) {
 	if msg.Channel == c.name {
-		c.SendMessage(ctx, msg.ChatID, msg.Content)
+		c.SendMessage(ctx, msg)
 	}
 }
 

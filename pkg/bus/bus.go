@@ -96,7 +96,7 @@ func (b *MessageBus) PublishInbound(msg InboundMessage) error {
 
 func (b *MessageBus) PublishOutbound(msg OutboundMessage) error {
 	// 如果仅仅是HEARTBEAT_OK, 则不发送
-	if msg.Content == constant.HEARTBEAT_OK || msg.Content == "" {
+	if msg.Content == constant.HEARTBEAT_OK || (msg.Content == "" && len(msg.Media) == 0) {
 		return nil
 	}
 

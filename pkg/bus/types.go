@@ -12,11 +12,8 @@ type InboundMessage struct {
 
 // MediaAttachment 媒体附件
 type MediaAttachment struct {
-	Type      string // 媒体类型，如"image"、"file"等
-	URL       string // 媒体文件的URL
-	MimeType  string // 媒体文件的MIME类型
-	FileSize  int64  // 媒体文件的大小，单位字节
-	Thumbnail string // 可选的缩略图URL
+	Type     string // 媒体类型，如"image"、"file"等
+	FilePath string // 媒体文件的路径
 }
 
 type OutboundMessage struct {

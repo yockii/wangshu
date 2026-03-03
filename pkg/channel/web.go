@@ -98,7 +98,7 @@ func (c *WebChannel) monitor() {
 
 func (c *WebChannel) SubscribeOutbound(ctx context.Context, msg bus.OutboundMessage) {
 	if msg.Channel == c.name {
-		c.SendMessage(ctx, msg.ChatID, msg.Content)
+		c.SendMessage(ctx, msg)
 	}
 }
 
@@ -147,7 +147,7 @@ func (c *WebChannel) readLoop() {
 	}
 }
 
-func (c *WebChannel) SendMessage(ctx context.Context, chatID, content string) error {
+func (c *WebChannel) SendMessage(ctx context.Context, om bus.OutboundMessage) error {
 	c.connMu.RLock()
 	defer c.connMu.RUnlock()
 
@@ -156,10 +156,10 @@ func (c *WebChannel) SendMessage(ctx context.Context, chatID, content string) er
 		return nil
 	}
 
-	msg := map[string]interface{}{
+	msg := map[string]any{
 		"type":    "message",
-		"content": content,
-		"chat_id": chatID,
+		"content": om.Content,
+		"chat_id": om.ChatID,
 	}
 
 	if err := c.conn.WriteJSON(msg); err != nil {

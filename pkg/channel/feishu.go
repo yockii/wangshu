@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -292,8 +293,17 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			}
 		}
 		if methionMe {
+			c.groupMu.RLock()
+			historyLen := len(c.groupHistory[chatID])
+			c.groupMu.RUnlock()
+			if historyLen == 0 {
+				c.getGroupHistory(chatID, 10)
+			}
 			// 构造消息内容，将历史十条消息拼接起来
-			content = fmt.Sprintf("最近10条消息:\n%s\n当前消息(提到了你):%s", strings.Join(c.groupHistory[chatID], "\n"), fmt.Sprintf("%s: %s", senderName, content))
+			c.groupMu.RLock()
+			history := c.groupHistory[chatID]
+			c.groupMu.RUnlock()
+			content = fmt.Sprintf("最近10条消息:\n%s\n当前消息(提到了你):%s", strings.Join(history, "\n"), fmt.Sprintf("%s: %s", senderName, content))
 		} else {
 			// 将消息保留到最近10条
 			c.groupMu.Lock()
@@ -380,5 +390,50 @@ func (c *FeishuChannel) getAllGroupMembers(chatID string, pageToken string, resu
 	if resp.Data.HasMore != nil && *resp.Data.HasMore && resp.Data.PageToken != nil && *resp.Data.PageToken != "" {
 		return c.getAllGroupMembers(chatID, *resp.Data.PageToken, result)
 	}
+	return nil
+}
+
+func (c *FeishuChannel) getGroupHistory(chatID string, length int) error {
+	req := larkim.NewListMessageReqBuilder().
+		ContainerIdType("chat").
+		ContainerId(chatID).
+		SortType("ByCreateTimeDesc").
+		PageSize((length)).
+		Build()
+	resp, err := c.restClient.Im.V1.Message.List(context.Background(), req)
+	if err != nil {
+		slog.Error("Fetch Feishu Group Message Failed", "error", err)
+		return err
+	}
+
+	if !resp.Success() {
+		slog.Error("Feishu Channel getGroupHistory error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
+		return resp.CodeError
+	}
+
+	// 遍历消息列表
+	var msgs []string
+	for _, message := range resp.Data.Items {
+		if message.Body != nil && message.Sender != nil && message.Sender.Id != nil && message.Sender.SenderType != nil {
+			// 只处理文本消息
+			if message.MsgType == nil || *message.MsgType != "text" {
+				continue
+			}
+			body := struct {
+				Text string `json:"text"`
+			}{}
+			content := *message.Body.Content
+			if err := json.Unmarshal([]byte(content), &body); err != nil {
+				slog.Error("Feishu Channel getGroupHistory error", "err", err)
+				continue
+			}
+			msgs = append(msgs, fmt.Sprintf("%s: %s", c.getSenderName(chatID, *message.Sender.Id), body.Text))
+		}
+	}
+	// 将msgs倒一下
+	slices.Reverse(msgs)
+	c.groupMu.Lock()
+	c.groupHistory[chatID] = msgs
+	c.groupMu.Unlock()
 	return nil
 }

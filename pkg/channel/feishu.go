@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -28,6 +29,7 @@ func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 		stopCh:       make(chan struct{}, 1),
 		reconnectCh:  make(chan struct{}, 1),
 		groupHistory: make(map[string][]string),
+		groupUsers:   sync.Map{},
 	}
 
 	eventHandler := dispatcher.NewEventDispatcher("", "").
@@ -61,7 +63,9 @@ type FeishuChannel struct {
 	stopCh      chan struct{}
 	reconnectCh chan struct{}
 
+	groupMu      sync.RWMutex
 	groupHistory map[string][]string // 群聊chat_id -> 最近10条消息列表
+	groupUsers   sync.Map            // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
 
 	openID        string
 	channelStatus int
@@ -255,8 +259,14 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			}
 			content = body.Text
 		}
-	} else {
-		// group
+	} else { // group
+		// 看看哪个用户发的，获取用户名
+		senderName := c.getSenderName(chatID, senderID)
+		if senderName == "" {
+			slog.Error("Feishu Channel handleMessage error", "err", "sender name not found")
+			return
+		}
+
 		if msgType == larkim.MsgTypeText {
 			body := struct {
 				Text string `json:"text"`
@@ -283,13 +293,15 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 		}
 		if methionMe {
 			// 构造消息内容，将历史十条消息拼接起来
-			content = fmt.Sprintf("最近10条消息:\n%s\n当前消息:%s", strings.Join(c.groupHistory[chatID], "\n"), content)
+			content = fmt.Sprintf("最近10条消息:\n%s\n当前消息(提到了你):%s", strings.Join(c.groupHistory[chatID], "\n"), fmt.Sprintf("%s: %s", senderName, content))
 		} else {
 			// 将消息保留到最近10条
+			c.groupMu.Lock()
+			defer c.groupMu.Unlock()
 			if c.groupHistory == nil {
 				c.groupHistory = make(map[string][]string)
 			}
-			c.groupHistory[chatID] = append(c.groupHistory[chatID], content)
+			c.groupHistory[chatID] = append(c.groupHistory[chatID], fmt.Sprintf("%s: %s", senderName, content))
 			if len(c.groupHistory[chatID]) > 10 {
 				c.groupHistory[chatID] = c.groupHistory[chatID][1:]
 			}
@@ -309,4 +321,64 @@ func (c *FeishuChannel) SubscribeOutbound(ctx context.Context, msg bus.OutboundM
 	if msg.Channel == c.name {
 		c.SendMessage(ctx, msg.ChatID, msg.Content)
 	}
+}
+
+func (c *FeishuChannel) getSenderName(chatID, senderID string) string {
+	if val, ok := c.groupUsers.Load(chatID); ok {
+		userMap := val.(map[string]string)
+		if name, has := userMap[senderID]; has {
+			return name
+		}
+	}
+
+	userMap := make(map[string]string)
+	// 如果没有，调用sdk查询
+	allMembers := make(map[string]string)
+	if err := c.getAllGroupMembers(chatID, "", allMembers); err != nil {
+		slog.Error("Feishu Channel getSenderName error", "err", err)
+		return ""
+	}
+	// 遍历成员列表，找到匹配的用户
+	name := ""
+	for openID, memberName := range allMembers {
+		userMap[openID] = memberName
+		if openID == senderID {
+			name = memberName
+		}
+	}
+	c.groupUsers.Store(chatID, userMap)
+
+	return name
+}
+
+func (c *FeishuChannel) getAllGroupMembers(chatID string, pageToken string, result map[string]string) error {
+	req := larkim.NewGetChatMembersReqBuilder().
+		ChatId(chatID).
+		MemberIdType("open_id").
+		PageSize(100).
+		PageToken(pageToken).
+		Build()
+	resp, err := c.restClient.Im.V1.ChatMembers.Get(context.Background(), req)
+	if err != nil {
+		slog.Error("Fetch Feishu Group Member Failed", "error", err)
+		return err
+	}
+
+	if !resp.Success() {
+		slog.Error("Feishu Channel getSenderName error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
+		return resp.CodeError
+	}
+
+	// 遍历成员列表
+	for _, member := range resp.Data.Items {
+		if member.MemberId != nil && member.Name != nil {
+			openID := *member.MemberId
+			result[openID] = *member.Name
+		}
+	}
+
+	if resp.Data.HasMore != nil && *resp.Data.HasMore && resp.Data.PageToken != nil && *resp.Data.PageToken != "" {
+		return c.getAllGroupMembers(chatID, *resp.Data.PageToken, result)
+	}
+	return nil
 }

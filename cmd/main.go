@@ -22,6 +22,8 @@ import (
 	"github.com/yockii/yoclaw/pkg/utils"
 )
 
+const Version = "dev"
+
 func main() {
 	run()
 

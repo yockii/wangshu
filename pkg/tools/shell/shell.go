@@ -6,5 +6,5 @@ import "github.com/yockii/wangshu/pkg/tools"
 func RegisterShellTools() {
 	tools.GetDefaultToolRegistry().Register(NewExecTool())
 	tools.GetDefaultToolRegistry().Register(NewProcessTool())
-	tools.GetDefaultToolRegistry().Register(NewAutoInteractiveTool())
+	// tools.GetDefaultToolRegistry().Register(NewAutoInteractiveTool())
 }

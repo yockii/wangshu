@@ -35,8 +35,8 @@ func NewWebSearchTool() *WebSearchTool {
 			},
 			"engine": map[string]any{
 				"type":        "string",
-				"description": "Search engine: duckduckgo (default), baidu, auto (chooses based on timezone)",
-				"enum":        []string{"duckduckgo", "baidu", "auto"},
+				"description": "Search engine: baidu, auto (chooses based on timezone)",
+				"enum":        []string{"baidu", "auto"},
 			},
 		},
 		"required": []string{"query"},
@@ -53,7 +53,7 @@ func (t *WebSearchTool) execute(ctx context.Context, params map[string]string) (
 
 	engine := params["engine"]
 	if engine == "" {
-		engine = "duckduckgo"
+		engine = "baidu"
 	}
 
 	numResults := 10

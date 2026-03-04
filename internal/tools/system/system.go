@@ -1,7 +1,7 @@
 package system
 
 import (
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 // RegisterSystemTools registers all system-related tools

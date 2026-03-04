@@ -19,8 +19,8 @@ import (
 	larkauth "github.com/larksuite/oapi-sdk-go/v3/service/auth/v3"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
-	"github.com/yockii/yoclaw/pkg/bus"
-	"github.com/yockii/yoclaw/pkg/constant"
+	"github.com/yockii/wangshu/pkg/bus"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {

@@ -3,7 +3,7 @@ package config
 import (
 	"sync"
 
-	"github.com/yockii/yoclaw/pkg/constant"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 type Config struct {
@@ -47,7 +47,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]*AgentConfig{
 			constant.Default: {
-				Workspace:   "~/.yoClaw/workspace",
+				Workspace:   "~/.wangshu/workspace",
 				Provider:    "myProvider",
 				Model:       "qwen3-max",
 				Temperature: 0.7,
@@ -77,7 +77,7 @@ func defaultConfig() *Config {
 			},
 		},
 		Skill: SkillConfig{
-			GlobalPath: "~/.yoClaw/skills",
+			GlobalPath: "~/.wangshu/skills",
 		},
 	}
 }

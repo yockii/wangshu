@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yockii/yoclaw/pkg/llm"
+	"github.com/yockii/wangshu/pkg/llm"
 )
 
 type TaskManager struct {

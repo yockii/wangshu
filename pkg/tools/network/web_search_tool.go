@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yockii/yoclaw/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/basic"
 )
 
 type WebSearchTool struct {

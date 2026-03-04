@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/types"
-	"github.com/yockii/yoclaw/pkg/constant"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 type Session struct {

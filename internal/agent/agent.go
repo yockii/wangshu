@@ -12,16 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/internal/cron"
-	"github.com/yockii/yoclaw/internal/session"
-	"github.com/yockii/yoclaw/internal/task"
-	"github.com/yockii/yoclaw/internal/types"
-	"github.com/yockii/yoclaw/pkg/bus"
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/llm"
-	"github.com/yockii/yoclaw/pkg/skills"
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/cron"
+	"github.com/yockii/wangshu/internal/session"
+	"github.com/yockii/wangshu/internal/task"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/bus"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/skills"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 type Agent struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/shared"
 	"github.com/openai/openai-go/v3/shared/constant"
-	selfConstant "github.com/yockii/yoclaw/pkg/constant"
+	selfConstant "github.com/yockii/wangshu/pkg/constant"
 )
 
 type OpenAIProvider struct {

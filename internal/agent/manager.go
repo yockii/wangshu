@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/llm"
+	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
 )
 
 var (

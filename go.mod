@@ -1,4 +1,4 @@
-module github.com/yockii/yoclaw
+module github.com/yockii/wangshu
 
 go 1.25.0
 

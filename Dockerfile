@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o yoclaw ./cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o wangshu ./cmd
 
 FROM alpine:latest
 
@@ -14,10 +14,10 @@ RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-COPY --from=builder /build/yoclaw /app/yoclaw
+COPY --from=builder /build/wangshu /app/wangshu
 
-RUN chmod +x /app/yoclaw
+RUN chmod +x /app/wangshu
 
-VOLUME ["/root/.yoClaw"]
+VOLUME ["/root/.wangshu"]
 
-ENTRYPOINT ["/app/yoclaw"]
+ENTRYPOINT ["/app/wangshu"]

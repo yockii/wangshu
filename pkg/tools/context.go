@@ -2,7 +2,8 @@ package tools
 
 import (
 	"context"
-	"github.com/yockii/yoclaw/pkg/llm"
+
+	"github.com/yockii/wangshu/pkg/llm"
 )
 
 // ToolContext provides the execution context for a tool call

@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"github.com/yockii/yoclaw/pkg/tools/filesystem"
+	"github.com/yockii/wangshu/pkg/tools/filesystem"
 )
 
 func RegisterFileSystemTools() {

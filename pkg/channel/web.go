@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/yockii/yoclaw/pkg/bus"
+	"github.com/yockii/wangshu/pkg/bus"
 )
 
 type WebChannel struct {

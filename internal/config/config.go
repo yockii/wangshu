@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/utils"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/utils"
 )
 
 var DefaultCfg *Config

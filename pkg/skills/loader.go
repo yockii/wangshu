@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yockii/yoclaw/internal/config"
-	"github.com/yockii/yoclaw/internal/types"
+	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/types"
 	"gopkg.in/yaml.v3"
 )
 

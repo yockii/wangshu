@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yockii/yoclaw/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/basic"
 )
 
 // ProcessStatus represents the current status of a process

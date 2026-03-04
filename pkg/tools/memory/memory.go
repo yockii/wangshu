@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 // RegisterMemoryTools registers all memory-related tools

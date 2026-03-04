@@ -1,6 +1,6 @@
 package shell
 
-import "github.com/yockii/yoclaw/pkg/tools"
+import "github.com/yockii/wangshu/pkg/tools"
 
 // RegisterShellTools registers all shell-related tools
 func RegisterShellTools() {

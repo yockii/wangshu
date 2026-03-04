@@ -1,7 +1,7 @@
 package task
 
 import (
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 // RegisterTaskTools registers all task-related tools

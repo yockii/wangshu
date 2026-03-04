@@ -49,14 +49,14 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          output_name="yoclaw-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
+          output_name="wangshu-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
           go build -ldflags="-s -w" -o "$output_name" ./cmd
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: yoclaw-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: yoclaw-*
+          name: wangshu-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: wangshu-*
 
   release:
     needs: build
@@ -112,7 +112,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/yoclaw:latest
-            ghcr.io/${{ github.repository_owner }}/yoclaw:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/wangshu:latest
+            ghcr.io/${{ github.repository_owner }}/wangshu:${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

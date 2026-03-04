@@ -10,8 +10,8 @@ import (
 	"time"
 
 	cron "github.com/netresearch/go-cron"
-	"github.com/yockii/yoclaw/internal/types"
-	"github.com/yockii/yoclaw/pkg/constant"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 type Executor func(job *types.BasicJobInfo)

@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/types"
+	"github.com/yockii/wangshu/internal/types"
 )
 
 type Manager struct {

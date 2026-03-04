@@ -1,7 +1,7 @@
 package network
 
 import (
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 // RegisterNetworkTools registers all network-related tools

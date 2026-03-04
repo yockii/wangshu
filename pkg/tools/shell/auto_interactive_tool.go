@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/llm"
-	"github.com/yockii/yoclaw/pkg/tools"
-	"github.com/yockii/yoclaw/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools/basic"
 )
 
 // InteractionResponse represents LLM analysis result

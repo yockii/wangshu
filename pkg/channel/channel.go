@@ -3,7 +3,7 @@ package channel
 import (
 	"context"
 
-	"github.com/yockii/yoclaw/pkg/bus"
+	"github.com/yockii/wangshu/pkg/bus"
 )
 
 type Channel interface {

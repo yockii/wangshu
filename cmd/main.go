@@ -7,19 +7,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yockii/yoclaw/internal/agent"
-	"github.com/yockii/yoclaw/internal/config"
-	systemTools "github.com/yockii/yoclaw/internal/tools/system"
-	taskTools "github.com/yockii/yoclaw/internal/tools/task"
-	"github.com/yockii/yoclaw/pkg/bus"
-	"github.com/yockii/yoclaw/pkg/channel"
-	"github.com/yockii/yoclaw/pkg/llm"
-	"github.com/yockii/yoclaw/pkg/skills"
-	"github.com/yockii/yoclaw/pkg/tools"
-	memoryTools "github.com/yockii/yoclaw/pkg/tools/memory"
-	networkTools "github.com/yockii/yoclaw/pkg/tools/network"
-	shellTools "github.com/yockii/yoclaw/pkg/tools/shell"
-	"github.com/yockii/yoclaw/pkg/utils"
+	"github.com/yockii/wangshu/internal/agent"
+	"github.com/yockii/wangshu/internal/config"
+	systemTools "github.com/yockii/wangshu/internal/tools/system"
+	taskTools "github.com/yockii/wangshu/internal/tools/task"
+	"github.com/yockii/wangshu/pkg/bus"
+	"github.com/yockii/wangshu/pkg/channel"
+	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/skills"
+	"github.com/yockii/wangshu/pkg/tools"
+	memoryTools "github.com/yockii/wangshu/pkg/tools/memory"
+	networkTools "github.com/yockii/wangshu/pkg/tools/network"
+	shellTools "github.com/yockii/wangshu/pkg/tools/shell"
+	"github.com/yockii/wangshu/pkg/utils"
 )
 
 const Version = "dev"
@@ -34,7 +34,7 @@ func main() {
 }
 
 func run() {
-	cfgPath := "~/.yoClaw/config.json"
+	cfgPath := "~/.wangshu/config.json"
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}

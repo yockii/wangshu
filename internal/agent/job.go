@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/yockii/yoclaw/internal/types"
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/llm"
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 func (a *Agent) executionJob(job *types.BasicJobInfo) {

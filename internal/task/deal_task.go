@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yockii/yoclaw/internal/tools/task"
-	"github.com/yockii/yoclaw/internal/types"
-	"github.com/yockii/yoclaw/pkg/bus"
-	"github.com/yockii/yoclaw/pkg/constant"
-	"github.com/yockii/yoclaw/pkg/llm"
-	"github.com/yockii/yoclaw/pkg/skills"
-	"github.com/yockii/yoclaw/pkg/tools"
+	"github.com/yockii/wangshu/internal/tools/task"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/bus"
+	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/skills"
+	"github.com/yockii/wangshu/pkg/tools"
 )
 
 func (tm *TaskManager) run() {

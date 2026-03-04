@@ -1,4 +1,5 @@
-﻿![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/wangshu/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/wangshu) ![GitHub last commit](https://img.shields.io/github/last-commit/yockii/wangshu) [![Build Release](https://github.com/yockii/wangshu/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/wangshu/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/wangshu) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/wangshu) 
+﻿![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/wangshu/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/wangshu) ![GitHub last commit](https://img.shields.io/github/last-commit/yockii/wangshu) [![Build Release](https://github.com/yockii/wangshu/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/wangshu/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/wangshu) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/wangshu) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/yockii/wangshu/total)
+
 
 # 望舒 (Wangshu)
 

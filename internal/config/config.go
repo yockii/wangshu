@@ -73,51 +73,162 @@ func dealCfgPath(cfg *Config) {
 	}
 }
 
-// Validate validates the configuration
+// Validate 验证配置，一次性返回所有错误
 func (c *Config) Validate() error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Validate workspace path
+	var errors []string
+
+	// 收集所有验证错误
+	if errs := c.validateAgents(); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+
+	if errs := c.validateProviders(); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+
+	if errs := c.validateChannels(); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+
+	if errs := c.validateReferences(); len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+
+	// 如果有错误，返回包含所有错误的格式化消息
+	if len(errors) > 0 {
+		return fmt.Errorf("配置验证失败，发现 %d 个问题：\n%s",
+			len(errors),
+			strings.Join(errors, "\n"))
+	}
+
+	return nil
+}
+
+// validateAgents 验证Agent配置，返回所有错误
+func (c *Config) validateAgents() []string {
+	var errors []string
+
 	for agentName, agent := range c.Agents {
 		if agent.Workspace == "" {
-			return fmt.Errorf("workspace path is required for agent %s", agentName)
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 缺少工作空间配置（请添加 \"workspace\": \"/path/to/workspace\"）", agentName))
 		}
 
 		if agent.Provider == "" {
-			return fmt.Errorf("provider is required for agent %s", agentName)
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 缺少Provider配置（请添加 \"provider\": \"provider名称\"）", agentName))
 		}
 
-		providerCfg := c.Providers[agent.Provider]
-		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
-			return fmt.Errorf("provider '%s' requires API key", agent.Provider)
+		if agent.Model == "" {
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 缺少模型配置（请添加 \"model\": \"模型名称\"）", agentName))
+		}
+
+		if agent.Temperature < 0 || agent.Temperature > 2 {
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 的Temperature值 %.2f 超出合理范围（应为 0-2）", agentName, agent.Temperature))
 		}
 	}
 
-	// Validate channel config
+	return errors
+}
+
+// validateProviders 验证Provider配置，返回所有错误
+// 只验证被Agent引用的Provider，忽略未使用的Provider
+func (c *Config) validateProviders() []string {
+	var errors []string
+
+	// 找出被使用的provider
+	usedProviders := make(map[string]bool)
+	for _, agent := range c.Agents {
+		usedProviders[agent.Provider] = true
+	}
+
+	for providerName, provider := range c.Providers {
+		// 跳过未被使用的provider
+		if !usedProviders[providerName] {
+			continue
+		}
+
+		if provider.Type == "" {
+			errors = append(errors, fmt.Sprintf("  - Provider '%s' 缺少类型配置（请添加 \"type\": \"openai/anthropic/ollama\"）", providerName))
+		}
+
+		// ollama类型不需要API Key
+		if provider.Type != "ollama" && provider.APIKey == "" {
+			errors = append(errors, fmt.Sprintf("  - Provider '%s' 缺少API密钥（请添加 \"api_key\": \"your-api-key\"）", providerName))
+		}
+
+		// 如果设置了BaseURL，验证格式
+		if provider.BaseURL != "" && !strings.HasPrefix(provider.BaseURL, "http://") && !strings.HasPrefix(provider.BaseURL, "https://") {
+			errors = append(errors, fmt.Sprintf("  - Provider '%s' 的BaseURL格式错误（应以 http:// 或 https:// 开头）", providerName))
+		}
+	}
+
+	return errors
+}
+
+// validateChannels 验证Channel配置，返回所有错误
+func (c *Config) validateChannels() []string {
+	var errors []string
+
 	for name, ch := range c.Channels {
 		if !ch.Enabled {
 			continue
 		}
+
+		if ch.Type == "" {
+			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 缺少类型配置（请添加 \"type\": \"feishu/web\"）", name))
+		}
+
+		if ch.Agent == "" {
+			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 未指定绑定的智能体（请添加 \"agent\": \"agent名称\"）", name))
+		}
+
 		switch ch.Type {
 		case "web":
 			if ch.HostAddress == "" {
-				return fmt.Errorf("%s host_address is required when enabled", name)
+				errors = append(errors, fmt.Sprintf("  - Web渠道 '%s' 缺少主机地址配置（请添加 \"host_address\": \"host:port\"，例如 \"localhost:8080\"）", name))
 			}
 			if ch.Token == "" {
-				return fmt.Errorf("%s token is required when enabled", name)
+				errors = append(errors, fmt.Sprintf("  - Web渠道 '%s' 缺少访问令牌配置（请添加 \"token\": \"your-secret-token\"）", name))
 			}
 		case "feishu":
 			if ch.AppID == "" {
-				return fmt.Errorf("%s app_id is required when enabled", name)
+				errors = append(errors, fmt.Sprintf("  - 飞书渠道 '%s' 缺少AppID配置（请添加 \"app_id\": \"your-app-id\"）", name))
 			}
 			if ch.AppSecret == "" {
-				return fmt.Errorf("%s app_secret is required when enabled", name)
+				errors = append(errors, fmt.Sprintf("  - 飞书渠道 '%s' 缺少AppSecret配置（请添加 \"app_secret\": \"your-app-secret\"）", name))
 			}
+		default:
+			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 的类型 '%s' 不支持（目前仅支持：feishu、web）", name, ch.Type))
 		}
 	}
 
-	return nil
+	return errors
+}
+
+// validateReferences 验证配置之间的引用关系，返回所有错误
+func (c *Config) validateReferences() []string {
+	var errors []string
+
+	// 验证Agent引用的Provider是否存在
+	for agentName, agent := range c.Agents {
+		if _, exists := c.Providers[agent.Provider]; !exists {
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 引用的Provider '%s' 不存在（请在providers中添加该配置）", agentName, agent.Provider))
+		}
+	}
+
+	// 验证Channel引用的Agent是否存在
+	for channelName, channel := range c.Channels {
+		if !channel.Enabled {
+			continue
+		}
+		if _, exists := c.Agents[channel.Agent]; !exists {
+			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 引用的智能体 '%s' 不存在（请在agents中添加该配置）", channelName, channel.Agent))
+		}
+	}
+
+	return errors
 }
 
 // SaveConfig saves configuration to file

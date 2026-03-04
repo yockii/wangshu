@@ -1,54 +1,59 @@
 ﻿![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/wangshu/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/wangshu) ![GitHub last commit](https://img.shields.io/github/last-commit/yockii/wangshu) [![Build Release](https://github.com/yockii/wangshu/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/wangshu/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/wangshu) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/wangshu) 
 
-# 望舒
+# 望舒 (Wangshu)
 
-`望舒`是一个功能强大的智能对话机器人框架，支持多种通信渠道接入，提供丰富的工具和灵活的任务执行能力。
+> *"前望舒使先驱兮，后飞廉使奔属。"* —— 屈原《离骚》
 
-## Why Wangshu
+**望舒引路，智慧同行。**
 
-如果你正在考虑选择 AI 助手框架，这里有一个与 [OpenClaw](https://github.com/openclaw/openclaw) 的对比：
+望舒，中国神话中为月亮驾车的神，寓意照亮前路、引导方向。本项目以此为名，致力于成为个人/企业的 AI 助手，驾驭电脑和系统，陪伴工作之旅，照亮工作之路，引导团队高效协作，做稳定可靠的数字员工。
 
-| 特性 | 望舒 | OpenClaw |
-|------|--------|----------|
-| **运行环境** | ✅ 零依赖，单一二进制文件 | ⚠️ 需要 Node.js 22+ 环境 |
-| **部署方式** | ✅ 下载即用，无需安装 | ⚠️ 需要 npm install 或 npx |
-| **配置复杂度** | ✅ 一个 JSON 文件，约定大于配置 | ⚠️ 需要 onboarding wizard，配置项繁多 |
-| **资源占用** | ✅ 低内存，快速启动 | ⚠️ Node.js 运行时开销较大 |
-| **群聊体验** | ✅ 自动识别用户身份，消息带发送者姓名 | ⚠️ 依赖配置，用户身份识别不明确 |
-| **消息上下文** | ✅ 自动保留最近群聊历史 | ⚠️ 需要手动配置 max history |
-| **Web 管理** | ✅ 可选独立程序，按需安装 | ⚠️ 内置但增加复杂度 |
-| **跨平台** | ✅ Windows/macOS/Linux 原生支持 | ⚠️ Windows 需要 WSL2 |
+## 愿景
 
-### 望舒 的设计理念
+望舒的目标是成为你的**个人 AI 助理**和**企业数字员工**：
 
-**约定大于配置**：我们相信好的默认值比灵活的配置更重要。望舒 大部分行为都有合理的默认值，让你开箱即用，而不是在配置文件中迷失。
+- 🧑‍💼 **个人 AI 助理** - 理解你的工作习惯，协助处理日常任务，成为你的智能工作伙伴
+- 🏢 **企业 AI 员工** - 稳定可靠地执行业务流程，降低重复劳动成本，提升团队协作效率
+- 🚀 **未来路线** - 持续演进为更智能的自主代理，具备更强的任务规划与执行能力
 
-**零依赖部署**：Go 语言编译为单一二进制文件，无需安装任何运行时环境。下载、运行、开始使用——就这么简单。
+## 特性
 
-**专注用户体验**：特别是在群聊场景下，望舒 会自动：
+- 🌙 **照亮前路** - 如望舒为月驾车，为你的工作之路提供智能指引
+- 🛡️ **稳定可靠** - 零依赖部署，单一二进制文件，低资源占用
+- 🤝 **智慧同行** - 陪伴工作全程，理解上下文，高效协作
+- 🔧 **灵活扩展** - 支持多渠道接入，丰富的工具和技能系统
+
+## 核心优势
+
+### 零依赖部署
+
+Go 语言编译为单一二进制文件，无需安装任何运行时环境。下载、运行、开始使用——就这么简单。
+
+### 约定大于配置
+
+我们相信好的默认值比灵活的配置更重要。望舒大部分行为都有合理的默认值，让你开箱即用，而不是在配置文件中迷失。
+
+### 专注用户体验
+
+特别是在群聊场景下，望舒会自动：
 - 识别发送者身份并显示姓名
 - 保留最近的消息上下文
 - 只在被 @ 时响应，不打扰正常群聊
 
-**渐进式复杂度**：从简单的单文件配置开始，需要时再扩展。不需要一开始就面对数百个配置项。
+### 渐进式复杂度
 
-### 适合 望舒 的场景
+从简单的单文件配置开始，需要时再扩展。不需要一开始就面对数百个配置项。
+
+### 跨平台支持
+
+原生支持 Windows、macOS、Linux，无需 WSL 或其他兼容层。
+
+## 适用场景
 
 - 🚀 想快速部署一个 AI 助手，不想折腾环境配置
 - 🏢 企业内部使用，需要稳定、低资源占用
 - 👥 群聊场景为主，需要良好的用户识别和上下文
 - 🖥️ Windows 用户，不想安装 WSL2
-
-### 适合 OpenClaw 的场景
-
-- 🧪 需要高度定制化和灵活性
-- 📱 需要更多渠道支持（WhatsApp、Telegram、Discord 等，但我们后续也会逐渐支持）
-- 🔧 已经熟悉 Node.js 生态
-- 🎯 需要高级功能如语音唤醒、Canvas 等
-
-
-不过，相信开源社区的力量，望舒也会逐渐成长起来
-
 
 ---
 

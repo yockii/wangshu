@@ -13,6 +13,7 @@ import (
 	taskTools "github.com/yockii/wangshu/internal/tools/task"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
+	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
@@ -131,7 +132,7 @@ func run() {
 			case "feishu":
 				if ch.AppID != "" && ch.AppSecret != "" {
 					noChannelFound = false
-					feishuChannel := channel.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
+					feishuChannel := feishu.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
 					channel.RegisterChannel(name, feishuChannel)
 					var feishuAgent *agent.Agent
 					if ch.Agent != "" {

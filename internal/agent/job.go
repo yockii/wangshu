@@ -11,6 +11,7 @@ import (
 	"github.com/yockii/wangshu/pkg/tools"
 )
 
+// Declared
 func (a *Agent) executionJob(job *types.BasicJobInfo) {
 	msgs := []llm.Message{
 		{
@@ -29,8 +30,8 @@ func (a *Agent) executionJob(job *types.BasicJobInfo) {
 		},
 	}
 	ctx := context.Background()
+	availableTools := tools.GetDefaultToolRegistry().GetSelectedToolsInProviderDefs(constant.ToolNameMessage, constant.ToolNameTask)
 	for i := 0; i < 50; i++ {
-		availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
 		if err != nil {
 			slog.Error("LLM call failed", "jobId", job.ID, "error", err)

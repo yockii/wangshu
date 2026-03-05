@@ -12,27 +12,28 @@ import (
 	cron "github.com/netresearch/go-cron"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
 )
-
-type Executor func(job *types.BasicJobInfo)
 
 type CronManager struct {
 	workspace string
+	model     string
+	provider  llm.Provider
 	mu        sync.RWMutex
 	cronJobs  map[string]*types.BasicJobInfo
-	executor  Executor
 	ctx       context.Context
 	cancel    context.CancelFunc
 	c         *cron.Cron
 }
 
-func NewManager(workspace string, executor Executor) *CronManager {
+func NewCronManager(workspace, model string, provider llm.Provider) *CronManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr := &CronManager{
 		workspace: workspace,
+		model:     model,
+		provider:  provider,
 		mu:        sync.RWMutex{},
 		cronJobs:  make(map[string]*types.BasicJobInfo),
-		executor:  executor,
 		ctx:       ctx,
 		cancel:    cancel,
 		c: cron.New(
@@ -121,7 +122,11 @@ func (mgr *CronManager) scanJobs() {
 }
 
 func (mgr *CronManager) executeJob(job *types.BasicJobInfo) {
-	mgr.executor(job)
+	ctx := context.Background()
+	if err := mgr.Execute(ctx, job); err != nil {
+		slog.Error("执行定时任务失败", "jobId", job.ID, "error", err)
+		return
+	}
 
 	entry := mgr.c.EntryByName(job.ID)
 	if entry.Valid() {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/yockii/wangshu/internal/agent"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/tools/message"
 	systemTools "github.com/yockii/wangshu/internal/tools/system"
 	taskTools "github.com/yockii/wangshu/internal/tools/task"
 	"github.com/yockii/wangshu/pkg/bus"
@@ -95,11 +96,12 @@ func run() {
 	shellTools.RegisterShellTools()
 	// Register network tools
 	networkTools.RegisterNetworkTools()
-	// Register system tools
-	systemTools.RegisterSystemTools()
 	// Register memory tools
 	memoryTools.RegisterMemoryTools()
-	taskTools.RegisterTaskTools()
+
+	tools.GetDefaultToolRegistry().Register(taskTools.NewTaskTool())
+	tools.GetDefaultToolRegistry().Register(systemTools.NewCronTool())
+	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	// TODO 实现并注册更多工具
 
 	skills.InitializeSkillLoader()

@@ -3,8 +3,12 @@ package network
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 )
+
+// browserTestLock 确保浏览器测试顺序执行，避免同时启动多个浏览器实例
+var browserTestLock sync.Mutex
 
 func TestNewBrowserTool(t *testing.T) {
 	tool := NewBrowserTool()
@@ -91,6 +95,9 @@ func TestBrowserTool_Execute_MissingActionParameter(t *testing.T) {
 }
 
 func TestBrowserTool_Execute_Open_MissingURL(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	// This test will try to initialize the browser, which might fail
@@ -111,6 +118,9 @@ func TestBrowserTool_Execute_Open_MissingURL(t *testing.T) {
 }
 
 func TestBrowserTool_ActionsExist(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	// Test that all expected actions are valid
@@ -192,6 +202,9 @@ func TestBrowserTool_Execute_ListTabs(t *testing.T) {
 }
 
 func TestBrowserTool_Click_MissingSelector(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	// This will try to initialize browser, which might fail
@@ -211,6 +224,9 @@ func TestBrowserTool_Click_MissingSelector(t *testing.T) {
 }
 
 func TestBrowserTool_Fill_MissingParameters(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	// Test with missing selector
@@ -237,6 +253,9 @@ func TestBrowserTool_Fill_MissingParameters(t *testing.T) {
 }
 
 func TestBrowserTool_Text_MissingSelector(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	_, err := tool.Execute(context.Background(), map[string]string{
@@ -255,6 +274,9 @@ func TestBrowserTool_Text_MissingSelector(t *testing.T) {
 }
 
 func TestBrowserTool_Wait_MissingSelector(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	_, err := tool.Execute(context.Background(), map[string]string{
@@ -273,6 +295,9 @@ func TestBrowserTool_Wait_MissingSelector(t *testing.T) {
 }
 
 func TestBrowserTool_Screenshot_DefaultPath(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
 	tool := NewBrowserTool()
 
 	// This will try to initialize browser, which might fail

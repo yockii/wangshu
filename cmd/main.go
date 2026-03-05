@@ -16,6 +16,7 @@ import (
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/llm/openai"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
 	memoryTools "github.com/yockii/wangshu/pkg/tools/memory"
@@ -69,7 +70,8 @@ func run() {
 		}
 		switch providerCfg.Type {
 		case "openai":
-			llm.RegisterProvider(providerName, llm.NewOpenAIProvider(providerCfg.APIKey, providerCfg.BaseURL))
+			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, openaiProvider)
 			providerCount++
 		// case "ollama":
 		// 	llm.RegisterProvider(providerName, llm.NewOllamaProvider(providerCfg.APIKey, providerCfg.BaseURL))

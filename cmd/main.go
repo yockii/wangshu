@@ -14,6 +14,7 @@ import (
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
+	"github.com/yockii/wangshu/pkg/channel/web"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
@@ -112,7 +113,7 @@ func run() {
 			case "web":
 				if ch.HostAddress != "" && ch.Token != "" {
 					noChannelFound = false
-					webChannel := channel.NewWebChannel(name, ch.HostAddress, ch.Token)
+					webChannel := web.NewWebChannel(name, ch.HostAddress, ch.Token)
 					channel.RegisterChannel(name, webChannel)
 					var webAgent *agent.Agent
 					if ch.Agent != "" {

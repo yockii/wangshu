@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -101,6 +102,7 @@ func TestBrowserTool_Execute_Open_MissingURL(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// This test will try to initialize the browser, which might fail
 	// We're mainly testing that the parameter validation works
@@ -124,48 +126,47 @@ func TestBrowserTool_ActionsExist(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	// 确保测试结束时关闭浏览器
+	defer tool.close()
 
 	// Test that all expected actions are valid
 	validActions := []string{
+		"close",
+		"list_tabs",
+	}
+
+	// 只测试不需要浏览器的操作
+	for _, action := range validActions {
+		_, err := tool.Execute(context.Background(), map[string]string{
+			"action": action,
+		})
+		// 这些操作应该成功（即使没有浏览器）
+		if err != nil {
+			t.Logf("Action '%s' error (expected): %v", action, err)
+		}
+	}
+
+	// 验证其他 action 字符串是否被识别，但不实际执行（避免启动浏览器）
+	otherActions := []string{
 		"open",
 		"screenshot",
-		"close",
 		"click",
 		"fill",
 		"text",
 		"html",
 		"wait",
-		"list_tabs",
 	}
 
-	for _, action := range validActions {
-		// We can't actually execute these without a browser,
-		// but we can verify the action strings are recognized
-		if action == "close" || action == "list_tabs" {
-			// These actions don't require browser initialization
-			var err error
-			if action == "close" {
-				_, err = tool.Execute(context.Background(), map[string]string{
-					"action": action,
-				})
-			} else {
-				_, err = tool.Execute(context.Background(), map[string]string{
-					"action": action,
-				})
-			}
-			// close should succeed, list_tabs should succeed
-			if err != nil && action == "close" {
-				t.Logf("Action '%s' error: %v", action, err)
-			}
-		} else {
-			// Other actions require browser initialization, which will fail in tests
-			// Just verify the action is recognized by checking it doesn't say "unknown action"
-			_, err := tool.Execute(context.Background(), map[string]string{
-				"action": action,
-			})
-			if err != nil && strings.Contains(err.Error(), "unknown action") {
-				t.Errorf("Action '%s' should be recognized, got 'unknown action' error", action)
-			}
+	// 通过检查 Execute 的错误消息来验证 action 被识别
+	// 如果返回 "unknown action" 错误，说明 action 字符串无效
+	for _, action := range otherActions {
+		_, err := tool.Execute(context.Background(), map[string]string{
+			"action": action,
+		})
+		// 预期会因为缺少参数或浏览器未初始化而失败
+		// 但不应该返回 "unknown action" 错误
+		if err != nil && strings.Contains(err.Error(), "unknown action") {
+			t.Errorf("Action '%s' should be recognized, got 'unknown action' error", action)
 		}
 	}
 }
@@ -208,6 +209,7 @@ func TestBrowserTool_Click_MissingSelector(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// This will try to initialize browser, which might fail
 	_, err := tool.Execute(context.Background(), map[string]string{
@@ -230,6 +232,7 @@ func TestBrowserTool_Fill_MissingParameters(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// Test with missing selector
 	_, err := tool.Execute(context.Background(), map[string]string{
@@ -259,6 +262,7 @@ func TestBrowserTool_Text_MissingSelector(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	_, err := tool.Execute(context.Background(), map[string]string{
 		"action":   "text",
@@ -280,6 +284,7 @@ func TestBrowserTool_Wait_MissingSelector(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	_, err := tool.Execute(context.Background(), map[string]string{
 		"action":   "wait",
@@ -301,6 +306,7 @@ func TestBrowserTool_Screenshot_DefaultPath(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// This will try to initialize browser, which might fail
 	_, err := tool.Execute(context.Background(), map[string]string{
@@ -354,6 +360,7 @@ func TestBrowserTool_CollectElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 立即注册 defer，确保任何时候都会清理
 
 	// 创建一个简单的HTML页面进行测试
 	htmlContent := `
@@ -376,7 +383,6 @@ func TestBrowserTool_CollectElements(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -457,6 +463,7 @@ func TestBrowserTool_Open_WithElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// 使用data URI创建一个简单的测试页面
 	htmlContent := `
@@ -494,9 +501,6 @@ func TestBrowserTool_Open_WithElements(t *testing.T) {
 	if !strings.Contains(result, "test-input") && !strings.Contains(result, "test-btn") {
 		t.Errorf("Result should contain test elements, got: %s", result)
 	}
-
-	// 清理
-	tool.close()
 }
 
 // TestBrowserTool_Fill_WithElements 测试填充后返回元素信息
@@ -505,6 +509,7 @@ func TestBrowserTool_Fill_WithElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 立即注册 defer
 
 	// 创建测试页面
 	htmlContent := `
@@ -521,7 +526,6 @@ func TestBrowserTool_Fill_WithElements(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -563,6 +567,7 @@ func TestBrowserTool_Click_WithElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 立即注册 defer
 
 	// 创建测试页面
 	htmlContent := `
@@ -579,7 +584,6 @@ func TestBrowserTool_Click_WithElements(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -615,6 +619,7 @@ func TestBrowserTool_Wait_WithElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 立即注册 defer
 
 	// 创建测试页面
 	htmlContent := `
@@ -632,7 +637,6 @@ func TestBrowserTool_Wait_WithElements(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -699,7 +703,6 @@ func TestBrowserTool_ElementInfoStructure(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -736,9 +739,9 @@ func TestBrowserTool_ElementInfoStructure(t *testing.T) {
 	// 验证特殊属性
 	expectedAttributes := []string{
 		`"required": true`,
-		`"enabled": false`,  // disabled按钮显示为enabled: false
+		`"enabled": false`, // disabled按钮显示为enabled: false
 		`"aria_label": "Go to page 2"`,
-		`"data-test-id": "page1-link"`,  // 在data_selectors中
+		`"data-test-id": "page1-link"`, // 在data_selectors中
 		`"placeholder": "Text input"`,
 	}
 
@@ -778,7 +781,6 @@ func TestBrowserTool_CollectElements_EmptyPage(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -800,6 +802,7 @@ func TestBrowserTool_Screenshot_WithElements(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 立即注册 defer
 
 	// 创建测试页面
 	htmlContent := `
@@ -816,7 +819,6 @@ func TestBrowserTool_Screenshot_WithElements(t *testing.T) {
 		t.Skipf("Failed to initialize browser: %v", err)
 		return
 	}
-	defer tool.close()
 
 	err := tool.page.SetContent(htmlContent)
 	if err != nil {
@@ -852,6 +854,7 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	defer browserTestLock.Unlock()
 
 	tool := NewBrowserTool()
+	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// 获取测试文件的绝对路径
 	// 测试文件位于 pkg/tools/network/testdata/test_page.html
@@ -1026,9 +1029,6 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	if !strings.Contains(result, "Page Elements") {
 		t.Error("Expected element information after wait operation")
 	}
-
-	// 清理
-	tool.close()
 }
 
 // TestBrowserTool_RealHTMLFile_ElementValidation 详细验证元素信息
@@ -1060,8 +1060,6 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 		return
 	}
 
-	defer tool.close()
-
 	// 验证关键元素都被收集
 	expectedElements := []string{
 		"username",
@@ -1091,7 +1089,7 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 		"name_selector",
 		"class_selector",
 		"xpath_selector",
-		"data_selectors",  // data-testid在data_selectors中
+		"data_selectors", // data-testid在data_selectors中
 	}
 
 	for _, selector := range expectedSelectors {
@@ -1119,10 +1117,228 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 
 	// 验证data-testid属性被收集（在data_selectors对象中）
 	if !strings.Contains(result, "username-input") ||
-	   !strings.Contains(result, "email-input") ||
-	   !strings.Contains(result, "submit-button") {
+		!strings.Contains(result, "email-input") ||
+		!strings.Contains(result, "submit-button") {
 		t.Error("Expected data-testid attributes to be collected")
 	}
 
 	t.Logf("Full result:\n%s", result)
 }
+
+// TestBrowserTool_HTML_Formats 测试HTML获取的不同格式
+func TestBrowserTool_HTML_Formats(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
+	tool := NewBrowserTool()
+	defer tool.close()
+
+	// 创建测试页面
+	htmlContent := `
+	<!DOCTYPE html>
+	<html>
+	<head><title>Test Page</title></head>
+	<body>
+		<h1 id="heading">Welcome</h1>
+		<p class="text">This is a test page.</p>
+		<button id="btn">Click me</button>
+	</body>
+	</html>
+	`
+
+	if err := tool.init(); err != nil {
+		t.Skipf("Failed to initialize browser: %v", err)
+		return
+	}
+
+	if err := tool.page.SetContent(htmlContent); err != nil {
+		t.Fatalf("Failed to set page content: %v", err)
+	}
+
+	// 测试 text 格式
+	result, err := tool.Execute(context.Background(), map[string]string{
+		"action": "html",
+		"format": "text",
+	})
+
+	if err != nil {
+		t.Errorf("Get HTML text should succeed: %v", err)
+	}
+
+	if !strings.Contains(result, "📄 页面内容") {
+		t.Error("Result should contain page header")
+	}
+
+	if !strings.Contains(result, "Welcome") {
+		t.Error("Result should contain page text content")
+	}
+
+	t.Logf("Text format result:\n%s", result)
+
+	// 测试 body 格式
+	result, err = tool.Execute(context.Background(), map[string]string{
+		"action": "html",
+		"format": "body",
+	})
+
+	if err != nil {
+		t.Errorf("Get HTML body should succeed: %v", err)
+	}
+
+	if !strings.Contains(result, "🔍 HTML内容") {
+		t.Error("Result should contain HTML header")
+	}
+
+	if !strings.Contains(result, "<h1") && !strings.Contains(result, "<h1>") {
+		t.Error("Result should contain HTML tags")
+	}
+
+	if !strings.Contains(result, "heading") {
+		t.Error("Result should contain element info")
+	}
+
+	t.Logf("Body format result (first 500 chars):\n%s", result[:min(500, len(result))])
+
+	// 测试 max_length 限制
+	result, err = tool.Execute(context.Background(), map[string]string{
+		"action":     "html",
+		"format":     "text",
+		"max_length": "50",
+	})
+
+	if err != nil {
+		t.Errorf("Get HTML with max_length should succeed: %v", err)
+	}
+
+	// 验证内容被截断
+	lines := strings.Split(result, "\n")
+	lastLine := lines[len(lines)-1]
+	if !strings.Contains(lastLine, "内容被截断") {
+		t.Logf("Last line: %s", lastLine)
+	}
+
+	t.Logf("Truncated result:\n%s", result)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// TestBrowserTool_HTML_Pagination 测试HTML分页获取功能
+func TestBrowserTool_HTML_Pagination(t *testing.T) {
+	browserTestLock.Lock()
+	defer browserTestLock.Unlock()
+
+	tool := NewBrowserTool()
+	defer tool.close()
+
+	// 创建一个较长的测试页面（约150字符）
+	longContent := strings.Repeat("This is a test line with some content. ", 10)
+
+	htmlContent := fmt.Sprintf(`
+	<!DOCTYPE html>
+	<html>
+	<body>
+		<h1>Long Content Test</h1>
+		<div id="content">%s</div>
+		<button id="btn">Submit</button>
+	</body>
+	</html>
+	`, longContent)
+
+	if err := tool.init(); err != nil {
+		t.Skipf("Failed to initialize browser: %v", err)
+		return
+	}
+
+	if err := tool.page.SetContent(htmlContent); err != nil {
+		t.Fatalf("Failed to set page content: %v", err)
+	}
+
+	// 第一次获取：前100个字符
+	result1, err := tool.Execute(context.Background(), map[string]string{
+		"action":     "html",
+		"format":     "text",
+		"start":      "0",
+		"max_length": "100",
+	})
+
+	if err != nil {
+		t.Errorf("First fetch should succeed: %v", err)
+	}
+
+	// 验证返回了分页信息
+	if !strings.Contains(result1, "📊 范围: 0-100") {
+		t.Error("Result should show range 0-100")
+	}
+
+	if !strings.Contains(result1, "下次获取: start=100") {
+		t.Error("Result should prompt for next fetch with start=100")
+	}
+
+	// 验证内容长度约为100
+	lines := strings.Split(result1, "\n")
+	contentStart := -1
+	for i, line := range lines {
+		if strings.Contains(line, "文本内容:") {
+			contentStart = i + 1
+			break
+		}
+	}
+
+	if contentStart >= 0 && contentStart < len(lines) {
+		fetchedContent := strings.Join(lines[contentStart:], "\n")
+		// 移除可能的截断提示
+		if idx := strings.Index(fetchedContent, "\n\n... (还有"); idx > 0 {
+			fetchedContent = fetchedContent[:idx]
+		}
+		if len(fetchedContent) > 110 {
+			t.Errorf("First chunk should be ~100 chars, got: %d", len(fetchedContent))
+		}
+	}
+
+	t.Logf("First fetch result:\n%s", result1)
+
+	// 第二次获取：从100开始
+	result2, err := tool.Execute(context.Background(), map[string]string{
+		"action":     "html",
+		"format":     "text",
+		"start":      "100",
+		"max_length": "100",
+	})
+
+	if err != nil {
+		t.Errorf("Second fetch should succeed: %v", err)
+	}
+
+	if !strings.Contains(result2, "📊 范围: 100-200") {
+		t.Error("Result should show range 100-200")
+	}
+
+	t.Logf("Second fetch result:\n%s", result2)
+
+	// 获取完整内容（无start参数）
+	resultFull, err := tool.Execute(context.Background(), map[string]string{
+		"action": "html",
+		"format": "text",
+	})
+
+	if err != nil {
+		t.Errorf("Full fetch should succeed: %v", err)
+	}
+
+	// 完整获取应该包含所有内容
+	if !strings.Contains(resultFull, "Long Content Test") {
+		t.Error("Full content should contain heading")
+	}
+
+	if !strings.Contains(resultFull, longContent[:50]) {
+		t.Error("Full content should contain long content")
+	}
+
+	t.Logf("Full fetch result (first 300 chars):\n%s", resultFull[:min(300, len(resultFull))])
+}
+

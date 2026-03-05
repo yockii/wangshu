@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 type BrowserTool struct {
 	basic.SimpleTool
 	pw          *playwright.Playwright
+	browser     playwright.Browser
 	page        playwright.Page
 	mu          sync.RWMutex
 	initialized bool
@@ -23,19 +26,48 @@ type BrowserTool struct {
 func NewBrowserTool() *BrowserTool {
 	tool := new(BrowserTool)
 	tool.Name_ = "browser"
+	tool.Desc_ = `浏览器自动化工具，使用 Playwright 控制 Chromium 浏览器。
+
+支持的操作：
+- open: 打开网页，自动收集并返回页面元素信息
+- screenshot: 截图，保存页面截图
+- click: 点击元素，返回点击后的元素信息
+- fill: 填充表单，返回填充后的元素信息
+- text: 获取元素文本内容
+- html: 获取页面HTML内容（支持分页获取）
+  * format: "full"(完整HTML) | "body"(body内容，默认) | "inner"(innerHTML) | "text"(纯文本)
+  * start: 起始位置（字符偏移），用于分页获取大型页面，默认0
+  * max_length: 每次最大获取长度，默认50000字符
+  返回内容包含当前范围、总长度、下次获取的start位置等信息
+- wait: 等待元素出现
+- close: 关闭浏览器
+- list_tabs: 列出所有标签页
+
+每次操作（除close/list_tabs外）都会自动返回当前页面的可交互元素信息，包括：
+  元素类型、选择器（id/class/name/xpath/data属性）、可见性、可编辑性等。
+
+特别说明：
+- html action 支持分页获取大型页面：第一次调用（start=0）获取前50000字符，返回提示"下次获取: start=50000"
+- 根据返回的提示，使用新的start值继续获取：{"action":"html","start":50000}
+- 这样可以完整获取任意大小的页面内容，不会丢失数据
+- 所有操作都会返回元素信息，帮助大模型理解页面结构`
 	tool.Desc_ = "Browser automation tool (Playwright). Actions: open(url), click(selector), fill(selector,text), text(selector), html(), screenshot(path), wait(selector), close(). IMPORTANT: After each operation (open, click, fill, wait, screenshot), the tool automatically returns complete information about all interactive elements on the page (inputs, buttons, links, etc.) with ALL available selectors (id, name, class, xpath, data-*) and attributes. Use this information to choose the most reliable selector for your next action. Do NOT guess selectors - analyze the returned element data first."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"action": map[string]any{
-				"type": "string",
-				"enum": []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs"},
+				"type":        "string",
+				"enum":        []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs"},
+				"description": "操作类型: open(打开页面), screenshot(截图), close(关闭), click(点击), fill(填充), text(获取文本), html(获取页面HTML), wait(等待元素), list_tabs(列出标签)",
 			},
-			"url":             map[string]any{"type": "string"},
-			"selector":        map[string]any{"type": "string"},
-			"text":            map[string]any{"type": "string"},
-			"screenshot_path": map[string]any{"type": "string"},
-			"timeout":         map[string]any{"type": "number"},
+			"url":             map[string]any{"type": "string", "description": "要打开的URL (open action)"},
+			"selector":        map[string]any{"type": "string", "description": "CSS选择器 (click/fill/text/wait action)"},
+			"text":            map[string]any{"type": "string", "description": "要填充的文本 (fill action)"},
+			"screenshot_path": map[string]any{"type": "string", "description": "截图保存路径 (screenshot action)"},
+			"timeout":         map[string]any{"type": "number", "description": "超时时间（毫秒）"},
+			"format":          map[string]any{"type": "string", "description": "HTML格式: full(完整HTML), body(body内容), inner(body内部HTML), text(只文本) (html action, 默认: body)"},
+			"start":           map[string]any{"type": "number", "description": "起始位置（字符偏移），用于分页获取大型页面 (html action, 默认: 0)"},
+			"max_length":      map[string]any{"type": "number", "description": "最大获取长度，默认50000 (html action)"},
 		},
 		"required": []string{"action"},
 	}
@@ -90,6 +122,7 @@ func (t *BrowserTool) init() error {
 			return err
 		}
 	}
+	t.pw = pw
 
 	var browser playwright.Browser
 	var launchErr error
@@ -120,6 +153,7 @@ func (t *BrowserTool) init() error {
 	if launchErr != nil {
 		return launchErr
 	}
+	t.browser = browser
 
 	page, err := browser.NewPage()
 	if err != nil {
@@ -162,12 +196,30 @@ func (t *BrowserTool) screenshot(params map[string]string) (string, error) {
 }
 
 func (t *BrowserTool) close() (string, error) {
+	// Close page first
 	if t.page != nil {
-		t.page.Close()
+		if err := t.page.Close(); err != nil {
+			fmt.Printf("Error closing page: %v\n", err)
+		}
+		t.page = nil
 	}
+
+	// Then close browser
+	if t.browser != nil {
+		if err := t.browser.Close(); err != nil {
+			fmt.Printf("Error closing browser: %v\n", err)
+		}
+		t.browser = nil
+	}
+
+	// Finally stop playwright
 	if t.pw != nil {
-		t.pw.Stop()
+		if err := t.pw.Stop(); err != nil {
+			fmt.Printf("Error stopping playwright: %v\n", err)
+		}
+		t.pw = nil
 	}
+
 	t.initialized = false
 	return "Browser closed", nil
 }
@@ -218,11 +270,115 @@ func (t *BrowserTool) getText(params map[string]string) (string, error) {
 }
 
 func (t *BrowserTool) getHTML(params map[string]string) (string, error) {
-	html, err := t.page.Content()
-	if err != nil {
-		return "", err
+	// 支持不同的返回格式
+	// format: full（完整HTML）, body（只body内容）, inner（body innerHTML）, text（只文本内容）
+	format := params["format"]
+	if format == "" {
+		format = "body" // 默认只返回body，更简洁
 	}
-	return html, nil
+
+	var content string
+	var err error
+
+	switch format {
+	case "full":
+		content, err = t.page.Content()
+		if err != nil {
+			return "", err
+		}
+
+	case "body":
+		// 获取body的innerHTML
+		content, err = t.page.Locator("body").InnerHTML()
+		if err != nil {
+			return "", err
+		}
+
+	case "inner":
+		// 获取body的innerHTML（与body相同）
+		content, err = t.page.Locator("body").InnerHTML()
+		if err != nil {
+			return "", err
+		}
+
+	case "text":
+		// 只获取文本内容
+		content, err = t.page.Locator("body").InnerText()
+		if err != nil {
+			return "", err
+		}
+
+	default:
+		return "", fmt.Errorf("unknown format: %s (use: full, body, inner, text)", format)
+	}
+
+	totalLength := len(content)
+
+	// 支持分页获取（start 参数）
+	start := 0
+	if len(params["start"]) > 0 {
+		if s, parseErr := strconv.Atoi(params["start"]); parseErr == nil && s >= 0 && s < totalLength {
+			start = s
+		} else if parseErr != nil {
+			return "", fmt.Errorf("invalid start parameter: %v", parseErr)
+		} else if s >= totalLength {
+			return fmt.Sprintf("⚠️ 起始位置超出范围 (start: %d, 总长度: %d)", s, totalLength), nil
+		}
+	}
+
+	// 默认最大长度
+	maxLength := 50000
+	if len(params["max_length"]) > 0 {
+		if max, parseErr := strconv.Atoi(params["max_length"]); parseErr == nil {
+			maxLength = max
+		}
+	}
+
+	// 计算结束位置
+	end := start + maxLength
+	if end > totalLength {
+		end = totalLength
+	}
+
+	// 截取指定范围的内容
+	content = content[start:end]
+
+	// 构建友好的返回信息
+	var result strings.Builder
+	hasMore := end < totalLength
+	result.WriteString(fmt.Sprintf("📄 页面内容片段\n"))
+	result.WriteString(fmt.Sprintf("📊 范围: %d-%d / 总长度: %d 字符\n", start, end, totalLength))
+	result.WriteString(fmt.Sprintf("📋 格式: %s\n", format))
+
+	if hasMore {
+		nextStart := end
+		result.WriteString(fmt.Sprintf("➡️  下次获取: start=%d (还有 %d 字符)\n", nextStart, totalLength-nextStart))
+	} else {
+		result.WriteString(fmt.Sprintf("✅ 已获取完整内容\n"))
+	}
+
+	result.WriteString(fmt.Sprintf("\n"))
+
+	if format == "text" {
+		result.WriteString("📝 文本内容:\n")
+	} else {
+		result.WriteString("🔍 HTML内容:\n")
+	}
+
+	result.WriteString(content)
+
+	if hasMore {
+		result.WriteString(fmt.Sprintf("\n\n... (还有 %d 字符未显示，使用 start=%d 继续获取)", totalLength-end, end))
+	}
+
+	// 如果是HTML格式，添加元素信息摘要（只在第一次获取时）
+	if format != "text" && start == 0 {
+		result.WriteString("\n\n--- 元素摘要 ---\n")
+		elements := t.collectElements()
+		result.WriteString(elements)
+	}
+
+	return result.String(), nil
 }
 
 func (t *BrowserTool) wait(params map[string]string) (string, error) {
@@ -244,10 +400,10 @@ func (t *BrowserTool) wait(params map[string]string) (string, error) {
 // ElementInfo 包含元素的所有选择器和属性信息
 type ElementInfo struct {
 	// 基本信息
-	Tag        string `json:"tag"`
-	Visible    bool   `json:"visible"`
-	Enabled    bool   `json:"enabled"`
-	Editable   bool   `json:"editable"`
+	Tag      string `json:"tag"`
+	Visible  bool   `json:"visible"`
+	Enabled  bool   `json:"enabled"`
+	Editable bool   `json:"editable"`
 
 	// 各种选择器
 	IDSelector    string            `json:"id_selector,omitempty"`
@@ -385,25 +541,25 @@ func (t *BrowserTool) collectElements() string {
 		for _, item := range dataArray {
 			if dataMap, ok := item.(map[string]interface{}); ok {
 				info := ElementInfo{
-					Tag:          getString(dataMap, "tag"),
-					Visible:      getBool(dataMap, "visible"),
-					Enabled:      getBool(dataMap, "enabled"),
-					Editable:     getBool(dataMap, "editable"),
-					IDSelector:   getString(dataMap, "id_selector"),
-					NameSelector: getString(dataMap, "name_selector"),
+					Tag:           getString(dataMap, "tag"),
+					Visible:       getBool(dataMap, "visible"),
+					Enabled:       getBool(dataMap, "enabled"),
+					Editable:      getBool(dataMap, "editable"),
+					IDSelector:    getString(dataMap, "id_selector"),
+					NameSelector:  getString(dataMap, "name_selector"),
 					ClassSelector: getString(dataMap, "class_selector"),
 					XPathSelector: getString(dataMap, "xpath_selector"),
 					DataSelectors: make(map[string]string),
-					Type:        getString(dataMap, "type"),
-					Name:        getString(dataMap, "name"),
-					Placeholder: getString(dataMap, "placeholder"),
-					Value:       getString(dataMap, "value"),
-					Text:        getString(dataMap, "text"),
-					Href:        getString(dataMap, "href"),
-					ARIALabel:   getString(dataMap, "aria_label"),
-					ReadOnly:    getBool(dataMap, "readonly"),
-					Required:    getBool(dataMap, "required"),
-					Checked:     getBool(dataMap, "checked"),
+					Type:          getString(dataMap, "type"),
+					Name:          getString(dataMap, "name"),
+					Placeholder:   getString(dataMap, "placeholder"),
+					Value:         getString(dataMap, "value"),
+					Text:          getString(dataMap, "text"),
+					Href:          getString(dataMap, "href"),
+					ARIALabel:     getString(dataMap, "aria_label"),
+					ReadOnly:      getBool(dataMap, "readonly"),
+					Required:      getBool(dataMap, "required"),
+					Checked:       getBool(dataMap, "checked"),
 				}
 
 				// 处理data_selectors

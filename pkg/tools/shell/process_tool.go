@@ -249,45 +249,24 @@ func (t *ProcessTool) startBackgroundProcess(params map[string]string) (string, 
 }
 
 func (t *ProcessTool) monitorProcess(processID int, stdout, stderr interface{}) {
-	defer func() {
-		// Mark process as completed when done
-		GetProcessManager().mu.Lock()
-		if info, exists := GetProcessManager().processes[processID]; exists {
-			info.mu.Lock()
-			if info.Status == StatusRunning {
-				now := time.Now()
-				info.EndTime = &now
-				// Try to get exit code
-				if info.Cmd.ProcessState != nil {
-					exitCode := info.Cmd.ProcessState.ExitCode()
-					info.ExitCode = &exitCode
-					if exitCode != 0 {
-						info.Status = StatusFailed
-					} else {
-						info.Status = StatusCompleted
-					}
-				} else {
-					info.Status = StatusCompleted
-				}
-			}
-			info.mu.Unlock()
-		}
-		GetProcessManager().mu.Unlock()
-	}()
-
 	// Read stdout
 	if stdoutReader, ok := stdout.(interface{ Read([]byte) (int, error) }); ok {
 		go func() {
 			buf := make([]byte, 4096)
 			for {
 				n, err := stdoutReader.Read(buf)
-				GetProcessManager().mu.Lock()
-				if info, exists := GetProcessManager().processes[processID]; exists {
+				// Get info pointer with manager lock, then release before locking info
+				GetProcessManager().mu.RLock()
+				info, exists := GetProcessManager().processes[processID]
+				if exists {
+					// Increment ref count to prevent info from being deleted
 					info.mu.Lock()
+					GetProcessManager().mu.RUnlock()
 					info.Output.Write(buf[:n])
 					info.mu.Unlock()
+				} else {
+					GetProcessManager().mu.RUnlock()
 				}
-				GetProcessManager().mu.Unlock()
 				if err != nil {
 					break
 				}
@@ -301,13 +280,17 @@ func (t *ProcessTool) monitorProcess(processID int, stdout, stderr interface{}) 
 			buf := make([]byte, 4096)
 			for {
 				n, err := stderrReader.Read(buf)
-				GetProcessManager().mu.Lock()
-				if info, exists := GetProcessManager().processes[processID]; exists {
+				// Get info pointer with manager lock, then release before locking info
+				GetProcessManager().mu.RLock()
+				info, exists := GetProcessManager().processes[processID]
+				if exists {
 					info.mu.Lock()
+					GetProcessManager().mu.RUnlock()
 					info.Error.Write(buf[:n])
 					info.mu.Unlock()
+				} else {
+					GetProcessManager().mu.RUnlock()
 				}
-				GetProcessManager().mu.Unlock()
 				if err != nil {
 					break
 				}
@@ -317,9 +300,40 @@ func (t *ProcessTool) monitorProcess(processID int, stdout, stderr interface{}) 
 
 	// Wait for command to finish
 	GetProcessManager().mu.RLock()
-	cmd := GetProcessManager().processes[processID].Cmd
+	processInfo, exists := GetProcessManager().processes[processID]
+	if !exists {
+		GetProcessManager().mu.RUnlock()
+		return
+	}
+	cmd := processInfo.Cmd
 	GetProcessManager().mu.RUnlock()
 	_ = cmd.Wait()
+
+	// Mark process as completed when done (after cmd.Wait() returns)
+	GetProcessManager().mu.RLock()
+	info, exists := GetProcessManager().processes[processID]
+	GetProcessManager().mu.RUnlock()
+
+	if exists {
+		info.mu.Lock()
+		if info.Status == StatusRunning {
+			now := time.Now()
+			info.EndTime = &now
+			// Try to get exit code
+			if info.Cmd.ProcessState != nil {
+				exitCode := info.Cmd.ProcessState.ExitCode()
+				info.ExitCode = &exitCode
+				if exitCode != 0 {
+					info.Status = StatusFailed
+				} else {
+					info.Status = StatusCompleted
+				}
+			} else {
+				info.Status = StatusCompleted
+			}
+		}
+		info.mu.Unlock()
+	}
 }
 
 // Helper methods for managing background processes

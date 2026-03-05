@@ -69,8 +69,8 @@ func (a *Agent) Stop() {
 	a.cronManager.Stop()
 }
 
-func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, userInput, senderID string) (string, error) {
-	sess := a.sessions.GetOrCreate(a.workspaceDir, sessionID, channel, ChatID, senderID)
+func (a *Agent) RunWithChannel(ctx context.Context, channel, ChatID, userInput, senderID string) (string, error) {
+	sess := a.sessions.GetOrCreate(a.workspaceDir, channel, ChatID, senderID)
 	sess.AddMessage(constant.RoleUser, userInput)
 
 	msgs, err := a.buildMessages(sess)
@@ -89,19 +89,13 @@ func (a *Agent) RunWithChannel(ctx context.Context, sessionID, channel, ChatID, 
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
-	sessionID := msg.SessionKey
-	if sessionID == "" {
-		sessionID = fmt.Sprintf("%s:%s", msg.Channel, msg.ChatID)
-	}
-	response, err := a.RunWithChannel(ctx, sessionID, msg.Channel, msg.ChatID, msg.Content, msg.SenderID)
+	response, err := a.RunWithChannel(ctx, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Content, msg.Metadata.SenderID)
 	if err != nil {
 		slog.Error("Failed to run with channel", "error", err)
 		response = fmt.Sprintf("Agent dealing failed: %+v", err)
 	}
 
-	bus.Default().PublishOutbound(bus.OutboundMessage{
-		Channel: msg.Channel,
-		ChatID:  msg.ChatID,
-		Content: response,
-	})
+	outboundMsg := bus.NewOutboundMessage(msg.Metadata.ChatID, response)
+	outboundMsg.Metadata.Channel = msg.Metadata.Channel
+	bus.Default().PublishOutbound(outboundMsg)
 }

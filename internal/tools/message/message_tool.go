@@ -48,19 +48,16 @@ func (t *MessageTool) execute(ctx context.Context, params map[string]string) (st
 	channel := params[constant.ToolCallParamChannel]
 	chatID := params[constant.ToolCallParamChatID]
 
-	om := bus.OutboundMessage{
-		Channel: channel,
-		ChatID:  chatID,
-		Content: content,
-	}
+	om := bus.NewOutboundMessage(chatID, content)
+	om.Metadata.Channel = channel
 
 	fileType := params["fileType"]
 	filePath := params["filePath"]
 	if fileType != "" && filePath != "" {
-		om.Media = append(om.Media, bus.MediaAttachment{
-			Type:     fileType,
+		om.Media = &bus.MediaContent{
+			Type:     bus.MediaType(fileType),
 			FilePath: filePath,
-		})
+		}
 	}
 
 	bus.Default().PublishOutbound(om)

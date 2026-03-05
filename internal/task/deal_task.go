@@ -138,11 +138,9 @@ func (tm *TaskManager) run() {
 
 		if finished {
 			if resp != constant.TaskTagCompleted {
-				bus.Default().PublishOutbound(bus.OutboundMessage{
-					Channel: mainTask.Channel,
-					ChatID:  mainTask.ChatID,
-					Content: resp,
-				})
+				msg := bus.NewOutboundMessage(mainTask.ChatID, resp)
+				msg.Metadata.Channel = mainTask.Channel
+				bus.Default().PublishOutbound(msg)
 			}
 
 			// 完成主任务，进行总结

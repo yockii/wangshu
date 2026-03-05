@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,10 +20,10 @@ func NewManager(ttl time.Duration) *Manager {
 		ttl:      ttl,
 	}
 }
-func (m *Manager) GetOrCreate(workspace, id, channel, chatID, senderID string) *Session {
+func (m *Manager) GetOrCreate(workspace, channel, chatID, senderID string) *Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
+	id := fmt.Sprintf("%s:%s", channel, chatID)
 	session, ok := m.sessions[id]
 	if ok {
 		return session

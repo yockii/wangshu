@@ -8,12 +8,12 @@ import (
 )
 
 type InboundHandler func(ctx context.Context, msg InboundMessage)
-type OutboundHandler func(ctx context.Context, msg OutboundMessage)
+type OutboundHandler func(ctx context.Context, msg Message)
 
 // MessageBus 处理消息传递，包括从通道到智能体的入站消息和从智能体到通道的出站消息
 type MessageBus struct {
 	inbound          chan InboundMessage
-	outbound         chan OutboundMessage
+	outbound         chan Message
 	inboundHandlers  map[string]InboundHandler
 	outboundHandlers []OutboundHandler
 	mu               sync.RWMutex
@@ -24,7 +24,7 @@ type MessageBus struct {
 func NewMessageBus(bufferSize int) *MessageBus {
 	return &MessageBus{
 		inbound:          make(chan InboundMessage, bufferSize),
-		outbound:         make(chan OutboundMessage, bufferSize),
+		outbound:         make(chan Message, bufferSize),
 		inboundHandlers:  make(map[string]InboundHandler),
 		outboundHandlers: make([]OutboundHandler, 0),
 	}
@@ -55,7 +55,7 @@ func (b *MessageBus) processInboundMessages(ctx context.Context) {
 			}
 			// 防止动态新增
 			b.mu.RLock()
-			handler, ok := b.inboundHandlers[msg.Channel]
+			handler, ok := b.inboundHandlers[msg.Metadata.Channel]
 			b.mu.RUnlock()
 			if ok {
 				go handler(ctx, msg)
@@ -94,9 +94,9 @@ func (b *MessageBus) PublishInbound(msg InboundMessage) error {
 	return nil
 }
 
-func (b *MessageBus) PublishOutbound(msg OutboundMessage) error {
+func (b *MessageBus) PublishOutbound(msg Message) error {
 	// 如果仅仅是HEARTBEAT_OK, 则不发送
-	if msg.Content == constant.HEARTBEAT_OK || (msg.Content == "" && len(msg.Media) == 0) {
+	if msg.Content == constant.HEARTBEAT_OK || (msg.Content == "" && msg.Media == nil) {
 		return nil
 	}
 

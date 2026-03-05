@@ -1,24 +1,18 @@
 package bus
 
+// InboundMessage 入站消息（从渠道到智能体）
+// 使用 Message 结构体，保留 SessionKey 用于会话管理
 type InboundMessage struct {
-	Channel    string            // 消息通道标识，如"telegram/wechat等
-	SenderID   string            // 发送者ID，根据不同通道有不同的格式
-	ChatID     string            // 聊天或会话的ID
-	Content    string            // 消息内容
-	Media      []MediaAttachment // 可选的媒体附件，如图片、文件等
-	SessionKey string            // 会话key，状态管理
-	Metadata   map[string]string // 可选的元数据，如消息ID、时间戳等
+	Message
 }
 
-// MediaAttachment 媒体附件
-type MediaAttachment struct {
-	Type     string // 媒体类型，如"image"、"file"等
-	FilePath string // 媒体文件的路径
-}
-
-type OutboundMessage struct {
-	Channel string            // 消息通道标识，如"telegram/wechat等
-	ChatID  string            // 聊天或会话的ID
-	Content string            // 消息内容
-	Media   []MediaAttachment // 可选的媒体附件，如图片、文件等
+// NewOutboundMessage 创建出站消息的辅助函数
+func NewOutboundMessage(chatID, content string) Message {
+	return Message{
+		Type:    MessageTypeText,
+		Content: content,
+		Metadata: MessageMetadata{
+			ChatID: chatID,
+		},
+	}
 }

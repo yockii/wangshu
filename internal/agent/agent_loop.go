@@ -53,11 +53,9 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 		if resp.Message.Content != "" && len(resp.Message.ToolCalls) > 0 {
 			// 有内容，且调用工具，则说明还需要循环，但内容可以先直接发送给用户
-			bus.Default().PublishOutbound(bus.OutboundMessage{
-				Channel: sess.Channel,
-				ChatID:  sess.ChatID,
-				Content: resp.Message.Content,
-			})
+			msg := bus.NewOutboundMessage(sess.ChatID, resp.Message.Content)
+			msg.Metadata.Channel = sess.Channel
+			bus.Default().PublishOutbound(msg)
 		}
 
 		// 执行所有的工具调用

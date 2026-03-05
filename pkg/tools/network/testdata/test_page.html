@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浏览器工具测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .nav-links a {
+            margin-right: 15px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>浏览器工具测试页面</h1>
+
+    <!-- 测试表单 -->
+    <form id="testForm" data-testid="login-form">
+        <div class="form-group">
+            <label for="username">用户名：</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="请输入用户名"
+                required
+                data-testid="username-input"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="email">邮箱：</label>
+            <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="请输入邮箱"
+                data-testid="email-input"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="password">密码：</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="请输入密码"
+                required
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="comments">备注：</label>
+            <textarea
+                id="comments"
+                name="comments"
+                rows="4"
+                placeholder="请输入备注信息"
+                data-testid="comments-area"
+            ></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="country">国家：</label>
+            <select id="country" name="country" data-testid="country-select">
+                <option value="">请选择</option>
+                <option value="cn">中国</option>
+                <option value="us">美国</option>
+                <option value="jp">日本</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input
+                    type="checkbox"
+                    id="agree"
+                    name="agree"
+                    value="1"
+                    data-testid="agree-checkbox"
+                >
+                我同意服务条款
+            </label>
+        </div>
+
+        <div class="form-group">
+            <button
+                type="submit"
+                id="submitBtn"
+                data-testid="submit-button"
+            >提交</button>
+            <button
+                type="button"
+                id="cancelBtn"
+                data-testid="cancel-button"
+            >取消</button>
+            <button
+                type="button"
+                id="resetBtn"
+                disabled
+                data-testid="reset-button"
+            >重置</button>
+        </div>
+    </form>
+
+    <!-- 导航链接 -->
+    <div class="nav-links">
+        <h2>导航链接</h2>
+        <a href="/page1" id="link1" data-testid="page1-link">页面1</a>
+        <a href="/page2" id="link2" class="nav-link" data-testid="page2-link">页面2</a>
+        <a href="/page3" id="link3" aria-label="前往页面3" data-testid="page3-link">页面3</a>
+    </div>
+
+    <!-- 结果显示区域 -->
+    <div id="result" role="status" aria-live="polite">
+        <p>操作结果将显示在这里...</p>
+    </div>
+
+    <!-- 自定义交互元素 -->
+    <div id="customButton" role="button" tabindex="0" style="padding: 10px; background: #ddd; margin-top: 20px; cursor: pointer;">
+        自定义按钮（无button标签）
+    </div>
+
+    <script>
+        // 简单的交互脚本
+        document.getElementById('submitBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('result').innerHTML = '<p style="color: green;">表单已提交！</p>';
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', function() {
+            document.getElementById('result').innerHTML = '<p style="color: orange;">操作已取消！</p>';
+        });
+
+        document.getElementById('customButton').addEventListener('click', function() {
+            document.getElementById('result').innerHTML = '<p style="color: blue;">自定义按钮被点击！</p>';
+        });
+
+        document.getElementById('username').addEventListener('input', function() {
+            console.log('用户名输入：', this.value);
+        });
+    </script>
+</body>
+</html>

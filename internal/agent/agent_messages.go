@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/session"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
@@ -35,6 +36,15 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 4. **直接输出**：不要输出任何前言后语，直接按照 System Prompt 定义的【角色状态】、【关系与情感脉络】、【核心任务板】、【关键事实库】格式输出 Markdown 内容。
 
 `, formatMessages(toCompress))
+	options := make(map[string]any)
+	if agentCfg, ok := config.DefaultCfg.Agents[a.agentName]; ok {
+		if agentCfg.Temperature > 0 {
+			options["temperature"] = agentCfg.Temperature
+		}
+		if agentCfg.MaxTokens > 0 {
+			options["max_tokens"] = agentCfg.MaxTokens
+		}
+	}
 	response, err := a.provider.Chat(context.Background(), a.model, []llm.Message{
 		{
 			Role:    constant.RoleSystem,
@@ -44,7 +54,7 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 			Role:    constant.RoleUser,
 			Content: prompt,
 		},
-	}, nil, nil)
+	}, nil, options)
 
 	if err != nil {
 		return "", err

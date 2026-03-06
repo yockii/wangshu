@@ -17,6 +17,7 @@ import (
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/openai"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
@@ -73,6 +74,10 @@ func run() {
 		case "openai":
 			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
 			llm.RegisterProvider(providerName, openaiProvider)
+			providerCount++
+		case "anthropic":
+			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, claudeProvider)
 			providerCount++
 		// case "ollama":
 		// 	llm.RegisterProvider(providerName, llm.NewOllamaProvider(providerCfg.APIKey, providerCfg.BaseURL))

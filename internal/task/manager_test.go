@@ -17,7 +17,7 @@ type MockProvider struct {
 func TestNewTaskManager(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tm := NewTaskManager(tmpDir, "test-model", nil)
+	tm := NewTaskManager("test-agent", tmpDir, "test-model", nil)
 
 	if tm == nil {
 		t.Fatal("NewTaskManager should not return nil")
@@ -39,7 +39,7 @@ func TestNewTaskManager(t *testing.T) {
 func TestTaskManager_Stop(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tm := NewTaskManager(tmpDir, "test-model", nil)
+	tm := NewTaskManager("test-agent", tmpDir, "test-model", nil)
 
 	// Stop 应该不会 panic
 	tm.Stop()
@@ -51,7 +51,7 @@ func TestTaskManager_Stop(t *testing.T) {
 func TestTaskManager_CreateTasksDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	_ = NewTaskManager(tmpDir, "test-model", nil)
+	_ = NewTaskManager("test-agent", tmpDir, "test-model", nil)
 
 	// 等待一下让 manager 启动并创建目录
 	time.Sleep(100 * time.Millisecond)
@@ -358,7 +358,7 @@ func TestTaskManager_TaskStatusTransitions(t *testing.T) {
 func TestTaskManager_ContextManagement(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tm := NewTaskManager(tmpDir, "test-model", nil)
+	tm := NewTaskManager("test-agent", tmpDir, "test-model", nil)
 
 	// 验证 context 和 cancelFunc 初始化
 	if tm.ctx == nil {
@@ -383,7 +383,7 @@ func TestTaskManager_ContextManagement(t *testing.T) {
 func TestTaskManager_ConcurrencySafety(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	tm := NewTaskManager(tmpDir, "test-model", nil)
+	tm := NewTaskManager("test-agent", tmpDir, "test-model", nil)
 
 	// 并发访问应该是安全的
 	done := make(chan bool)

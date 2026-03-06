@@ -2,6 +2,7 @@ package agent
 
 import (
 	"log/slog"
+	"maps"
 	"sync"
 	"time"
 
@@ -57,9 +58,7 @@ func GetAllAgents() map[string]*Agent {
 
 	// Return a copy to prevent external modification
 	result := make(map[string]*Agent, len(globalAgents))
-	for k, v := range globalAgents {
-		result[k] = v
-	}
+	maps.Copy(result, globalAgents)
 	return result
 }
 

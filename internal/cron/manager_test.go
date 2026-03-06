@@ -45,7 +45,7 @@ func TestNewCronManager(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
 
-	mgr := NewCronManager(tmpDir, "test-model", provider)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	if mgr == nil {
 		t.Fatal("NewCronManager should return a non-nil manager")
@@ -67,7 +67,7 @@ func TestNewCronManager(t *testing.T) {
 func TestCronManager_Stop(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
-	mgr := NewCronManager(tmpDir, "test-model", provider)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	// Stop 应该不会 panic
 	mgr.Stop()
@@ -79,7 +79,7 @@ func TestCronManager_Stop(t *testing.T) {
 func TestCronManager_CreateCronDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
-	_ = NewCronManager(tmpDir, "test-model", provider)
+	_ = NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	// 等待一下让 manager 启动并扫描
 	time.Sleep(200 * time.Millisecond)
@@ -308,9 +308,9 @@ func TestCronManager_MultipleJobs(t *testing.T) {
 
 	// 创建多个任务
 	schedules := []string{
-		"* * * * *",   // 每分钟
-		"0 * * * *",   // 每小时
-		"0 0 * * *",   // 每天
+		"* * * * *", // 每分钟
+		"0 * * * *", // 每小时
+		"0 0 * * *", // 每天
 	}
 
 	for i, schedule := range schedules {
@@ -340,7 +340,7 @@ func TestCronManager_MultipleJobs(t *testing.T) {
 func TestCronManager_Execute_MessageType(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
-	mgr := NewCronManager(tmpDir, "test-model", provider)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	ctx := context.Background()
 	job := &types.BasicJobInfo{
@@ -361,7 +361,7 @@ func TestCronManager_Execute_TaskType(t *testing.T) {
 	// mockProviderForTask 返回 task 类型的响应
 	mockProviderForTask := &mockProviderTask{}
 	tmpDir := t.TempDir()
-	mgr := NewCronManager(tmpDir, "test-model", mockProviderForTask)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", mockProviderForTask)
 
 	ctx := context.Background()
 	job := &types.BasicJobInfo{
@@ -410,7 +410,7 @@ func (m *mockProviderTask) ChatWithJSONSchema(ctx context.Context, model string,
 func TestCronManager_ContextManagement(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
-	mgr := NewCronManager(tmpDir, "test-model", provider)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	// 验证 context 和 cancelFunc 初始化
 	if mgr.ctx == nil {
@@ -435,7 +435,7 @@ func TestCronManager_ContextManagement(t *testing.T) {
 func TestCronManager_ConcurrencySafety(t *testing.T) {
 	tmpDir := t.TempDir()
 	provider := &mockProvider{}
-	mgr := NewCronManager(tmpDir, "test-model", provider)
+	mgr := NewCronManager("test-agent", tmpDir, "test-model", provider)
 
 	// 并发访问应该是安全的
 	done := make(chan bool)

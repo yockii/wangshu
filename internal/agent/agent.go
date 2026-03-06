@@ -43,10 +43,10 @@ func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duratio
 	}
 
 	// Initialize task manager
-	agent.taskManager = task.NewTaskManager(workspaceDir, model, provider)
+	agent.taskManager = task.NewTaskManager(agent.agentName, workspaceDir, model, provider)
 
 	// Initialize cron manager with executor
-	agent.cronManager = cron.NewCronManager(workspaceDir, model, provider)
+	agent.cronManager = cron.NewCronManager(agent.agentName, workspaceDir, model, provider)
 
 	return agent, nil
 }

@@ -44,10 +44,12 @@ const (
 ### message 类型
 **适用场景**：简单的提醒、通知类任务
 - 任务描述包含"提醒"、"通知"、"发送"、"告诉"等词
+- 如果明确提及要@的用户，**必须**在 messageContent 中包含用户的 @ 提及
 - 示例：
   - "提醒用户下班" → type: "message", messageContent: "下班时间到了，记得按时下班哦"
   - "提醒喝水" → type: "message", messageContent: "该喝水了，保持健康！"
   - "发送天气通知" → type: "message", messageContent: "今天天气晴朗..."
+  - "提醒 @用户 喝水" → type: "message", messageContent: "@用户 该喝水了，保持健康！"
 
 ### task 类型
 **适用场景**：需要数据处理、文件操作或复杂逻辑的任务

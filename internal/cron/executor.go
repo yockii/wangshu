@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
@@ -70,14 +71,25 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 		Strict: true,
 	}
 
-	resp, err := mgr.provider.ChatWithJSONSchema(ctx, mgr.model, messages, schema, nil)
+	options := make(map[string]any)
+	if agentCfg, ok := config.DefaultCfg.Agents[mgr.agentName]; ok {
+		if agentCfg.Temperature > 0 {
+			options["temperature"] = agentCfg.Temperature
+		}
+		if agentCfg.MaxTokens > 0 {
+			options["max_tokens"] = agentCfg.MaxTokens
+		}
+	}
+
+	resp, err := mgr.provider.ChatWithJSONSchema(ctx, mgr.model, messages, schema, options)
 	if err != nil {
 		return fmt.Errorf("LLM调用失败: %w", err)
 	}
 
 	// 3. 解析JSON响应
 	var result CronJobExecutionResult
-	if err := json.Unmarshal([]byte(resp.Message.Content), &result); err != nil {
+	content := llm.ExtractJSONFromContent(resp.Message.Content)
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
 		return fmt.Errorf("解析LLM响应失败: %w", err)
 	}
 

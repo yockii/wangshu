@@ -1,8 +1,6 @@
 package tools
 
 import (
-	"context"
-
 	"github.com/yockii/wangshu/pkg/llm"
 )
 
@@ -44,18 +42,6 @@ func NewToolContext(agentName, agentOwner, workspace, sessionID, channel, chatID
 		LLM:        llmProvider,
 		Model:      model,
 	}
-}
-
-// CallLLM calls the LLM with the given messages
-func (tc *ToolContext) CallLLM(ctx context.Context, sessionID string, messages []llm.Message) (*llm.ChatResponse, error) {
-	if tc.LLM == nil {
-		return nil, &ToolError{
-			Code:    "ERR_NO_LLM_PROVIDER",
-			Message: "LLM provider not available in tool context",
-		}
-	}
-
-	return tc.LLM.Chat(ctx, tc.Model, messages, nil, nil)
 }
 
 // ToolError represents an error from tool execution

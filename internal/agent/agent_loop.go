@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/session"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/bus"
@@ -16,9 +17,19 @@ import (
 func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.Message) (string, error) {
 	var finalContent string
 
+	options := map[string]any{}
+	if agentCfg, ok := config.DefaultCfg.Agents[a.agentName]; ok {
+		if agentCfg.Temperature != 0 {
+			options["temperature"] = agentCfg.Temperature
+		}
+		if agentCfg.MaxTokens != 0 {
+			options["max_tokens"] = agentCfg.MaxTokens
+		}
+	}
+
 	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 	for i := 0; i < a.maxIter; i++ {
-		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
+		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 		if err != nil {
 			return "", fmt.Errorf("LLM call failed (iteration %d): %w", i+1, err)
 		}

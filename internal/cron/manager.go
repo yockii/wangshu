@@ -16,6 +16,7 @@ import (
 )
 
 type CronManager struct {
+	agentName string
 	workspace string
 	model     string
 	provider  llm.Provider
@@ -26,9 +27,10 @@ type CronManager struct {
 	c         *cron.Cron
 }
 
-func NewCronManager(workspace, model string, provider llm.Provider) *CronManager {
+func NewCronManager(agentName, workspace, model string, provider llm.Provider) *CronManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr := &CronManager{
+		agentName: agentName,
 		workspace: workspace,
 		model:     model,
 		provider:  provider,

@@ -10,6 +10,7 @@ import (
 )
 
 type TaskManager struct {
+	agentName string
 	workspace string
 	model     string
 	provider  llm.Provider
@@ -19,9 +20,10 @@ type TaskManager struct {
 	cancel    context.CancelFunc
 }
 
-func NewTaskManager(workspace, model string, provider llm.Provider) *TaskManager {
+func NewTaskManager(agentName, workspace, model string, provider llm.Provider) *TaskManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	tm := &TaskManager{
+		agentName: agentName,
 		workspace: workspace,
 		model:     model,
 		provider:  provider,

@@ -118,7 +118,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			for _, msg := range history {
 				historyContent += fmt.Sprintf("%s: %s\n", msg.Metadata.SenderName, msg.Content)
 			}
-			inboundMsg.Content = fmt.Sprintf("最近10条消息:\n%s\n当前消息(提到了你):%s\n**有些信息可能与提到你时要你完成的任务无关，仅作为参考**", historyContent, fmt.Sprintf("%s: %s", senderName, inboundMsg.Content))
+			inboundMsg.Content = fmt.Sprintf("你当前在群聊中，群聊最近10条消息:\n%s\n当前消息(提到了你):%s\n**有些信息可能与提到你时要你完成的任务无关，仅作为参考**", historyContent, fmt.Sprintf("%s: %s", senderName, inboundMsg.Content))
 		} else {
 			// 将消息保留到最近10条
 			c.groupMu.Lock()

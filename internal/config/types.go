@@ -23,6 +23,7 @@ type AgentConfig struct {
 	Provider    string  `json:"provider"`
 	Model       string  `json:"model"`
 	Temperature float64 `json:"temperature"`
+	MaxTokens   int64   `json:"max_tokens"`
 }
 
 type ProviderConfig struct {

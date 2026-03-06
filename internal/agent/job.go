@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
@@ -29,10 +30,21 @@ func (a *Agent) executionJob(job *types.BasicJobInfo) {
 			),
 		},
 	}
+
+	options := make(map[string]any)
+	if agentCfg, ok := config.DefaultCfg.Agents[a.agentName]; ok {
+		if agentCfg.Temperature > 0 {
+			options["temperature"] = agentCfg.Temperature
+		}
+		if agentCfg.MaxTokens > 0 {
+			options["max_tokens"] = agentCfg.MaxTokens
+		}
+	}
+
 	ctx := context.Background()
 	availableTools := tools.GetDefaultToolRegistry().GetSelectedToolsInProviderDefs(constant.ToolNameMessage, constant.ToolNameTask)
 	for i := 0; i < 50; i++ {
-		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, nil)
+		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 		if err != nil {
 			slog.Error("LLM call failed", "jobId", job.ID, "error", err)
 			return

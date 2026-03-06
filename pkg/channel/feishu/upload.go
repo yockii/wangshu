@@ -3,6 +3,7 @@ package feishu
 import (
 	"context"
 	"os"
+	"strings"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
@@ -39,6 +40,7 @@ func (c *FeishuChannel) uploadFile(p string) (string, error) {
 	defer file.Close()
 	req := larkim.NewCreateFileReqBuilder().
 		Body(larkim.NewCreateFileReqBodyBuilder().
+			FileType(fileType(file.Name())).
 			FileName(file.Name()).
 			File(file).
 			Build()).
@@ -51,4 +53,24 @@ func (c *FeishuChannel) uploadFile(p string) (string, error) {
 		return "", resp.CodeError
 	}
 	return *resp.Data.FileKey, nil
+}
+
+// fileType 根据文件名返回文件类型，飞书的文件类型可用值：opus音频（非opus的需要转为该格式）、mp4、pdf、doc、xls、ppt、stream（不属于以上类型）
+func fileType(name string) string {
+	switch {
+	case strings.HasSuffix(name, ".opus"):
+		return "opus"
+	case strings.HasSuffix(name, ".mp4"):
+		return "mp4"
+	case strings.HasSuffix(name, ".pdf"):
+		return "pdf"
+	case strings.HasSuffix(name, ".doc"):
+		return "doc"
+	case strings.HasSuffix(name, ".xls"):
+		return "xls"
+	case strings.HasSuffix(name, ".ppt"):
+		return "ppt"
+	default:
+		return "stream"
+	}
 }

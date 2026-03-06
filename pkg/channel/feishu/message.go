@@ -222,7 +222,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 				if err != nil {
 					slog.Error("Feishu Channel upload image error", "err", err)
 				} else {
-					err = c.sendMsg(ctx, om.Metadata.ChatID, string(bodyContent))
+					err = c.sendMsg(ctx, om.Metadata.ChatID, string(bodyContent), larkim.MsgTypeImage)
 					if err != nil {
 						slog.Error("Feishu Channel send image error", "err", err)
 					}
@@ -242,7 +242,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 				if err != nil {
 					slog.Error("Feishu Channel upload file error", "err", err)
 				} else {
-					err = c.sendMsg(ctx, om.Metadata.ChatID, string(bodyContent))
+					err = c.sendMsg(ctx, om.Metadata.ChatID, string(bodyContent), larkim.MsgTypeFile)
 					if err != nil {
 						slog.Error("Feishu Channel send file error", "err", err)
 					}

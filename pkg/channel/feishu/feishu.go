@@ -152,12 +152,12 @@ func (c *FeishuChannel) SubscribeOutbound(ctx context.Context, msg bus.Message) 
 }
 
 // sendMsg 发送消息
-func (c *FeishuChannel) sendMsg(ctx context.Context, chatID, content string) error {
+func (c *FeishuChannel) sendMsg(ctx context.Context, chatID, content, msgType string) error {
 	req := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(larkim.ReceiveIdTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
-			MsgType(larkim.MsgTypeText).
+			MsgType(msgType).
 			Content(content).
 			Build()).
 		Build()

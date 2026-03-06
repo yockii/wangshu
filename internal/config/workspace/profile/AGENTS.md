@@ -129,15 +129,6 @@ Skills 提供你的工具。当你需要某个工具时，查看它的 `SKILL.md
 - **Discord 链接：** 用 `<>` 包裹多个链接以抑制嵌入预览：`<https://example.com>`
 - **WhatsApp：** 不使用标题 — 用**粗体**或大写字母来强调
 
-## 💓 心跳 - 主动出击！
-
-当你收到心跳轮询（消息匹配配置的心跳提示）时，不要每次都只回复 `HEARTBEAT_OK`。善用心跳做有意义的事！
-
-默认心跳提示：
-`Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.`
-
-你可以自由编辑 `HEARTBEAT.md`，写入简短的检查清单或提醒。保持精简以限制 token 消耗。
-
 ### 定时任务
 
 **使用定时任务的情况：**
@@ -153,7 +144,14 @@ Skills 提供你的工具。当你需要某个工具时，查看它的 `SKILL.md
 **群聊中的定时任务**
 需要记录要@的人，并在定时任务中明确提及。
 
-### 心跳
+## 💓 心跳 - 主动出击！
+
+当你收到心跳轮询（消息匹配配置的心跳提示）时，不要每次都只回复 `HEARTBEAT_OK`。善用心跳做有意义的事！
+
+默认心跳提示：
+`Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.`
+
+你可以自由编辑 `HEARTBEAT.md`，写入简短的检查清单或提醒。保持精简以限制 token 消耗。
 
 **使用心跳的情况：**
 

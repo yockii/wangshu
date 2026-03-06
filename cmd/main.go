@@ -143,17 +143,24 @@ func run() {
 				if ch.AppID != "" && ch.AppSecret != "" {
 					noChannelFound = false
 					feishuChannel := feishu.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
-					channel.RegisterChannel(name, feishuChannel)
+
+					// 设置 workspace（从关联的 agent 配置中获取）
 					var feishuAgent *agent.Agent
 					if ch.Agent != "" {
 						a, has := agent.GetAgent(ch.Agent)
 						if has {
 							feishuAgent = a
+							// 设置 workspace
+							feishuChannel.SetWorkspace(a.GetWorkspace())
 						}
 					}
 					if feishuAgent == nil {
 						feishuAgent = defaultAgent
+						// 使用 defaultAgent 的 workspace
+						feishuChannel.SetWorkspace(defaultAgent.GetWorkspace())
 					}
+
+					channel.RegisterChannel(name, feishuChannel)
 					bus.Default().RegisterInboundHandler(name, feishuAgent.SubscribeInbound)
 					bus.Default().RegisterOutboundHandler(feishuChannel.SubscribeOutbound)
 				}

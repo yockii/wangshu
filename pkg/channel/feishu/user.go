@@ -109,6 +109,11 @@ func (c *FeishuChannel) getSenderName(chatID, senderID string) string {
 	}
 	c.groupUsers.Store(chatID, userMap)
 
+	// 保存到文件
+	if err := c.saveGroupUsersToFile(chatID, userMap); err != nil {
+		slog.Warn("Failed to save group users to file", "chatID", chatID, "error", err)
+	}
+
 	return name
 }
 

@@ -57,11 +57,17 @@ func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 	return c
 }
 
+// SetWorkspace 设置工作空间目录
+func (c *FeishuChannel) SetWorkspace(workspace string) {
+	c.workspace = workspace
+}
+
 // FeishuChannel 飞书渠道实现
 type FeishuChannel struct {
 	name        string
 	appID       string
 	appSecret   string
+	workspace   string // 工作空间目录
 	wsClient    *larkws.Client
 	restClient  *lark.Client
 	stopCh      chan struct{}
@@ -79,6 +85,12 @@ type FeishuChannel struct {
 
 // Start 启动飞书渠道
 func (c *FeishuChannel) Start() error {
+	// 加载群成员缓存
+	if err := c.loadGroupUsersFromFile(); err != nil {
+		slog.Warn("Failed to load group users cache", "error", err)
+		// 不阻塞启动，继续执行
+	}
+
 	// 获取机器人的openID
 	if err := c.getBotOpenID(); err != nil {
 		return err

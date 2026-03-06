@@ -34,6 +34,10 @@ func (c *FeishuChannel) convertMentionsToAtTags(chatID, text string) string {
 			return text
 		}
 		c.groupUsers.Store(chatID, userMap)
+		// 保存到文件
+		if err := c.saveGroupUsersToFile(chatID, userMap); err != nil {
+			slog.Warn("Failed to save group users to file", "chatID", chatID, "error", err)
+		}
 	}
 
 	// 创建反向映射：用户名 -> open_id

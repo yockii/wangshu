@@ -88,9 +88,9 @@ func TestFeishuChannelSupports(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	tests := []struct {
-		name      string
+		name       string
 		capability channel.ChannelCapability
-		want      bool
+		want       bool
 	}{
 		// 支持的能力
 		{"SendText", channel.CanSendText, true},
@@ -419,10 +419,15 @@ func TestFeishuChannelDealReceivedMessageText(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"text":"hello world"}`
-	result := c.dealReceivedMessage(bus.MessageTypeText, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeText,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
-	if result != "hello world" {
-		t.Errorf("Expected 'hello world', got '%s'", result)
+	if msg.Content != "hello world" {
+		t.Errorf("Expected 'hello world', got '%s'", msg.Content)
 	}
 }
 
@@ -430,11 +435,16 @@ func TestFeishuChannelDealReceivedMessageImage(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"image_key":"img_12345"}`
-	result := c.dealReceivedMessage(bus.MessageTypeImage, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeImage,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[图片: img_12345]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -442,11 +452,16 @@ func TestFeishuChannelDealReceivedMessageFile(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"file_12345","file_name":"test.pdf"}`
-	result := c.dealReceivedMessage(bus.MessageTypeFile, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeFile,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[文件: test.pdf]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -454,11 +469,16 @@ func TestFeishuChannelDealReceivedMessageFileWithoutName(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"file_12345"}`
-	result := c.dealReceivedMessage(bus.MessageTypeFile, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeFile,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[文件: file_12345]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -466,11 +486,16 @@ func TestFeishuChannelDealReceivedMessageAudio(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"audio_123","duration":30}`
-	result := c.dealReceivedMessage(bus.MessageTypeAudio, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeAudio,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[音频: 30s]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -478,11 +503,16 @@ func TestFeishuChannelDealReceivedMessageAudioWithoutDuration(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"audio_123"}`
-	result := c.dealReceivedMessage(bus.MessageTypeAudio, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeAudio,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[音频]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -490,11 +520,16 @@ func TestFeishuChannelDealReceivedMessageVideo(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"video_123","duration":60}`
-	result := c.dealReceivedMessage(bus.MessageTypeVideo, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeVideo,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[视频: 60s]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -502,11 +537,16 @@ func TestFeishuChannelDealReceivedMessageVideoWithoutDuration(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"file_key":"video_123"}`
-	result := c.dealReceivedMessage(bus.MessageTypeVideo, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeVideo,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
 	expected := "[视频]"
-	if result != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, result)
+	if msg.Content != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, msg.Content)
 	}
 }
 
@@ -514,10 +554,15 @@ func TestFeishuChannelDealReceivedMessageUnknownType(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
 	content := `{"some":"data"}`
-	result := c.dealReceivedMessage(bus.MessageTypeText, content)
+	msg := &bus.InboundMessage{
+		Message: bus.Message{
+			Type:    bus.MessageTypeText,
+			Content: content},
+	}
+	c.dealReceivedMessage(msg)
 
-	if result != "" {
-		t.Errorf("Expected empty string for unknown type, got '%s'", result)
+	if msg.Content != "" {
+		t.Errorf("Expected empty string for unknown type, got '%s'", msg.Content)
 	}
 }
 

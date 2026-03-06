@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"slices"
 
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/yockii/wangshu/pkg/bus"
 )
 
@@ -71,8 +71,8 @@ func (c *FeishuChannel) getGroupHistory(chatID string) error {
 			default:
 				busMsg.Type = bus.MessageTypeText
 			}
-
-			busMsg.Content = c.dealReceivedMessage(busMsg.Type, *message.Body.Content)
+			busMsg.Content = *message.Body.Content
+			c.dealReceivedMessage(busMsg)
 			if busMsg.Content == "" {
 				continue
 			}

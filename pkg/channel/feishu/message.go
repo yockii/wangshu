@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
@@ -81,7 +82,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 		chatType = *chatTypePtr
 	}
 	if chatType == "p2p" {
-		inboundMsg.Content = c.dealReceivedMessage(inboundMsg.Type, inboundMsg.Content)
+		c.dealReceivedMessage(inboundMsg)
 	} else { // group
 		// 看看哪个用户发的，获取用户名
 		senderName := c.getSenderName(inboundMsg.Metadata.ChatID, inboundMsg.Metadata.SenderID)
@@ -92,7 +93,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 
 		inboundMsg.Metadata.SenderName = senderName
 
-		inboundMsg.Content = c.dealReceivedMessage(inboundMsg.Type, inboundMsg.Content)
+		c.dealReceivedMessage(inboundMsg)
 		// 看看是否@机器人
 		methionMe := false
 		if len(event.Event.Message.Mentions) > 0 {
@@ -208,7 +209,8 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 
 	// 发送媒体（如果有）
 	if om.Media != nil {
-		if om.Media.Type == bus.MediaTypeImage {
+		switch om.Media.Type {
+		case bus.MediaTypeImage:
 			key, err := c.uploadImage(om.Media.FilePath)
 			if err != nil {
 				slog.Error("Feishu Channel upload image error", "err", err)
@@ -228,7 +230,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 					}
 				}
 			}
-		} else if om.Media.Type == bus.MediaTypeFile {
+		case bus.MediaTypeFile:
 			key, err := c.uploadFile(om.Media.FilePath)
 			if err != nil {
 				slog.Error("Feishu Channel upload file error", "err", err)
@@ -255,17 +257,18 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 }
 
 // dealReceivedMessage 解析接收到的消息内容
-func (c *FeishuChannel) dealReceivedMessage(msgType bus.MessageType, content string) string {
-	switch msgType {
+func (c *FeishuChannel) dealReceivedMessage(msg *bus.InboundMessage) {
+	content := msg.Content
+	switch msg.Type {
 	case bus.MessageTypeText:
 		body := struct {
 			Text string `json:"text"`
 		}{}
 		if err := json.Unmarshal([]byte(content), &body); err != nil {
 			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+			return
 		}
-		return body.Text
+		msg.Content = body.Text
 	case bus.MessageTypeRichMedia:
 		body := struct {
 			Title   string `json:"title"`
@@ -278,7 +281,7 @@ func (c *FeishuChannel) dealReceivedMessage(msgType bus.MessageType, content str
 		}{}
 		if err := json.Unmarshal([]byte(content), &body); err != nil {
 			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+			return
 		}
 
 		var content strings.Builder
@@ -305,29 +308,44 @@ func (c *FeishuChannel) dealReceivedMessage(msgType bus.MessageType, content str
 			}
 		}
 
-		return content.String()
+		msg.Content = content.String()
 	case bus.MessageTypeImage:
-		body := struct {
-			ImageKey string `json:"image_key"`
-		}{}
-		if err := json.Unmarshal([]byte(content), &body); err != nil {
-			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+		// body := struct {
+		// 	ImageKey string `json:"image_key"`
+		// }{}
+		// if err := json.Unmarshal([]byte(content), &body); err != nil {
+		// 	slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
+		// 	return
+		// }
+		// msg.Content = fmt.Sprintf("[图片: %s]", body.ImageKey)
+		p, err := c.downloadImage(msg.Metadata.MessageID, msg.Content)
+		if err != nil {
+			slog.Error("飞书渠道下载收到的图片失败", "error", err)
+			msg.Content = "[用户发送了一张图片，但下载失败]"
+		} else if p != "" {
+			msg.Content = fmt.Sprintf("[用户发送了一张图片]\n图片路径: %s\n你可以读取这个图片文件。", p)
 		}
-		return fmt.Sprintf("[图片: %s]", body.ImageKey)
 	case bus.MessageTypeFile:
-		body := struct {
-			FileKey  string `json:"file_key"`
-			FileName string `json:"file_name"`
-		}{}
-		if err := json.Unmarshal([]byte(content), &body); err != nil {
-			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+		// body := struct {
+		// 	FileKey  string `json:"file_key"`
+		// 	FileName string `json:"file_name"`
+		// }{}
+		// if err := json.Unmarshal([]byte(content), &body); err != nil {
+		// 	slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
+		// 	return ""
+		// }
+		// if body.FileName != "" {
+		// 	return fmt.Sprintf("[文件: %s]", body.FileName)
+		// }
+		// return fmt.Sprintf("[文件: %s]", body.FileKey)
+		p, err := c.donwloadFile(msg.Metadata.MessageID, msg.Content)
+		if err != nil {
+			slog.Error("飞书渠道下载收到的文件失败", "error", err)
+			msg.Content = "[用户发送了一个文件，但下载失败]"
+		} else if p != "" {
+			fileName := filepath.Base(p)
+			msg.Content = fmt.Sprintf("[用户发送了一个文件]\n文件名: %s\n文件路径: %s\n你可以读取这个文件来查看内容。", fileName, p)
 		}
-		if body.FileName != "" {
-			return fmt.Sprintf("[文件: %s]", body.FileName)
-		}
-		return fmt.Sprintf("[文件: %s]", body.FileKey)
 	case bus.MessageTypeAudio:
 		body := struct {
 			FileKey  string `json:"file_key"`
@@ -335,12 +353,13 @@ func (c *FeishuChannel) dealReceivedMessage(msgType bus.MessageType, content str
 		}{}
 		if err := json.Unmarshal([]byte(content), &body); err != nil {
 			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+			return
 		}
 		if body.Duration > 0 {
-			return fmt.Sprintf("[音频: %ds]", body.Duration)
+			msg.Content = fmt.Sprintf("[音频: %ds]", body.Duration)
+			return
 		}
-		return "[音频]"
+		msg.Content = "[音频]"
 	case bus.MessageTypeVideo:
 		body := struct {
 			FileKey  string `json:"file_key"`
@@ -348,13 +367,14 @@ func (c *FeishuChannel) dealReceivedMessage(msgType bus.MessageType, content str
 		}{}
 		if err := json.Unmarshal([]byte(content), &body); err != nil {
 			slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-			return ""
+			return
 		}
 		if body.Duration > 0 {
-			return fmt.Sprintf("[视频: %ds]", body.Duration)
+			msg.Content = fmt.Sprintf("[视频: %ds]", body.Duration)
+			return
 		}
-		return "[视频]"
+		msg.Content = "[视频]"
 	default:
-		return ""
+		return
 	}
 }

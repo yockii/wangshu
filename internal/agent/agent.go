@@ -70,9 +70,13 @@ func (a *Agent) Stop() {
 	a.cronManager.Stop()
 }
 
-func (a *Agent) RunWithChannel(ctx context.Context, channel, ChatID, userInput, senderID string) (string, error) {
-	sess := a.sessions.GetOrCreate(a.workspaceDir, channel, ChatID, senderID)
-	sess.AddMessage(constant.RoleUser, userInput)
+func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (string, error) {
+	sess := a.sessions.GetOrCreate(a.workspaceDir, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Metadata.SenderID)
+	sess.AddMessage(constant.RoleUser, msg.Content)
+
+	if msg.Type == bus.MessageTypeFile || msg.Type == bus.MessageTypeImage {
+		return "", nil
+	}
 
 	msgs, err := a.buildMessages(sess)
 	if err != nil {
@@ -90,7 +94,7 @@ func (a *Agent) RunWithChannel(ctx context.Context, channel, ChatID, userInput, 
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
-	response, err := a.RunWithChannel(ctx, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Content, msg.Metadata.SenderID)
+	response, err := a.RunWithChannel(ctx, msg)
 	if err != nil {
 		slog.Error("Failed to run with channel", "error", err)
 		response = fmt.Sprintf("Agent dealing failed: %+v", err)

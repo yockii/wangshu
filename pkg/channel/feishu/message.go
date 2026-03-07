@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/yockii/wangshu/pkg/bus"
 )
+
+// <think>或<thinking>标签，去掉标签之间的内容
+var thinkRegex = regexp.MustCompile(`^(\s*)<think>.*?</think>|<thinking>.*?</thinking>`)
 
 // handleMessage 处理接收到的消息
 func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
@@ -150,6 +154,9 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 		// 1. 首先处理文本中的@用户名（如 @张三），转换为 <at> 标签
 		// 2. 然后处理 Entities 中的 @用户（如果有的话）
 		content := om.Content
+
+		// 如果有<think><thinking>的标签，去掉标签之间的内容
+		content = thinkRegex.ReplaceAllString(content, "")
 
 		// 如果是群聊消息，尝试转换文本中的@用户名
 		if _, ok := c.groupUsers.Load(om.Metadata.ChatID); ok {

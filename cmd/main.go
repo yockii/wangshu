@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/yockii/wangshu/internal/agent"
@@ -103,8 +105,9 @@ func run() {
 	memoryTools.RegisterMemoryTools()
 
 	tools.GetDefaultToolRegistry().Register(taskTools.NewTaskTool())
-	tools.GetDefaultToolRegistry().Register(systemTools.NewCronTool())
+	tools.GetDefaultToolRegistry().Register(taskTools.NewCronTool())
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
+	tools.GetDefaultToolRegistry().Register(systemTools.NewVersionTool())
 	// TODO 实现并注册更多工具
 
 	skills.InitializeSkillLoader()
@@ -171,6 +174,8 @@ func run() {
 		return
 	}
 
+	flagFileCheck()
+
 	// Wait for interrupt signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -181,4 +186,72 @@ func run() {
 	// Stop all agent
 	agent.StopAllAgents()
 	slog.Info("All agents stopped")
+}
+
+func flagFileCheck() {
+	exePath, err := os.Executable()
+	if err != nil {
+		slog.Error("Failed to get executable path", "error", err)
+		return
+	}
+
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		slog.Error("Failed to resolve symlinks", "error", err)
+		return
+	}
+
+	restartFlagPath := filepath.Join(filepath.Dir(exePath), ".restart_flag")
+
+	// 检查重启标记是否存在
+	if _, err := os.Stat(restartFlagPath); os.IsNotExist(err) {
+		return // 没有重启标记，直接返回
+	}
+
+	// 读取标记文件内容
+	flagData, err := os.ReadFile(restartFlagPath)
+	if err != nil {
+		slog.Error("Failed to read restart flag", "error", err)
+		return
+	}
+
+	// 删除重启标记
+	if err := os.Remove(restartFlagPath); err != nil {
+		slog.Error("Failed to remove restart flag", "error", err)
+	}
+
+	// 解析标记数据: agentName|channel|chatID
+	parts := strings.Split(string(flagData), "|")
+	if len(parts) != 4 {
+		slog.Error("Invalid restart flag data", "data", string(flagData))
+		return
+	}
+
+	agentName := parts[0]
+	channel := parts[1]
+	chatID := parts[2]
+	senderID := parts[3]
+
+	slog.Info("Restart detected", "agent", agentName, "channel", channel, "chatID", chatID, "senderID", senderID)
+
+	// 构建重启成功消息
+	ag, has := agent.GetAgent(agentName)
+	if !has {
+		slog.Error("Agent not found", "agent", agentName)
+		return
+	}
+
+	err = ag.RestartMessage(context.Background(), bus.InboundMessage{
+		Message: bus.Message{
+			Metadata: bus.MessageMetadata{
+				Channel:  channel,
+				ChatID:   chatID,
+				SenderID: senderID,
+			},
+		},
+	})
+
+	if err != nil {
+		slog.Error("Restart notification error", "error", err)
+	}
 }

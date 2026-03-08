@@ -10,6 +10,7 @@ import (
 	"github.com/yockii/wangshu/internal/cron"
 	"github.com/yockii/wangshu/internal/session"
 	"github.com/yockii/wangshu/internal/task"
+	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
@@ -103,4 +104,43 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 	outboundMsg := bus.NewOutboundMessage(msg.Metadata.ChatID, response)
 	outboundMsg.Metadata.Channel = msg.Metadata.Channel
 	bus.Default().PublishOutbound(outboundMsg)
+}
+
+func (a *Agent) RestartMessage(ctx context.Context, msg bus.InboundMessage) error {
+	sess := a.sessions.GetOrCreate(a.workspaceDir, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Metadata.SenderID)
+	lastMsgs := sess.GetLastN(1)
+	if len(lastMsgs) > 0 && lastMsgs[0].Role == constant.RoleAssistant {
+		// 找到toolcall
+		lastMsg := lastMsgs[0]
+		toolMsg := types.Message{
+			Role:    constant.RoleTool,
+			Content: fmt.Sprintf("✅ Application restarted successfully. Current version: %s", constant.Version),
+		}
+		for _, tc := range lastMsg.ToolCalls {
+			if tc.Name == constant.ToolNameVersion {
+				toolMsg.ToolCalls = []types.ToolCall{tc}
+				break
+			}
+		}
+		if len(toolMsg.ToolCalls) > 0 {
+			sess.AddMessage(toolMsg.Role, toolMsg.Content, toolMsg.ToolCalls...)
+			msgs, err := a.buildMessages(sess)
+			if err != nil {
+				return err
+			}
+
+			response, err := a.runLoop(ctx, sess, msgs)
+
+			if err != nil {
+				return fmt.Errorf("Agent loop failed: %w", err)
+			}
+
+			bus.Default().PublishOutbound(bus.Message{
+				Type:     bus.MessageTypeText,
+				Content:  response,
+				Metadata: msg.Metadata,
+			})
+		}
+	}
+	return nil
 }

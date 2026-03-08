@@ -15,7 +15,7 @@ import (
 )
 
 // <think>或<thinking>标签，去掉标签之间的内容
-var thinkRegex = regexp.MustCompile(`^(\s*)<think>.*?</think>|<thinking>.*?</thinking>`)
+var thinkRegex = regexp.MustCompile(`^(\s*)<think>[\s\S]*?</think>|<thinking>[\s\S]*?</thinking>`)
 
 // handleMessage 处理接收到的消息
 func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {

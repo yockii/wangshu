@@ -82,7 +82,7 @@ type AutoInteractiveTool struct {
 func NewAutoInteractiveTool() *AutoInteractiveTool {
 	tool := new(AutoInteractiveTool)
 	tool.Name_ = "auto_interactive"
-	tool.Desc_ = "Execute interactive commands with intelligent automation. Automatically detects prompts, analyzes output with LLM, and suggests responses. Supports menu navigation with arrow keys. The tool will return confirmation requests when LLM confidence is low, allowing you to approve or modify suggestions before execution."
+	tool.Desc_ = "Execute interactive commands with intelligent automation. **DO NOT USE THIS TOOL IF HAS OTHER TOOLS THAT CAN DO THE SAME THING.** Automatically detects prompts, analyzes output with LLM, and suggests responses. Supports menu navigation with arrow keys. The tool will return confirmation requests when LLM confidence is low, allowing you to approve or modify suggestions before execution."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{

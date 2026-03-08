@@ -21,7 +21,7 @@ type ExecTool struct {
 func NewExecTool() *ExecTool {
 	tool := new(ExecTool)
 	tool.Name_ = "exec"
-	tool.Desc_ = "Execute a shell command and return its output. Supports PTY for interactive commands that require TTY. Note: For PowerShell commands that may return non-zero exit codes even when successful (e.g., Clear-RecycleBin), use '-ErrorAction SilentlyContinue' and append '; exit 0' to force successful exit code."
+	tool.Desc_ = "Execute a shell command and return its output. **DO NOT USE THIS TOOL IF HAS OTHER TOOLS THAT CAN DO THE SAME THING.** Supports PTY for interactive commands that require TTY. Note: For PowerShell commands that may return non-zero exit codes even when successful (e.g., Clear-RecycleBin), use '-ErrorAction SilentlyContinue' and append '; exit 0' to force successful exit code."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{

@@ -61,7 +61,7 @@ type ProcessTool struct {
 func NewProcessTool() *ProcessTool {
 	tool := new(ProcessTool)
 	tool.Name_ = "process"
-	tool.Desc_ = "Execute commands with optional wait for completion. By default, waits for the command to finish and returns output (similar to exec but with better timeout control). Use background=true for long-running tasks like servers - in this case, you should create a task to monitor progress. Use this tool for: builds, downloads, tests, or any command where you need the output to make decisions."
+	tool.Desc_ = "Execute commands with optional wait for completion. **DO NOT USE THIS TOOL IF HAS OTHER TOOLS THAT CAN DO THE SAME THING.** By default, waits for the command to finish and returns output (similar to exec but with better timeout control). Use background=true for long-running tasks like servers - in this case, you should create a task to monitor progress. Use this tool for: builds, downloads, tests, or any command where you need the output to make decisions."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{

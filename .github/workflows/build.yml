@@ -43,6 +43,12 @@ jobs:
         with:
           go-version: '1.25.0'
 
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -50,7 +56,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           output_name="wangshu-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
-          go build -ldflags="-s -w" -o "$output_name" ./cmd
+          go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${{ steps.version.outputs.version }}'" -o "$output_name" ./cmd
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

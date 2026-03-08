@@ -27,8 +27,6 @@ import (
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
-const Version = "dev"
-
 func main() {
 	run()
 

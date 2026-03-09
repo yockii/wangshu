@@ -109,6 +109,7 @@ jobs:
       - name: Update CHANGELOG.md
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
+          git checkout -b main origin/main
           git-cliff --tag $VERSION > CHANGELOG.md
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

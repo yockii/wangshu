@@ -23,7 +23,7 @@ import (
 	"github.com/yockii/wangshu/pkg/tools"
 	memoryTools "github.com/yockii/wangshu/pkg/tools/memory"
 	networkTools "github.com/yockii/wangshu/pkg/tools/network"
-	shellTools "github.com/yockii/wangshu/pkg/tools/shell"
+	"github.com/yockii/wangshu/pkg/tools/runtime"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
@@ -95,12 +95,16 @@ func run() {
 	// 初始化工具注册中心
 	tools.RegisterBuiltinTools()
 	tools.RegisterFileSystemTools()
-	// Register shell tools
-	shellTools.RegisterShellTools()
+	// Register shell tools - disabled to encourage use of specialized tools
+	// shellTools.RegisterShellTools()
 	// Register network tools
 	networkTools.RegisterNetworkTools()
 	// Register memory tools
 	memoryTools.RegisterMemoryTools()
+	// Register runtime tools
+	tools.GetDefaultToolRegistry().Register(runtime.NewPythonRunTool())
+	tools.GetDefaultToolRegistry().Register(runtime.NewNpmRunTool())
+	tools.GetDefaultToolRegistry().Register(runtime.NewGitRunTool())
 
 	tools.GetDefaultToolRegistry().Register(taskTools.NewTaskTool())
 	tools.GetDefaultToolRegistry().Register(systemTools.NewCronTool())

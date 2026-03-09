@@ -8,9 +8,9 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o wangshu ./cmd
 
-FROM alpine:latest
+FROM python:3.12-alpine
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata git nodejs npm
 
 WORKDIR /app
 

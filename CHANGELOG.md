@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.13](https://github.com/yockii/wangshu/compare/v0.2.12...v0.2.13)
+
+### Added
+
+- runtime: 添加Python、NPM和Git运行时工具
+
+### Docs
+
+- Update CHANGELOG for v0.2.12
+
+### Fixed
+
+- feishu: 飞书群聊消息导致程序退出的问题
+
 ## [0.2.12](https://github.com/yockii/wangshu/compare/v0.2.11...v0.2.12)
 
 ### Added

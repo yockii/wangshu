@@ -68,6 +68,23 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Generate CHANGELOG for release
+        id: changelog
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          git-cliff --tag $VERSION --strip all > release_notes.md
+          echo "path=release_notes.md" >> $GITHUB_OUTPUT
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -83,10 +100,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
+          body_path: release_notes.md
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          git-cliff --tag $VERSION > CHANGELOG.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG for $VERSION"
+          git push origin main
 
   docker:
     needs: release

@@ -1,4 +1,4 @@
-﻿![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/wangshu/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/wangshu) ![GitHub last commit](https://img.shields.io/github/last-commit/yockii/wangshu) [![Build Release](https://github.com/yockii/wangshu/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/wangshu/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/wangshu) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/wangshu) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/yockii/wangshu/total)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yockii/wangshu/build.yml) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/yockii/wangshu) ![GitHub last commit](https://img.shields.io/github/last-commit/yockii/wangshu) [![Build Release](https://github.com/yockii/wangshu/actions/workflows/build.yml/badge.svg)](https://github.com/yockii/wangshu/actions/workflows/build.yml) ![GitHub Release](https://img.shields.io/github/v/release/yockii/wangshu) ![GitHub Release Date](https://img.shields.io/github/release-date/yockii/wangshu) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/yockii/wangshu/total)
 
 
 # 望舒 (Wangshu)
@@ -433,9 +433,7 @@ Web 管理程序提供完整的 REST API 和 WebSocket 接口，支持第三方�
 
 ## 文档
 
-- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - 架构设计文档
-- [ROADMAP.md](./docs/ROADMAP.md) - 发展路线图
-- [docs/](./docs/) - 更多技术文档和实现总结
+- [CHANGELOG.md](./CHANGELOG.md) - 版本更新日志
 
 ## 后续计划
 

@@ -21,13 +21,14 @@ import (
 // NewFeishuChannel 创建一个新的飞书渠道
 func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 	c := &FeishuChannel{
-		name:         name,
-		appID:        appID,
-		appSecret:    appSecret,
-		stopCh:       make(chan struct{}, 1),
-		reconnectCh:  make(chan struct{}, 1),
-		groupHistory: make(map[string][]*bus.InboundMessage),
-		groupUsers:   sync.Map{},
+		name:                name,
+		appID:               appID,
+		appSecret:           appSecret,
+		stopCh:              make(chan struct{}, 1),
+		reconnectCh:         make(chan struct{}, 1),
+		groupHistory:        make(map[string][]*bus.InboundMessage),
+		groupChatInitilized: make(map[string]bool),
+		groupUsers:          sync.Map{},
 	}
 
 	eventHandler := dispatcher.NewEventDispatcher("", "").

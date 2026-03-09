@@ -44,6 +44,21 @@ func (c *FeishuChannel) getGroupHistory(chatID string) error {
 				continue
 			}
 
+			// 看看是否有提到机器人
+			// 看看是否@机器人
+			methionMe := false
+			if len(message.Mentions) > 0 {
+				for _, mention := range message.Mentions {
+					if mention != nil && mention.Id != nil && *mention.Id == c.openID {
+						methionMe = true
+						break
+					}
+				}
+			}
+			if methionMe {
+				break
+			}
+
 			busMsg := &bus.InboundMessage{
 				Message: bus.Message{
 					Content: "",
@@ -86,8 +101,10 @@ func (c *FeishuChannel) getGroupHistory(chatID string) error {
 	}
 	// 将msgs倒一下
 	slices.Reverse(msgs)
+
 	c.groupMu.Lock()
 	c.groupHistory[chatID] = msgs
+	c.groupChatInitilized[chatID] = true
 	c.groupMu.Unlock()
 	return nil
 }

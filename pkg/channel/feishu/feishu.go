@@ -73,9 +73,10 @@ type FeishuChannel struct {
 	stopCh      chan struct{}
 	reconnectCh chan struct{}
 
-	groupMu      sync.RWMutex
-	groupHistory map[string][]*bus.InboundMessage // 群聊chat_id -> 最近10条消息列表
-	groupUsers   sync.Map                         // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
+	groupMu             sync.RWMutex
+	groupHistory        map[string][]*bus.InboundMessage // 群聊chat_id -> 最近10条消息列表
+	groupChatInitilized map[string]bool                  // 群聊chat_id -> 是否初始化过
+	groupUsers          sync.Map                         // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
 
 	cardCallbacks sync.Map // callback token -> chatID 映射
 

@@ -86,7 +86,14 @@ func (t *ExecTool) executeWithPTY(ctx context.Context, command string, workingDi
 			args := t.dealPowershellCommand(command)
 			cmd = exec.CommandContext(ctx, "powershell", args...)
 		} else {
-			cmd = exec.Command("cmd", "/c", command)
+			// cmd = exec.Command("cmd", "/c", command)
+			// 使用绝对路径调用 cmd.exe
+			systemRoot := os.Getenv("SystemRoot")
+			if systemRoot == "" {
+				systemRoot = "C:\\Windows"
+			}
+			cmdPath := systemRoot + "\\System32\\cmd.exe"
+			cmd = exec.Command(cmdPath, "/c", command)
 		}
 	} else {
 		// Unix: use sh -c with PTY
@@ -193,7 +200,14 @@ func (t *ExecTool) executeStandard(ctx context.Context, command string, workingD
 			args := t.dealPowershellCommand(command)
 			cmd = exec.CommandContext(ctx, "powershell", args...)
 		} else {
-			cmd = exec.CommandContext(ctx, "cmd", "/c", command)
+			// cmd = exec.CommandContext(ctx, "cmd", "/c", command)
+			// 使用绝对路径调用 cmd.exe
+			systemRoot := os.Getenv("SystemRoot")
+			if systemRoot == "" {
+				systemRoot = "C:\\Windows"
+			}
+			cmdPath := systemRoot + "\\System32\\cmd.exe"
+			cmd = exec.CommandContext(ctx, cmdPath, "/c", command)
 		}
 	} else {
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
@@ -211,16 +225,18 @@ func (t *ExecTool) executeStandard(ctx context.Context, command string, workingD
 		return "", fmt.Errorf("command timed out")
 	}
 
+	outputStr := string(output)
+
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
-				return string(output), fmt.Errorf("command exited with status %d: %w", status.ExitStatus(), err)
+				return outputStr, fmt.Errorf("command exited with status %d: %w\n%s", status.ExitStatus(), err, outputStr)
 			}
 		}
-		return string(output), fmt.Errorf("command failed: %w", err)
+		return outputStr, fmt.Errorf("command failed: %w\n%s", err, outputStr)
 	}
 
-	return string(output), nil
+	return outputStr, nil
 }
 
 // RunInteractive executes a command with PTY for interactive programs
@@ -228,9 +244,16 @@ func RunInteractive(ctx context.Context, command string, timeout time.Duration) 
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", command)
+		// cmd = exec.Command("cmd", "/c", command)
+		// 使用绝对路径调用 cmd.exe
+		systemRoot := os.Getenv("SystemRoot")
+		if systemRoot == "" {
+			systemRoot = "C:\\Windows"
+		}
+		cmdPath := systemRoot + "\\System32\\cmd.exe"
+		cmd = exec.CommandContext(ctx, cmdPath, "/c", command)
 	} else {
-		cmd = exec.Command("sh", "-c", command)
+		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
 
 	cmd.Env = append(os.Environ(),
@@ -282,10 +305,19 @@ func ExecInBackground(ctx context.Context, command string, workingDir string) (s
 
 	if runtime.GOOS == "windows" {
 		// Windows: use start /b to run in background
-		cmd = exec.Command("cmd", "/c", "start", "/b", command)
+		// cmd = exec.Command("cmd", "/c", "start", "/b", command)
+
+		// 使用绝对路径调用 cmd.exe
+		systemRoot := os.Getenv("SystemRoot")
+		if systemRoot == "" {
+			systemRoot = "C:\\Windows"
+		}
+		cmdPath := systemRoot + "\\System32\\cmd.exe"
+		cmd = exec.Command(cmdPath, "/c", "start", "/b", command)
+
 	} else {
 		// Unix: use nohup to run in background
-		cmd = exec.Command("sh", "-c", "nohup "+command+" > /dev/null 2>&1 &")
+		cmd = exec.CommandContext(ctx, "sh", "-c", "nohup "+command+" > /dev/null 2>&1 &")
 	}
 
 	if workingDir != "" {

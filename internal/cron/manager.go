@@ -75,6 +75,13 @@ func (mgr *CronManager) scanJobs() {
 	if err != nil {
 		return
 	}
+
+	cronEntries := mgr.c.Entries()
+	meedRemovedCronEntryFlag := make(map[string]struct{})
+	for _, entry := range cronEntries {
+		meedRemovedCronEntryFlag[entry.Name] = struct{}{}
+	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -106,6 +113,8 @@ func (mgr *CronManager) scanJobs() {
 				}, cron.WithName(j.ID))
 			}
 		} else {
+			delete(meedRemovedCronEntryFlag, job.ID)
+
 			entry := mgr.c.EntryByName(job.ID)
 			if !entry.Valid() {
 				continue
@@ -120,6 +129,10 @@ func (mgr *CronManager) scanJobs() {
 				os.Remove(jobJsonPath)
 			}
 		}
+	}
+
+	for name := range meedRemovedCronEntryFlag {
+		mgr.c.RemoveByName(name)
 	}
 }
 

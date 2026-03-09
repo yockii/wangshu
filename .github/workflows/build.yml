@@ -82,7 +82,7 @@ jobs:
         id: changelog
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
-          git-cliff --tag $VERSION --strip all > release_notes.md
+          git-cliff --tag $VERSION --latest > release_notes.md
           echo "path=release_notes.md" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts

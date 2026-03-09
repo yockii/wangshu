@@ -1,10 +1,14 @@
 package filesystem
 
 import (
+	"archive/zip"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/xuri/excelize/v2"
 )
 
 func TestNewReadFileTool(t *testing.T) {
@@ -261,5 +265,187 @@ func TestReadFileTool_Execute_LargeFile(t *testing.T) {
 
 	if len(result) != len(largeContent) {
 		t.Errorf("Large file content size mismatch, expected %d, got %d", len(largeContent), len(result))
+	}
+}
+
+func TestReadFileTool_Execute_XLSX(t *testing.T) {
+	tool := NewReadFileTool()
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.xlsx")
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	f.SetCellValue("Sheet1", "A1", "Name")
+	f.SetCellValue("Sheet1", "B1", "Age")
+	f.SetCellValue("Sheet1", "A2", "Alice")
+	f.SetCellValue("Sheet1", "B2", "30")
+
+	if err := f.SaveAs(testFile); err != nil {
+		t.Fatalf("Failed to create test XLSX file: %v", err)
+	}
+
+	result, err := tool.Execute(context.Background(), map[string]string{
+		"path": testFile,
+	})
+
+	if err != nil {
+		t.Errorf("Execute should succeed for XLSX file: %v", err)
+	}
+
+	if !strings.Contains(result, "Sheet1") {
+		t.Error("Result should contain sheet name")
+	}
+	if !strings.Contains(result, "Name") {
+		t.Error("Result should contain 'Name'")
+	}
+	if !strings.Contains(result, "Alice") {
+		t.Error("Result should contain 'Alice'")
+	}
+}
+
+func TestReadFileTool_Execute_XLSX_MultiSheet(t *testing.T) {
+	tool := NewReadFileTool()
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "multi_sheet.xlsx")
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	f.SetCellValue("Sheet1", "A1", "Sheet1Data")
+	f.NewSheet("Sheet2")
+	f.SetCellValue("Sheet2", "A1", "Sheet2Data")
+
+	if err := f.SaveAs(testFile); err != nil {
+		t.Fatalf("Failed to create test XLSX file: %v", err)
+	}
+
+	result, err := tool.Execute(context.Background(), map[string]string{
+		"path": testFile,
+	})
+
+	if err != nil {
+		t.Errorf("Execute should succeed for multi-sheet XLSX file: %v", err)
+	}
+
+	if !strings.Contains(result, "Sheet1") || !strings.Contains(result, "Sheet2") {
+		t.Error("Result should contain both sheet names")
+	}
+	if !strings.Contains(result, "Sheet1Data") || !strings.Contains(result, "Sheet2Data") {
+		t.Error("Result should contain data from both sheets")
+	}
+}
+
+func TestReadFileTool_Execute_DOCX(t *testing.T) {
+	tool := NewReadFileTool()
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.docx")
+
+	docContent := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:p><w:r><w:t>Hello World</w:t></w:r></w:p>
+<w:p><w:r><w:t>This is a test document.</w:t></w:r></w:p>
+</w:body>
+</w:document>`
+
+	zipFile, err := os.Create(testFile)
+	if err != nil {
+		t.Fatalf("Failed to create docx file: %v", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+
+	docWriter, err := zipWriter.Create("word/document.xml")
+	if err != nil {
+		t.Fatalf("Failed to create document.xml in zip: %v", err)
+	}
+	docWriter.Write([]byte(docContent))
+
+	contentTypesWriter, _ := zipWriter.Create("[Content_Types].xml")
+	contentTypesWriter.Write([]byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`))
+
+	relsWriter, _ := zipWriter.Create("_rels/.rels")
+	relsWriter.Write([]byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`))
+
+	docRelsWriter, _ := zipWriter.Create("word/_rels/document.xml.rels")
+	docRelsWriter.Write([]byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`))
+
+	zipWriter.Close()
+
+	result, err := tool.Execute(context.Background(), map[string]string{
+		"path": testFile,
+	})
+
+	if err != nil {
+		t.Errorf("Execute should succeed for DOCX file: %v", err)
+	}
+
+	if !strings.Contains(result, "Hello World") {
+		t.Errorf("Result should contain 'Hello World', got: %s", result)
+	}
+}
+
+func TestReadFileTool_Execute_UnsupportedFormat(t *testing.T) {
+	tool := NewReadFileTool()
+
+	tmpDir := t.TempDir()
+
+	docFile := filepath.Join(tmpDir, "test.doc")
+	os.WriteFile(docFile, []byte("test"), 0644)
+
+	_, err := tool.Execute(context.Background(), map[string]string{
+		"path": docFile,
+	})
+
+	if err == nil {
+		t.Error("Execute should fail for .doc format")
+	}
+	if !strings.Contains(err.Error(), "not supported") {
+		t.Errorf("Error should mention format not supported, got: %v", err)
+	}
+
+	xlsFile := filepath.Join(tmpDir, "test.xls")
+	os.WriteFile(xlsFile, []byte("test"), 0644)
+
+	_, err = tool.Execute(context.Background(), map[string]string{
+		"path": xlsFile,
+	})
+
+	if err == nil {
+		t.Error("Execute should fail for .xls format")
+	}
+	if !strings.Contains(err.Error(), "not supported") {
+		t.Errorf("Error should mention format not supported, got: %v", err)
+	}
+}
+
+func TestReadFileTool_Execute_XLSX_EmptySheet(t *testing.T) {
+	tool := NewReadFileTool()
+
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "empty.xlsx")
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	if err := f.SaveAs(testFile); err != nil {
+		t.Fatalf("Failed to create empty XLSX file: %v", err)
+	}
+
+	result, err := tool.Execute(context.Background(), map[string]string{
+		"path": testFile,
+	})
+
+	if err != nil {
+		t.Errorf("Execute should succeed for empty XLSX file: %v", err)
+	}
+
+	if !strings.Contains(result, "Sheet1") {
+		t.Error("Result should contain sheet name even for empty sheet")
 	}
 }

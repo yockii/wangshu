@@ -23,6 +23,9 @@ type Session struct {
 	UpdatedAt time.Time
 	workspace string
 	mu        sync.RWMutex
+
+	PendingImage   *types.ContentBlock
+	PendingImageAt time.Time
 }
 
 // func (s *Session) AddMessage(role, content string, toolCallID string, toolCalls ...ToolCall) {
@@ -35,7 +38,6 @@ func (s *Session) AddMessage(role, content string, toolCalls ...types.ToolCall) 
 		Content:   content,
 		Timestamp: time.Now(),
 		ToolCalls: toolCalls,
-		// ToolCallID: toolCallID,
 	}
 
 	s.Messages = append(s.Messages, msg)
@@ -43,6 +45,53 @@ func (s *Session) AddMessage(role, content string, toolCalls ...types.ToolCall) 
 	s.UpdatedAt = time.Now()
 
 	s.saveMessage(msg)
+}
+
+func (s *Session) AddMessageWithContents(role string, contents []types.ContentBlock, toolCalls ...types.ToolCall) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	msg := types.Message{
+		Role:      role,
+		Contents:  contents,
+		Timestamp: time.Now(),
+		ToolCalls: toolCalls,
+	}
+
+	for _, c := range contents {
+		if c.Type == "text" {
+			msg.Content = c.Text
+			break
+		}
+	}
+
+	s.Messages = append(s.Messages, msg)
+
+	s.UpdatedAt = time.Now()
+
+	s.saveMessage(msg)
+}
+
+func (s *Session) SetPendingImage(image *types.ContentBlock) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.PendingImage = image
+	s.PendingImageAt = time.Now()
+}
+
+func (s *Session) GetAndClearPendingImage() *types.ContentBlock {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.PendingImage == nil {
+		return nil
+	}
+	if time.Since(s.PendingImageAt) > 5*time.Minute {
+		s.PendingImage = nil
+		return nil
+	}
+	img := s.PendingImage
+	s.PendingImage = nil
+	return img
 }
 func (s *Session) GetMessages() []types.Message {
 	s.mu.RLock()

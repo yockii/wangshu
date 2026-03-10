@@ -82,7 +82,15 @@ func formatMessages(messages []types.Message) string {
 	var sb strings.Builder
 	for _, msg := range messages {
 		if msg.Role == constant.RoleUser || msg.Role == constant.RoleAssistant {
-			sb.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, msg.Content))
+			content := msg.Content
+			if len(msg.Contents) > 0 {
+				for _, c := range msg.Contents {
+					if c.Type == "image" {
+						content += " [包含图片]"
+					}
+				}
+			}
+			sb.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, content))
 		}
 	}
 	return sb.String()

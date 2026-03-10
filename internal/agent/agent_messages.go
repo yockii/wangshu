@@ -62,6 +62,8 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 	return response.Message.Content, nil
 }
 
+const maxMessagesWithImage = 3
+
 // buildMessages 构建发送给LLM的消息列表
 func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	sessionMessages := sess.GetMessages()
@@ -78,12 +80,10 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 
 	msgs := make([]llm.Message, 0, len(sessionMessages)+1)
 
-	// 技能元数据加载
 	skillList, err := skills.GetDefaultLoader().LoadSkills()
 	if err != nil {
 		return nil, err
 	}
-	// 将skills转为xml字符串
 	parent := types.SkillsParent{
 		SkillList: skillList,
 	}
@@ -105,11 +105,17 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 			constant.SystemPrompt,
 			string(skillsXML),
 			a.workspaceDir,
-			agentContextInfo, // 各种个性化信息，包含路径
+			agentContextInfo,
 			runtimeInfo,
 		),
 	})
-	for _, msg := range sessionMessages {
+
+	imageCutoff := len(sessionMessages) - maxMessagesWithImage
+	if imageCutoff < 0 {
+		imageCutoff = 0
+	}
+
+	for i, msg := range sessionMessages {
 		tcs := make([]llm.ToolCall, 0, len(msg.ToolCalls))
 		for _, toolCall := range msg.ToolCalls {
 			tcs = append(tcs, llm.ToolCall{
@@ -124,9 +130,33 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 			Content:   msg.Content,
 			ToolCalls: tcs,
 		}
+
+		if len(msg.Contents) > 0 {
+			keepImage := i >= imageCutoff
+			contents := make([]llm.ContentBlock, 0, len(msg.Contents))
+			for _, c := range msg.Contents {
+				if c.Type == "image" {
+					if keepImage {
+						contents = append(contents, llm.ContentBlock{
+							Type:      c.Type,
+							ImageData: c.ImageData,
+							MediaType: c.MediaType,
+						})
+					}
+				} else {
+					contents = append(contents, llm.ContentBlock{
+						Type: c.Type,
+						Text: c.Text,
+					})
+				}
+			}
+			if len(contents) > 0 {
+				m.Contents = contents
+			}
+		}
+
 		msgs = append(msgs, m)
 	}
-	// }
 
 	return msgs, nil
 }

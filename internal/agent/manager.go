@@ -29,6 +29,7 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 			24*time.Hour,
 			10,
 			ac.Workspace,
+			ac.EnableImageRecognition,
 		)
 		if err != nil {
 			slog.Error("Failed to initialize agent, this agent will not be available", "agent", name, "error", err)

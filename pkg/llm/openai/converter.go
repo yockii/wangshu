@@ -44,7 +44,24 @@ func (p *Provider) convertMessages(messages []llm.Message) []openai.ChatCompleti
 				msgs = append(msgs, openai.AssistantMessage(msg.Content))
 			}
 		case selfConstant.RoleUser:
-			msgs = append(msgs, openai.UserMessage(msg.Content))
+			if len(msg.Contents) > 0 {
+				contentParts := make([]openai.ChatCompletionContentPartUnionParam, 0, len(msg.Contents))
+				for _, c := range msg.Contents {
+					switch c.Type {
+					case "text":
+						contentParts = append(contentParts, openai.TextContentPart(c.Text))
+					case "image":
+						contentParts = append(contentParts, openai.ImageContentPart(
+							openai.ChatCompletionContentPartImageImageURLParam{
+								URL: "data:" + c.MediaType + ";base64," + c.ImageData,
+							},
+						))
+					}
+				}
+				msgs = append(msgs, openai.UserMessage(contentParts))
+			} else {
+				msgs = append(msgs, openai.UserMessage(msg.Content))
+			}
 		case selfConstant.RoleTool:
 			if len(msg.ToolCalls) == 0 {
 				continue

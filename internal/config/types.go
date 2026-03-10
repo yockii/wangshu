@@ -19,11 +19,12 @@ type SkillConfig struct {
 }
 
 type AgentConfig struct {
-	Workspace   string  `json:"workspace"`
-	Provider    string  `json:"provider"`
-	Model       string  `json:"model"`
-	Temperature float64 `json:"temperature"`
-	MaxTokens   int64   `json:"max_tokens"`
+	Workspace              string  `json:"workspace"`
+	Provider               string  `json:"provider"`
+	Model                  string  `json:"model"`
+	Temperature            float64 `json:"temperature"`
+	MaxTokens              int64   `json:"max_tokens"`
+	EnableImageRecognition bool    `json:"enable_image_recognition"`
 }
 
 type ProviderConfig struct {
@@ -48,10 +49,11 @@ func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]*AgentConfig{
 			constant.Default: {
-				Workspace:   "~/.wangshu/workspace",
-				Provider:    "myProvider",
-				Model:       "qwen3-max",
-				Temperature: 0.7,
+				Workspace:              "~/.wangshu/workspace",
+				Provider:               "myProvider",
+				Model:                  "qwen3-max",
+				Temperature:            0.7,
+				EnableImageRecognition: false,
 			},
 		},
 		Providers: map[string]*ProviderConfig{

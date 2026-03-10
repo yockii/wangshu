@@ -317,20 +317,17 @@ func (c *FeishuChannel) dealReceivedMessage(msg *bus.InboundMessage) {
 
 		msg.Content = content.String()
 	case bus.MessageTypeImage:
-		// body := struct {
-		// 	ImageKey string `json:"image_key"`
-		// }{}
-		// if err := json.Unmarshal([]byte(content), &body); err != nil {
-		// 	slog.Error("Feishu Channel dealReceivedMessage error", "err", err)
-		// 	return
-		// }
-		// msg.Content = fmt.Sprintf("[图片: %s]", body.ImageKey)
 		p, err := c.downloadImage(msg.Metadata.MessageID, msg.Content)
 		if err != nil {
 			slog.Error("飞书渠道下载收到的图片失败", "error", err)
 			msg.Content = "[用户发送了一张图片，但下载失败]"
 		} else if p != "" {
-			msg.Content = fmt.Sprintf("[用户发送了一张图片]\n图片路径: %s\n你可以读取这个图片文件。", p)
+			msg.Content = ""
+			msg.Media = &bus.MediaContent{
+				Type:     bus.MediaTypeImage,
+				FilePath: p,
+				FileName: filepath.Base(p),
+			}
 		}
 	case bus.MessageTypeFile:
 		// body := struct {

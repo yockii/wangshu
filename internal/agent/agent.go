@@ -14,27 +14,30 @@ import (
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/utils/imageutil"
 )
 
 type Agent struct {
-	provider     llm.Provider
-	model        string
-	sessions     *session.Manager
-	maxIter      int
-	workspaceDir string
-	cronManager  *cron.CronManager
-	taskManager  *task.TaskManager
-	agentName    string
+	provider               llm.Provider
+	model                  string
+	sessions               *session.Manager
+	maxIter                int
+	workspaceDir           string
+	cronManager            *cron.CronManager
+	taskManager            *task.TaskManager
+	agentName              string
+	enableImageRecognition bool
 }
 
-func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duration, maxIter int, workspaceDir string) (*Agent, error) {
+func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duration, maxIter int, workspaceDir string, enableImageRecognition bool) (*Agent, error) {
 	agent := &Agent{
-		agentName:    name,
-		provider:     provider,
-		model:        model,
-		sessions:     session.NewManager(sessionTTL),
-		maxIter:      maxIter,
-		workspaceDir: workspaceDir,
+		agentName:              name,
+		provider:               provider,
+		model:                  model,
+		sessions:               session.NewManager(sessionTTL),
+		maxIter:                maxIter,
+		workspaceDir:           workspaceDir,
+		enableImageRecognition: enableImageRecognition,
 	}
 
 	err := config.EnsureWorkspace(workspaceDir)
@@ -73,10 +76,38 @@ func (a *Agent) Stop() {
 
 func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (string, error) {
 	sess := a.sessions.GetOrCreate(a.workspaceDir, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Metadata.SenderID)
-	sess.AddMessage(constant.RoleUser, msg.Content)
 
-	if msg.Type == bus.MessageTypeFile || msg.Type == bus.MessageTypeImage {
+	if msg.Type == bus.MessageTypeImage {
+		if !a.enableImageRecognition {
+			return "", nil
+		}
+		if msg.Media != nil && msg.Media.FilePath != "" {
+			imageData, mediaType, err := a.loadImageAsBase64(msg.Media.FilePath)
+			if err != nil {
+				slog.Error("Failed to load image", "error", err, "path", msg.Media.FilePath)
+				return "", nil
+			}
+			sess.SetPendingImage(&types.ContentBlock{
+				Type:      "image",
+				ImageData: imageData,
+				MediaType: mediaType,
+			})
+			return "", nil
+		}
 		return "", nil
+	} else if msg.Type == bus.MessageTypeFile {
+		return "", nil
+	}
+
+	pendingImage := sess.GetAndClearPendingImage()
+	if pendingImage != nil {
+		contents := []types.ContentBlock{
+			types.ContentBlock{Type: "text", Text: msg.Content},
+			*pendingImage,
+		}
+		sess.AddMessageWithContents(constant.RoleUser, contents)
+	} else {
+		sess.AddMessage(constant.RoleUser, msg.Content)
 	}
 
 	msgs, err := a.buildMessages(sess)
@@ -92,6 +123,15 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 	return response, nil
 
 	// resp, err := a.provider.Chat(ctx, sessionID, msgs, tools, nil)
+}
+
+func (a *Agent) loadImageAsBase64(filePath string) (string, string, error) {
+	data, mediaType, err := imageutil.ReadImageAsBase64(filePath)
+	if err != nil {
+		return "", "", err
+	}
+
+	return data, mediaType, nil
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {

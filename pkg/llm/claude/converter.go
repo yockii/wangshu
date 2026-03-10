@@ -50,7 +50,20 @@ func (p *Provider) convertMessages(messages []llm.Message) []anthropic.MessagePa
 				msgs = append(msgs, anthropic.NewAssistantMessage(anthropic.NewTextBlock(msg.Content)))
 			}
 		case constant.RoleUser:
-			msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(msg.Content)))
+			if len(msg.Contents) > 0 {
+				contentBlocks := make([]anthropic.ContentBlockParamUnion, 0, len(msg.Contents))
+				for _, c := range msg.Contents {
+					switch c.Type {
+					case "text":
+						contentBlocks = append(contentBlocks, anthropic.NewTextBlock(c.Text))
+					case "image":
+						contentBlocks = append(contentBlocks, anthropic.NewImageBlockBase64(c.MediaType, c.ImageData))
+					}
+				}
+				msgs = append(msgs, anthropic.NewUserMessage(contentBlocks...))
+			} else {
+				msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(msg.Content)))
+			}
 		case constant.RoleTool:
 			if len(msg.ToolCalls) == 0 {
 				continue

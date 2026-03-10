@@ -2,9 +2,45 @@ package llm
 
 type Message struct {
 	Role      string
-	Content   string
+	Content   string         // 纯文本内容（向后兼容）
+	Contents  []ContentBlock // 多内容块（可选，用于多模态消息）
 	ToolCalls []ToolCall
-	// ToolCallID string
+}
+
+type ContentBlock struct {
+	Type      string // "text", "image"
+	Text      string // 文本内容（Type="text"时使用）
+	ImageData string // 图片base64数据（Type="image"时使用）
+	MediaType string // 图片MIME类型，如 "image/png", "image/jpeg"
+}
+
+func NewTextContent(text string) ContentBlock {
+	return ContentBlock{Type: "text", Text: text}
+}
+
+func NewImageContent(base64Data, mediaType string) ContentBlock {
+	return ContentBlock{Type: "image", ImageData: base64Data, MediaType: mediaType}
+}
+
+func (m *Message) HasImage() bool {
+	for _, c := range m.Contents {
+		if c.Type == "image" {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Message) GetTextContent() string {
+	if m.Content != "" {
+		return m.Content
+	}
+	for _, c := range m.Contents {
+		if c.Type == "text" {
+			return c.Text
+		}
+	}
+	return ""
 }
 
 type ToolCall struct {

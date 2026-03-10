@@ -29,7 +29,7 @@ func (m *mockProvider) Chat(ctx context.Context, model string, messages []llm.Me
 func (m *mockProvider) ChatWithJSONSchema(ctx context.Context, model string, messages []llm.Message, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
 	// 返回一个简单的 message 类型响应
 	result := CronJobExecutionResult{
-		Type:           "message",
+		TaskType:       "message",
 		MessageContent: "Test message from cron job",
 	}
 	content, _ := json.Marshal(result)
@@ -393,7 +393,7 @@ func (m *mockProviderTask) Chat(ctx context.Context, model string, messages []ll
 func (m *mockProviderTask) ChatWithJSONSchema(ctx context.Context, model string, messages []llm.Message, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
 	// 返回一个 task 类型的响应
 	result := CronJobExecutionResult{
-		Type:            "task",
+		TaskType:        "task",
 		TaskName:        "Generate news summary",
 		TaskDescription: "Fetch and summarize daily news",
 		TaskPriority:    "normal",
@@ -570,7 +570,7 @@ func TestCronManager_EmptyJobID(t *testing.T) {
 func TestCronJobExecutionResult_JSONSchema(t *testing.T) {
 	// 验证 CronJobExecutionResult 可以正确序列化和反序列化
 	result := CronJobExecutionResult{
-		Type:           "message",
+		TaskType:       "message",
 		MessageContent: "Test message",
 	}
 
@@ -584,8 +584,8 @@ func TestCronJobExecutionResult_JSONSchema(t *testing.T) {
 		t.Fatalf("Failed to unmarshal CronJobExecutionResult: %v", err)
 	}
 
-	if unmarshaled.Type != "message" {
-		t.Errorf("Expected type 'message', got '%s'", unmarshaled.Type)
+	if unmarshaled.TaskType != "message" {
+		t.Errorf("Expected type 'message', got '%s'", unmarshaled.TaskType)
 	}
 
 	if unmarshaled.MessageContent != "Test message" {
@@ -595,7 +595,7 @@ func TestCronJobExecutionResult_JSONSchema(t *testing.T) {
 
 func TestCronJobExecutionResult_TaskType(t *testing.T) {
 	result := CronJobExecutionResult{
-		Type:            "task",
+		TaskType:        "task",
 		TaskName:        "Test Task",
 		TaskDescription: "Test task description",
 		TaskPriority:    "high",
@@ -611,8 +611,8 @@ func TestCronJobExecutionResult_TaskType(t *testing.T) {
 		t.Fatalf("Failed to unmarshal CronJobExecutionResult: %v", err)
 	}
 
-	if unmarshaled.Type != "task" {
-		t.Errorf("Expected type 'task', got '%s'", unmarshaled.Type)
+	if unmarshaled.TaskType != "task" {
+		t.Errorf("Expected type 'task', got '%s'", unmarshaled.TaskType)
 	}
 
 	if unmarshaled.TaskName != "Test Task" {

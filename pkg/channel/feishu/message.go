@@ -111,8 +111,10 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 		if methionMe {
 			c.groupMu.RLock()
 			historyLen := len(c.groupHistory[inboundMsg.Metadata.ChatID])
+			b, has := c.groupChatInitilized[inboundMsg.Metadata.ChatID]
+			needFetch := (!has || !b) && historyLen > 0
 			c.groupMu.RUnlock()
-			if historyLen == 0 {
+			if needFetch {
 				c.getGroupHistory(inboundMsg.Metadata.ChatID)
 			}
 			// 构造消息内容，将历史十条消息拼接起来
@@ -123,7 +125,11 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			for _, msg := range history {
 				historyContent += fmt.Sprintf("%s: %s\n", msg.Metadata.SenderName, msg.Content)
 			}
-			inboundMsg.Content = fmt.Sprintf("你当前在群聊中，群聊最近10条消息:\n%s\n当前消息(提到了你):%s\n**有些信息可能与提到你时要你完成的任务无关，仅作为参考**", historyContent, fmt.Sprintf("%s: %s", senderName, inboundMsg.Content))
+			inboundMsg.Content = fmt.Sprintf("你当前在群聊中，群聊最近消息:\n%s\n当前消息(提到了你):%s\n**有些信息可能与提到你时要你完成的任务无关，仅作为参考**", historyContent, fmt.Sprintf("%s: %s", senderName, inboundMsg.Content))
+			// 由于这里已经提到了agent，所以历史消息可以清空，不再需要作为下一轮的参考
+			c.groupMu.Lock()
+			c.groupHistory[inboundMsg.Metadata.ChatID] = nil
+			c.groupMu.Unlock()
 		} else {
 			// 将消息保留到最近10条
 			c.groupMu.Lock()
@@ -135,6 +141,8 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			if len(c.groupHistory[inboundMsg.Metadata.ChatID]) > 10 {
 				c.groupHistory[inboundMsg.Metadata.ChatID] = c.groupHistory[inboundMsg.Metadata.ChatID][1:]
 			}
+
+			c.groupChatInitilized[inboundMsg.Metadata.ChatID] = true
 			return
 		}
 	}

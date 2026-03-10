@@ -21,13 +21,14 @@ import (
 // NewFeishuChannel 创建一个新的飞书渠道
 func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 	c := &FeishuChannel{
-		name:         name,
-		appID:        appID,
-		appSecret:    appSecret,
-		stopCh:       make(chan struct{}, 1),
-		reconnectCh:  make(chan struct{}, 1),
-		groupHistory: make(map[string][]*bus.InboundMessage),
-		groupUsers:   sync.Map{},
+		name:                name,
+		appID:               appID,
+		appSecret:           appSecret,
+		stopCh:              make(chan struct{}, 1),
+		reconnectCh:         make(chan struct{}, 1),
+		groupHistory:        make(map[string][]*bus.InboundMessage),
+		groupChatInitilized: make(map[string]bool),
+		groupUsers:          sync.Map{},
 	}
 
 	eventHandler := dispatcher.NewEventDispatcher("", "").
@@ -73,9 +74,10 @@ type FeishuChannel struct {
 	stopCh      chan struct{}
 	reconnectCh chan struct{}
 
-	groupMu      sync.RWMutex
-	groupHistory map[string][]*bus.InboundMessage // 群聊chat_id -> 最近10条消息列表
-	groupUsers   sync.Map                         // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
+	groupMu             sync.RWMutex
+	groupHistory        map[string][]*bus.InboundMessage // 群聊chat_id -> 最近10条消息列表
+	groupChatInitilized map[string]bool                  // 群聊chat_id -> 是否初始化过
+	groupUsers          sync.Map                         // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
 
 	cardCallbacks sync.Map // callback token -> chatID 映射
 

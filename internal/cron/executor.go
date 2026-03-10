@@ -44,9 +44,8 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 			"type": "object",
 			"properties": map[string]any{
 				"type": map[string]any{
-					"type":     "string",
-					"enum":     []string{"message", "task"},
-					"required": true,
+					"type": "string",
+					"enum": []string{"message", "task"},
 				},
 				"messageContent": map[string]any{
 					"type":        "string",
@@ -66,7 +65,8 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 					"description": "任务优先级",
 				},
 			},
-			"required": []string{"type"},
+			"required":             []string{"type"},
+			"additionalProperties": false,
 		},
 		Strict: true,
 	}

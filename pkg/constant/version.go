@@ -1,3 +1,3 @@
 package constant
 
-const Version = "dev"
+var Version = "dev"

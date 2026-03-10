@@ -21,7 +21,20 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 	agentsMutex.Lock()
 	defer agentsMutex.Unlock()
 
+	// 只有启用的agent才需要初始化
+	enabledAgentNames := make(map[string]struct{})
+	for _, ch := range config.DefaultCfg.Channels {
+		if ch.Enabled {
+			enabledAgentNames[ch.Agent] = struct{}{}
+		}
+	}
+
 	for name, ac := range config.DefaultCfg.Agents {
+		// 只有启用的agent才需要初始化
+		if _, ok := enabledAgentNames[name]; !ok {
+			continue
+		}
+
 		agent, err := NewAgent(
 			llm.GetProvider(ac.Provider),
 			name,

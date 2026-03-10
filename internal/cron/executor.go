@@ -15,7 +15,7 @@ import (
 
 // CronJobExecutionResult 定时任务执行结果（JSON Schema）
 type CronJobExecutionResult struct {
-	Type            string `json:"type" jsonschema:"type=string,enum=message,task,required"`
+	TaskType        string `json:"taskType" jsonschema:"type=string,enum=message,task,required"`
 	MessageContent  string `json:"messageContent,omitempty" jsonschema:"type=string,description=要发送给用户的消息内容"`
 	TaskName        string `json:"taskName,omitempty" jsonschema:"type=string,description=任务名称"`
 	TaskDescription string `json:"taskDescription,omitempty" jsonschema:"type=string,description=任务描述"`
@@ -43,30 +43,31 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 		Schema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"type": map[string]any{
-					"type":     "string",
-					"enum":     []string{"message", "task"},
-					"required": true,
+				"taskType": map[string]any{
+					"type":        "string",
+					"enum":        []string{"message", "task"},
+					"description": "任务类型：message（发送消息）或 task（创建异步任务）",
 				},
 				"messageContent": map[string]any{
 					"type":        "string",
-					"description": "要发送给用户的消息内容",
+					"description": "要发送给用户的消息内容（仅 message 类型需要）",
 				},
 				"taskName": map[string]any{
 					"type":        "string",
-					"description": "任务名称",
+					"description": "任务名称（仅 task 类型需要）",
 				},
 				"taskDescription": map[string]any{
 					"type":        "string",
-					"description": "任务描述",
+					"description": "任务描述（仅 task 类型需要）",
 				},
 				"taskPriority": map[string]any{
 					"type":        "string",
 					"enum":        []string{"low", "normal", "high"},
-					"description": "任务优先级",
+					"description": "任务优先级（仅 task 类型需要）",
 				},
 			},
-			"required": []string{"type"},
+			"required":             []string{"taskType"},
+			"additionalProperties": false,
 		},
 		Strict: true,
 	}
@@ -93,10 +94,10 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 		return fmt.Errorf("解析LLM响应失败: %w", err)
 	}
 
-	slog.Info("定时任务执行结果", "jobId", job.ID, "type", result.Type)
+	slog.Info("定时任务执行结果", "jobId", job.ID, "taskType", result.TaskType)
 
-	// 4. 根据type调用相应的工具
-	switch result.Type {
+	// 4. 根据taskType调用相应的工具
+	switch result.TaskType {
 	case "message":
 		return mgr.executeTool(ctx, job.Channel, job.ChatID, "message", map[string]string{
 			"content": result.MessageContent,
@@ -114,7 +115,7 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 		})
 
 	default:
-		return fmt.Errorf("未知的type: %s", result.Type)
+		return fmt.Errorf("未知的type: %s", result.TaskType)
 	}
 }
 

@@ -15,6 +15,8 @@ import (
 	"github.com/yockii/wangshu/pkg/llm"
 )
 
+var managers = sync.Map{}
+
 type CronManager struct {
 	agentName string
 	workspace string
@@ -28,6 +30,10 @@ type CronManager struct {
 }
 
 func NewCronManager(agentName, workspace, model string, provider llm.Provider) *CronManager {
+	if m, ok := managers.Load(workspace); ok {
+		return m.(*CronManager)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr := &CronManager{
 		agentName: agentName,
@@ -48,10 +54,13 @@ func NewCronManager(agentName, workspace, model string, provider llm.Provider) *
 	mgr.c.Start()
 	go mgr.start()
 
+	managers.Store(workspace, mgr)
+
 	return mgr
 }
 
 func (mgr *CronManager) start() {
+	mgr.scanJobs()
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 

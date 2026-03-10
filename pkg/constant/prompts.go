@@ -46,18 +46,18 @@ const (
 - 任务描述包含"提醒"、"通知"、"发送"、"告诉"等词
 - 如果明确提及要@的用户，**必须**在 messageContent 中包含用户的 @ 提及
 - 示例：
-  - "提醒用户下班" → type: "message", messageContent: "下班时间到了，记得按时下班哦"
-  - "提醒喝水" → type: "message", messageContent: "该喝水了，保持健康！"
-  - "发送天气通知" → type: "message", messageContent: "今天天气晴朗..."
-  - "提醒 @用户 喝水" → type: "message", messageContent: "@用户 该喝水了，保持健康！"
+  - "提醒用户下班" → taskType: "message", messageContent: "下班时间到了，记得按时下班哦"
+  - "提醒喝水" → taskType: "message", messageContent: "该喝水了，保持健康！"
+  - "发送天气通知" → taskType: "message", messageContent: "今天天气晴朗..."
+  - "提醒 @用户 喝水" → taskType: "message", messageContent: "@用户 该喝水了，保持健康！"
 
 ### task 类型
 **适用场景**：需要数据处理、文件操作或复杂逻辑的任务
 - 需要读取文件、处理数据、生成内容
 - 需要调用工具完成复杂操作
 - 示例：
-  - "生成新闻简报" → type: "task", taskName: "生成新闻简报", taskDescription: "爬取今日新闻并生成简报"
-  - "备份数据" → type: "task", taskName: "备份数据", taskDescription: "备份指定目录的数据"
+  - "生成新闻简报" → taskType: "task", taskName: "生成新闻简报", taskDescription: "爬取今日新闻并生成简报"
+  - "备份数据" → taskType: "task", taskName: "备份数据", taskDescription: "备份指定目录的数据"
 
 ## 重要说明
 - task 类型创建的是"一次性执行任务"，**不允许**创建新的定时任务

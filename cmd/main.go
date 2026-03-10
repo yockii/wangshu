@@ -18,6 +18,7 @@ import (
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/openai"
@@ -30,6 +31,9 @@ import (
 )
 
 func main() {
+	if constant.Version == "dev" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 	run()
 
 	// 阻塞命令行

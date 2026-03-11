@@ -37,7 +37,7 @@ func (c *FeishuChannel) donwloadFile(msgID, content string) (string, error) {
 
 	path := filepath.Join(c.workspace, "download", fmt.Sprintf("%d-%s", time.Now().Unix(), fileStruct.FileName))
 
-	os.MkdirAll(filepath.Dir(path), 0644)
+	os.MkdirAll(filepath.Dir(path), 0755)
 
 	err = resp.WriteFile(path)
 	if err != nil {
@@ -82,7 +82,7 @@ func (c *FeishuChannel) downloadImage(msgID, content string) (string, error) {
 
 	path := filepath.Join(c.workspace, "download", fmt.Sprintf("%d%s", time.Now().Unix(), suffix))
 
-	os.MkdirAll(filepath.Dir(path), 0644)
+	os.MkdirAll(filepath.Dir(path), 0755)
 
 	err = resp.WriteFile(path)
 	if err != nil {

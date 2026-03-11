@@ -28,7 +28,8 @@ func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 		reconnectCh:         make(chan struct{}, 1),
 		groupHistory:        make(map[string][]*bus.InboundMessage),
 		groupChatInitilized: make(map[string]bool),
-		groupUsers:          sync.Map{},
+		cachedUsers:         sync.Map{},
+		cachedChats:         sync.Map{},
 	}
 
 	eventHandler := dispatcher.NewEventDispatcher("", "").
@@ -77,20 +78,28 @@ type FeishuChannel struct {
 	groupMu             sync.RWMutex
 	groupHistory        map[string][]*bus.InboundMessage // 群聊chat_id -> 最近10条消息列表
 	groupChatInitilized map[string]bool                  // 群聊chat_id -> 是否初始化过
-	groupUsers          sync.Map                         // map[string]map[string]string // 群聊chat_id -> 用户open_id -> 用户名
 
 	cardCallbacks sync.Map // callback token -> chatID 映射
 
 	openID        string
 	channelStatus int
+
+	cacheFileMu sync.Mutex
+	cachedUsers sync.Map // map[string]string // 用户open_id -> 用户名
+	cachedChats sync.Map // map[string]string // 群聊chat_id -> 群聊名称
 }
 
 // Start 启动飞书渠道
 func (c *FeishuChannel) Start() error {
-	// 加载群成员缓存
-	if err := c.loadGroupUsersFromFile(); err != nil {
-		slog.Warn("Failed to load group users cache", "error", err)
+	// 加载缓存的用户信息
+	if err := c.loadCachedUsersFromFile(); err != nil {
+		slog.Warn("Failed to load cached users cache", "error", err)
 		// 不阻塞启动，继续执行
+	}
+
+	// 加载群聊名称
+	if err := c.loadChatNames(); err != nil {
+		slog.Warn("Failed to load group names cache", "error", err)
 	}
 
 	// 获取机器人的openID
@@ -350,26 +359,4 @@ func (c *FeishuChannel) GetChatInfo(ctx context.Context, chatID string) (*channe
 	chatInfo.Description = chatData.Chat.Description
 
 	return chatInfo, nil
-}
-
-// GetChatMembers 获取聊天成员
-func (c *FeishuChannel) GetChatMembers(ctx context.Context, chatID string) ([]channel.ChatMember, error) {
-	// 使用已有的方法获取成员
-	memberMap := make(map[string]string)
-	if err := c.getAllGroupMembers(chatID, "", memberMap); err != nil {
-		return nil, err
-	}
-
-	// 转换为ChatMember数组
-	members := make([]channel.ChatMember, 0, len(memberMap))
-	for openID, name := range memberMap {
-		member := channel.ChatMember{
-			ID:   openID,
-			Name: name,
-			Role: channel.MemberRoleMember, // 飞书API不直接返回角色信息
-		}
-		members = append(members, member)
-	}
-
-	return members, nil
 }

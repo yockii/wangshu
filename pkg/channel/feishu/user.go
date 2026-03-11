@@ -9,8 +9,7 @@ import (
 	"net/http"
 
 	larkauth "github.com/larksuite/oapi-sdk-go/v3/service/auth/v3"
-	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	larkcontact "github.com/larksuite/oapi-sdk-go/v3/service/contact/v3"
 )
 
 // getBotOpenID 获取机器人的OpenID
@@ -84,68 +83,71 @@ func (c *FeishuChannel) getBotOpenID() error {
 }
 
 // getSenderName 获取发送者的名称
-func (c *FeishuChannel) getSenderName(chatID, senderID string) string {
-	if val, ok := c.groupUsers.Load(chatID); ok {
-		userMap := val.(map[string]string)
-		if name, has := userMap[senderID]; has {
-			return name
-		}
+func (c *FeishuChannel) getSenderName(openID string) string {
+	if val, ok := c.cachedUsers.Load(openID); ok {
+		return val.(string)
 	}
 
-	userMap := make(map[string]string)
 	// 如果没有，调用sdk查询
-	allMembers := make(map[string]string)
-	if err := c.getAllGroupMembers(chatID, "", allMembers); err != nil {
+	if name, err := c.getMemberName(openID); err != nil {
 		slog.Error("Feishu Channel getSenderName error", "err", err)
 		return ""
+	} else {
+		c.cachedUsers.Store(openID, name)
+		go func() {
+			// 保存到文件
+			if err := c.saveUsersInfoToCacheFile(); err != nil {
+				slog.Warn("Failed to save group users to file", "error", err)
+			}
+		}()
+		return name
 	}
-	// 遍历成员列表，找到匹配的用户
-	name := ""
-	for openID, memberName := range allMembers {
-		userMap[openID] = memberName
-		if openID == senderID {
-			name = memberName
-		}
-	}
-	c.groupUsers.Store(chatID, userMap)
-
-	// 保存到文件
-	if err := c.saveGroupUsersToFile(chatID, userMap); err != nil {
-		slog.Warn("Failed to save group users to file", "chatID", chatID, "error", err)
-	}
-
-	return name
 }
 
-// getAllGroupMembers 获取群聊的所有成员
-func (c *FeishuChannel) getAllGroupMembers(chatID string, pageToken string, result map[string]string) error {
-	req := larkim.NewGetChatMembersReqBuilder().
-		ChatId(chatID).
-		MemberIdType("open_id").
-		PageSize(100).
-		PageToken(pageToken).
-		Build()
-	resp, err := c.restClient.Im.V1.ChatMembers.Get(context.Background(), req)
+func (c *FeishuChannel) getMemberName(openID string) (string, error) {
+	req := larkcontact.NewGetUserReqBuilder().UserId(openID).UserIdType(larkcontact.UserIdTypeOpenId).Build()
+	resp, err := c.restClient.Contact.V3.User.Get(context.Background(), req)
 	if err != nil {
-		slog.Error("Fetch Feishu Group Member Failed", "error", err)
-		return err
+		return "", fmt.Errorf("failed to get user: %v", err)
 	}
-
 	if !resp.Success() {
-		slog.Error("Feishu Channel getSenderName error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
-		return resp.CodeError
+		return "", fmt.Errorf("failed to get user: %v", resp.CodeError)
 	}
-
-	// 遍历成员列表
-	for _, member := range resp.Data.Items {
-		if member.MemberId != nil && member.Name != nil {
-			openID := *member.MemberId
-			result[openID] = *member.Name
-		}
+	if resp.Data.User != nil && resp.Data.User.Name != nil {
+		return *resp.Data.User.Name, nil
 	}
-
-	if resp.Data.HasMore != nil && *resp.Data.HasMore && resp.Data.PageToken != nil && *resp.Data.PageToken != "" {
-		return c.getAllGroupMembers(chatID, *resp.Data.PageToken, result)
-	}
-	return nil
+	return "", fmt.Errorf("user name is empty")
 }
+
+// // getAllGroupMembers 获取群聊的所有成员
+// func (c *FeishuChannel) getAllGroupMembers(chatID string, pageToken string, result map[string]string) error {
+// 	req := larkim.NewGetChatMembersReqBuilder().
+// 		ChatId(chatID).
+// 		MemberIdType("open_id").
+// 		PageSize(100).
+// 		PageToken(pageToken).
+// 		Build()
+// 	resp, err := c.restClient.Im.V1.ChatMembers.Get(context.Background(), req)
+// 	if err != nil {
+// 		slog.Error("Fetch Feishu Group Member Failed", "error", err)
+// 		return err
+// 	}
+
+// 	if !resp.Success() {
+// 		slog.Error("Feishu Channel getSenderName error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
+// 		return resp.CodeError
+// 	}
+
+// 	// 遍历成员列表
+// 	for _, member := range resp.Data.Items {
+// 		if member.MemberId != nil && member.Name != nil {
+// 			openID := *member.MemberId
+// 			result[openID] = *member.Name
+// 		}
+// 	}
+
+// 	if resp.Data.HasMore != nil && *resp.Data.HasMore && resp.Data.PageToken != nil && *resp.Data.PageToken != "" {
+// 		return c.getAllGroupMembers(chatID, *resp.Data.PageToken, result)
+// 	}
+// 	return nil
+// }

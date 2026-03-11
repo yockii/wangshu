@@ -99,15 +99,32 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 
 	agentContextInfo := a.loadAgentContextInfo()
 
+	systemContet := fmt.Sprintf(
+		constant.SystemPrompt,
+		string(skillsXML),
+		a.workspaceDir,
+		agentContextInfo,
+		runtimeInfo,
+	)
+
+	switch sess.ChatType {
+	case constant.ChatTypeP2P:
+		systemContet += "\n你当前在私聊会话中"
+		if sess.SenderName != "" {
+			systemContet += fmt.Sprintf("，对方名称: %s", sess.SenderName)
+		}
+	case constant.ChatTypeGroup:
+		systemContet += "\n你当前在群聊会话中"
+		if sess.ChatName != "" {
+			systemContet += fmt.Sprintf("，群名称: %s", sess.ChatName)
+		}
+	case constant.ChatTypeTopic:
+		systemContet += "\n你当前在话题会话中"
+	}
+
 	msgs = append(msgs, llm.Message{
-		Role: constant.RoleSystem,
-		Content: fmt.Sprintf(
-			constant.SystemPrompt,
-			string(skillsXML),
-			a.workspaceDir,
-			agentContextInfo,
-			runtimeInfo,
-		),
+		Role:    constant.RoleSystem,
+		Content: systemContet,
 	})
 
 	imageCutoff := len(sessionMessages) - maxMessagesWithImage

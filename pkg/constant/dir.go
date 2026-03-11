@@ -7,3 +7,8 @@ const (
 	DirProfile  = "profile"
 	DirMemory   = "memory"
 )
+
+const (
+	FileCachedMembers = "members.json"
+	FileCachedChats   = "chats.json"
+)

@@ -29,7 +29,7 @@ type Agent struct {
 	enableImageRecognition bool
 }
 
-func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duration, maxIter int, workspaceDir string, enableImageRecognition bool) (*Agent, error) {
+func NewAgent(provider llm.Provider, name, model, memoryOrganizeTime string, sessionTTL time.Duration, maxIter int, workspaceDir string, enableImageRecognition bool) (*Agent, error) {
 	agent := &Agent{
 		agentName:              name,
 		provider:               provider,
@@ -50,7 +50,7 @@ func NewAgent(provider llm.Provider, name, model string, sessionTTL time.Duratio
 	agent.taskManager = task.NewTaskManager(agent.agentName, workspaceDir, model, provider)
 
 	// Initialize cron manager with executor
-	agent.cronManager = cron.NewCronManager(agent.agentName, workspaceDir, model, provider)
+	agent.cronManager = cron.NewCronManager(agent.agentName, workspaceDir, model, memoryOrganizeTime, provider)
 
 	return agent, nil
 }
@@ -75,7 +75,15 @@ func (a *Agent) Stop() {
 }
 
 func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (string, error) {
-	sess := a.sessions.GetOrCreate(a.workspaceDir, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Metadata.SenderID)
+	sess := a.sessions.GetOrCreate(
+		a.workspaceDir,
+		msg.Metadata.Channel,
+		msg.Metadata.ChatID,
+		msg.Metadata.ChatType,
+		msg.Metadata.ChatName,
+		msg.Metadata.SenderID,
+		msg.Metadata.SenderName,
+	)
 
 	if msg.Type == bus.MessageTypeImage {
 		if !a.enableImageRecognition {
@@ -147,7 +155,15 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 }
 
 func (a *Agent) RestartMessage(ctx context.Context, msg bus.InboundMessage) error {
-	sess := a.sessions.GetOrCreate(a.workspaceDir, msg.Metadata.Channel, msg.Metadata.ChatID, msg.Metadata.SenderID)
+	sess := a.sessions.GetOrCreate(
+		a.workspaceDir,
+		msg.Metadata.Channel,
+		msg.Metadata.ChatID,
+		msg.Metadata.ChatType,
+		msg.Metadata.ChatName,
+		msg.Metadata.SenderID,
+		msg.Metadata.SenderName,
+	)
 	lastMsgs := sess.GetLastN(1)
 	if len(lastMsgs) > 0 && lastMsgs[0].Role == constant.RoleAssistant {
 		// 找到toolcall

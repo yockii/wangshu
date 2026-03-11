@@ -34,7 +34,7 @@ type Channel interface {
 
 	// 聊天操作
 	GetChatInfo(ctx context.Context, chatID string) (*ChatInfo, error)
-	GetChatMembers(ctx context.Context, chatID string) ([]ChatMember, error)
+	// GetChatMembers(ctx context.Context, chatID string) ([]ChatMember, error)
 }
 
 // ChannelCapability 单个能力标识
@@ -96,13 +96,13 @@ type ChannelCapabilities struct {
 	CanSendKeyboard  bool // 支持交互键盘
 
 	// 接收能力
-	CanReceiveText    bool
-	CanReceiveImage   bool
-	CanReceiveVideo   bool
-	CanReceiveAudio   bool
-	CanReceiveFile    bool
+	CanReceiveText     bool
+	CanReceiveImage    bool
+	CanReceiveVideo    bool
+	CanReceiveAudio    bool
+	CanReceiveFile     bool
 	CanReceiveLocation bool
-	CanReceiveSticker bool
+	CanReceiveSticker  bool
 
 	// 消息操作能力
 	CanEditMessage    bool
@@ -137,12 +137,12 @@ const (
 
 // ChatInfo 聊天信息
 type ChatInfo struct {
-	ID          string      `json:"id"`
-	Type        ChatType    `json:"type"`
-	Title       string      `json:"title,omitempty"`
-	Description string      `json:"description,omitempty"`
-	MemberCount int         `json:"member_count,omitempty"`
-	CreatedAt   int64       `json:"created_at,omitempty"`
+	ID          string   `json:"id"`
+	Type        ChatType `json:"type"`
+	Title       string   `json:"title,omitempty"`
+	Description string   `json:"description,omitempty"`
+	MemberCount int      `json:"member_count,omitempty"`
+	CreatedAt   int64    `json:"created_at,omitempty"`
 }
 
 // MemberRole 成员角色

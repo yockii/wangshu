@@ -20,31 +20,13 @@ func (c *FeishuChannel) convertMentionsToAtTags(chatID, text string) string {
 	}
 
 	// 获取群聊用户映射
-	var userMap map[string]string
-	if val, ok := c.groupUsers.Load(chatID); ok {
-		userMap = val.(map[string]string)
-	}
-
-	// 如果没有用户映射，尝试获取
-	if userMap == nil {
-		userMap = make(map[string]string)
-		if err := c.getAllGroupMembers(chatID, "", userMap); err != nil {
-			slog.Warn("Feishu Channel convertMentionsToAtTags: failed to get group members", "chatID", chatID, "error", err)
-			// 如果获取失败，返回原始文本
-			return text
-		}
-		c.groupUsers.Store(chatID, userMap)
-		// 保存到文件
-		if err := c.saveGroupUsersToFile(chatID, userMap); err != nil {
-			slog.Warn("Failed to save group users to file", "chatID", chatID, "error", err)
-		}
-	}
 
 	// 创建反向映射：用户名 -> open_id
 	nameToOpenID := make(map[string]string)
-	for openID, name := range userMap {
-		nameToOpenID[name] = openID
-	}
+	c.cachedUsers.Range(func(key, value interface{}) bool {
+		nameToOpenID[value.(string)] = key.(string)
+		return true
+	})
 
 	result := text
 	// 从后向前替换，避免索引变化问题

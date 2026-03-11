@@ -93,7 +93,7 @@ func (c *FeishuChannel) getGroupHistory(chatID string) error {
 			}
 
 			if busMsg.Metadata.SenderID != "" {
-				busMsg.Metadata.SenderName = c.getSenderName(busMsg.Metadata.ChatID, busMsg.Metadata.SenderID)
+				busMsg.Metadata.SenderName = c.getSenderName(busMsg.Metadata.SenderID)
 			}
 
 			msgs = append(msgs, busMsg)

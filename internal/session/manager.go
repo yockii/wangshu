@@ -20,7 +20,7 @@ func NewManager(ttl time.Duration) *Manager {
 		ttl:      ttl,
 	}
 }
-func (m *Manager) GetOrCreate(workspace, channel, chatID, senderID string) *Session {
+func (m *Manager) GetOrCreate(workspace, channel, chatID, chatType, chatName, senderID, senderName string) *Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	id := fmt.Sprintf("%s:%s", channel, chatID)
@@ -30,15 +30,18 @@ func (m *Manager) GetOrCreate(workspace, channel, chatID, senderID string) *Sess
 	}
 
 	session = &Session{
-		ID:        id,
-		Channel:   channel,
-		ChatID:    chatID,
-		SenderID:  senderID,
-		Messages:  []types.Message{},
-		Metadata:  make(map[string]string),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		workspace: workspace,
+		ID:         id,
+		ChatType:   chatType,
+		Channel:    channel,
+		ChatID:     chatID,
+		ChatName:   chatName,
+		SenderID:   senderID,
+		SenderName: senderName,
+		Messages:   []types.Message{},
+		Metadata:   make(map[string]string),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		workspace:  workspace,
 	}
 
 	m.sessions[id] = session

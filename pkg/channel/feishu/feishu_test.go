@@ -260,20 +260,6 @@ func TestFeishuChannelGetChatInfo(t *testing.T) {
 	}
 }
 
-func TestFeishuChannelGetChatMembers(t *testing.T) {
-	c := NewFeishuChannel("test", "app", "secret")
-
-	_, err := c.GetChatMembers(context.Background(), "chat123")
-	// 会返回错误（没有真实凭证），但不应该是"not implemented yet"
-	if err == nil {
-		t.Log("GetChatMembers succeeded (unexpected)")
-	}
-
-	if err != nil && err.Error() == "FeishuChannel get chat members not implemented yet" {
-		t.Error("GetChatMembers should be implemented")
-	}
-}
-
 func TestFeishuChannelSendMessageWithText(t *testing.T) {
 	c := NewFeishuChannel("test", "app", "secret")
 
@@ -664,7 +650,9 @@ func TestFeishuChannelConvertMentionsToAtTags(t *testing.T) {
 		"ou_456": "李四",
 		"ou_789": "Alice",
 	}
-	c.groupUsers.Store("chat123", userMap)
+	for k, v := range userMap {
+		c.cachedUsers.Store(k, v)
+	}
 
 	tests := []struct {
 		name     string
@@ -743,7 +731,9 @@ func TestFeishuChannelSendMessageWithTextMention(t *testing.T) {
 	userMap := map[string]string{
 		"ou_123": "张三",
 	}
-	c.groupUsers.Store("chat123", userMap)
+	for k, v := range userMap {
+		c.cachedUsers.Store(k, v)
+	}
 
 	msg := &bus.Message{
 		Type:    bus.MessageTypeText,

@@ -25,6 +25,8 @@ type AgentConfig struct {
 	Temperature            float64 `json:"temperature"`
 	MaxTokens              int64   `json:"max_tokens"`
 	EnableImageRecognition bool    `json:"enable_image_recognition"`
+	// 每日0点或配置的时间进行记忆整理
+	MemoryOrganizeTime string `json:"memory_orgnaize_time"`
 }
 
 type ProviderConfig struct {
@@ -54,6 +56,7 @@ func defaultConfig() *Config {
 				Model:                  "qwen3-max",
 				Temperature:            0.7,
 				EnableImageRecognition: false,
+				MemoryOrganizeTime:     "00:00",
 			},
 		},
 		Providers: map[string]*ProviderConfig{

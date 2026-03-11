@@ -3,10 +3,12 @@
 ### 🚀 Features
 
 - 实现定时记忆整理功能，支持配置整理时间
+- 实现定时记忆整理功能，支持配置整理时间
 
 ### 📚 Documentation
 
 - Update CHANGELOG for v0.2.16
+- Update CHANGELOG for v0.3.0
 ## [0.2.16] - 2026-03-10
 
 ### 🚀 Features

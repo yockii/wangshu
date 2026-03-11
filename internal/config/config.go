@@ -31,6 +31,8 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 	data, err := os.ReadFile(cfgFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			// 引导用户在控制台上填写内容
+			leadUserToFillConfig(cfg)
 			// 写入文件
 			err = os.MkdirAll(filepath.Dir(cfgFilePath), 0755)
 			if err != nil {
@@ -137,9 +139,25 @@ func (c *Config) validateAgents() []string {
 func (c *Config) validateProviders() []string {
 	var errors []string
 
+	// 找出可用的channel
+	usedAgent := make(map[string]struct{})
+	for _, ch := range c.Channels {
+		if ch.Enabled {
+			usedAgent[ch.Agent] = struct{}{}
+		}
+	}
+
 	// 找出被使用的provider
 	usedProviders := make(map[string]bool)
-	for _, agent := range c.Agents {
+	for agentName := range usedAgent {
+		agent, has := c.Agents[agentName]
+		if !has {
+			continue
+		}
+		if agent.Provider == "" {
+			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 缺少Provider配置（请添加 \"provider\": \"provider名称\"）", agentName))
+			continue
+		}
 		usedProviders[agent.Provider] = true
 	}
 

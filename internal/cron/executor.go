@@ -74,13 +74,14 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 
 	options := make(map[string]any)
 	if agentCfg, ok := config.DefaultCfg.Agents[mgr.agentName]; ok {
-		if agentCfg.Temperature > 0 {
-			options["temperature"] = agentCfg.Temperature
-		}
+		// if agentCfg.Temperature > 0 {
+		// 	options["temperature"] = agentCfg.Temperature
+		// }
 		if agentCfg.MaxTokens > 0 {
 			options["max_tokens"] = agentCfg.MaxTokens
 		}
 	}
+	options["temperature"] = 0.1
 
 	resp, err := mgr.provider.ChatWithJSONSchema(ctx, mgr.model, messages, schema, options)
 	if err != nil {

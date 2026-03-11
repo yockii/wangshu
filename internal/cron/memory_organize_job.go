@@ -78,7 +78,19 @@ func (mgr *CronManager) memoryOrganizeJob() {
 	}
 
 	// 内容整理完毕，准备messages发送给大模型
-	msgs := []llm.Message{}
+
+	profileContent := mgr.loadProfileContent()
+
+	msgs := []llm.Message{
+		{
+			Role:    constant.RoleSystem,
+			Content: fmt.Sprintf(constant.MemoryOrganizePrompt, profileContent),
+		},
+		{
+			Role:    constant.RoleUser,
+			Content: content.String(),
+		},
+	}
 	schema := &llm.JSONSchema{
 		Name:        "MemoryOrganizeResult",
 		Description: "记忆整理",
@@ -101,13 +113,15 @@ func (mgr *CronManager) memoryOrganizeJob() {
 
 	options := make(map[string]any)
 	if agentCfg, ok := config.DefaultCfg.Agents[mgr.agentName]; ok {
-		if agentCfg.Temperature > 0 {
-			options["temperature"] = agentCfg.Temperature
-		}
+		// if agentCfg.Temperature > 0 {
+		// 	options["temperature"] = agentCfg.Temperature
+		// }
 		if agentCfg.MaxTokens > 0 {
 			options["max_tokens"] = agentCfg.MaxTokens
 		}
 	}
+	// 需要精确响应json
+	options["temperature"] = 0.1
 
 	resp, err := mgr.provider.ChatWithJSONSchema(
 		context.Background(),
@@ -135,7 +149,8 @@ func (mgr *CronManager) memoryOrganizeJob() {
 		return
 	}
 	// 写入到memory/yyyy-mm-dd.md中
-	memoryDateFile := filepath.Join(mgr.workspace, constant.DirMemory, fmt.Sprintf("%s.md", time.Now().AddDate(0, 0, -1).Format("2006-01-02")))
+	memoryDateFile := filepath.Join(mgr.workspace, constant.DirProfile, constant.DirMemory, fmt.Sprintf("%s.md", time.Now().AddDate(0, 0, -1).Format("2006-01-02")))
+	os.MkdirAll(filepath.Dir(memoryDateFile), 0755)
 	if err := os.WriteFile(memoryDateFile, []byte(result.DailyMemory), 0644); err != nil {
 		slog.Error("Failed to write memory date file", "error", err)
 		return
@@ -249,4 +264,39 @@ func (mgr *CronManager) readMessageFromJSONLForMemoryOrganize(fp string) (string
 		result.WriteString("\n")
 	}
 	return result.String(), nil
+}
+
+// loadAgentContextInfo 加载Agent的上下文信息（从profile目录）
+func (mgr *CronManager) loadProfileContent() string {
+	content := ""
+	mdFiles := []string{
+		// constant.ProfileFileAgents,
+		// constant.ProfileFileBootstrap,
+		// constant.ProfileFileHeartbeat,
+		constant.ProfileFileIdentity,
+		constant.ProfileFileSoul,
+		// constant.ProfileFileTools,
+		constant.ProfileFileUser,
+		constant.ProfileFileMemory,
+	}
+	for _, fileName := range mdFiles {
+		fp := filepath.Join(mgr.workspace, constant.DirProfile, fileName)
+		mdFile, err := filepath.Abs(fp)
+		if err != nil {
+			continue
+		}
+
+		if fi, err := os.Stat(mdFile); err != nil {
+			continue
+		} else if fi.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(fp)
+		if err != nil {
+			continue
+		}
+		content += fmt.Sprintf("\n## %s\n%s\n", mdFile, string(data))
+	}
+
+	return content
 }

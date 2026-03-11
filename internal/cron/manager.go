@@ -18,32 +18,34 @@ import (
 var managers = sync.Map{}
 
 type CronManager struct {
-	agentName string
-	workspace string
-	model     string
-	provider  llm.Provider
-	mu        sync.RWMutex
-	cronJobs  map[string]*types.BasicJobInfo
-	ctx       context.Context
-	cancel    context.CancelFunc
-	c         *cron.Cron
+	agentName          string
+	workspace          string
+	model              string
+	memoryOrganizeTime string
+	provider           llm.Provider
+	mu                 sync.RWMutex
+	cronJobs           map[string]*types.BasicJobInfo
+	ctx                context.Context
+	cancel             context.CancelFunc
+	c                  *cron.Cron
 }
 
-func NewCronManager(agentName, workspace, model string, provider llm.Provider) *CronManager {
+func NewCronManager(agentName, workspace, model, memoryOrganizeTime string, provider llm.Provider) *CronManager {
 	if m, ok := managers.Load(workspace); ok {
 		return m.(*CronManager)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr := &CronManager{
-		agentName: agentName,
-		workspace: workspace,
-		model:     model,
-		provider:  provider,
-		mu:        sync.RWMutex{},
-		cronJobs:  make(map[string]*types.BasicJobInfo),
-		ctx:       ctx,
-		cancel:    cancel,
+		agentName:          agentName,
+		workspace:          workspace,
+		model:              model,
+		memoryOrganizeTime: memoryOrganizeTime,
+		provider:           provider,
+		mu:                 sync.RWMutex{},
+		cronJobs:           make(map[string]*types.BasicJobInfo),
+		ctx:                ctx,
+		cancel:             cancel,
 		c: cron.New(
 			cron.WithParser(cron.MustNewParser(
 				cron.SecondOptional | cron.Minute | cron.Hour |
@@ -60,6 +62,7 @@ func NewCronManager(agentName, workspace, model string, provider llm.Provider) *
 }
 
 func (mgr *CronManager) start() {
+	mgr.addMemoryOrganizeJob()
 	mgr.scanJobs()
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -141,6 +144,9 @@ func (mgr *CronManager) scanJobs() {
 	}
 
 	for name := range meedRemovedCronEntryFlag {
+		if name == memoryOrganizeJobName {
+			continue
+		}
 		mgr.c.RemoveByName(name)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/yockii/wangshu/pkg/bus"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 // <think>或<thinking>标签，去掉标签之间的内容
@@ -86,15 +87,33 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 		chatType = *chatTypePtr
 	}
 	if chatType == "p2p" {
+		// 获取用户名
+		senderName := c.getSenderName(inboundMsg.Metadata.SenderID)
+		_, has := c.cachedChats.LoadOrStore(inboundMsg.Metadata.ChatID, senderName)
+		if !has {
+			if err := c.saveP2pChatName(inboundMsg.Metadata.ChatID, senderName); err != nil {
+				slog.Error("Feishu Channel handleMessage error", "err", err.Error())
+			}
+		}
+		inboundMsg.Metadata.ChatType = constant.ChatTypeP2P
+		inboundMsg.Metadata.ChatName = senderName
+		inboundMsg.Metadata.SenderName = senderName
 		c.dealReceivedMessage(inboundMsg)
 	} else { // group
+		groupName, err := c.getGroupChatName(inboundMsg.Metadata.ChatID)
+		if err != nil {
+			slog.Error("Feishu Channel handleMessage error", "err", err.Error())
+			inboundMsg.Metadata.ChatName = groupName
+		}
+
 		// 看看哪个用户发的，获取用户名
-		senderName := c.getSenderName(inboundMsg.Metadata.ChatID, inboundMsg.Metadata.SenderID)
+		senderName := c.getSenderName(inboundMsg.Metadata.SenderID)
 		if senderName == "" {
 			slog.Error("Feishu Channel handleMessage error", "err", "sender name not found")
 			return
 		}
-
+		inboundMsg.Metadata.ChatType = constant.ChatTypeGroup
+		inboundMsg.Metadata.ChatName = groupName
 		inboundMsg.Metadata.SenderName = senderName
 
 		c.dealReceivedMessage(inboundMsg)
@@ -167,9 +186,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 		content = thinkRegex.ReplaceAllString(content, "")
 
 		// 如果是群聊消息，尝试转换文本中的@用户名
-		if _, ok := c.groupUsers.Load(om.Metadata.ChatID); ok {
-			content = c.convertMentionsToAtTags(om.Metadata.ChatID, content)
-		}
+		content = c.convertMentionsToAtTags(om.Metadata.ChatID, content)
 
 		// 处理 Entities 中的 @用户（如果有明确的 open_id）
 		var atText strings.Builder

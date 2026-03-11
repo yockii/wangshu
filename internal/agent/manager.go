@@ -29,16 +29,25 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 		}
 	}
 
+	workspaceCheckMap := make(map[string]struct{})
+
 	for name, ac := range config.DefaultCfg.Agents {
 		// 只有启用的agent才需要初始化
 		if _, ok := enabledAgentNames[name]; !ok {
 			continue
 		}
 
+		// 检查workspace是否存在
+		if _, ok := workspaceCheckMap[ac.Workspace]; ok {
+			slog.Warn("DUPLICATE workspace FOUND for agent, this MAY CAUSE UNEXPECTED BEHAVIOR", "agent", name, "workspace", ac.Workspace)
+		}
+		workspaceCheckMap[ac.Workspace] = struct{}{}
+
 		agent, err := NewAgent(
 			llm.GetProvider(ac.Provider),
 			name,
 			ac.Model,
+			ac.MemoryOrganizeTime,
 			24*time.Hour,
 			10,
 			ac.Workspace,

@@ -6,14 +6,14 @@ import "time"
 type MessageType string
 
 const (
-	MessageTypeText      MessageType = "text"      // 纯文本
-	MessageTypeImage     MessageType = "image"     // 图片
-	MessageTypeVideo     MessageType = "video"     // 视频
-	MessageTypeAudio     MessageType = "audio"     // 音频
-	MessageTypeVoice     MessageType = "voice"     // 语音消息
-	MessageTypeFile      MessageType = "file"      // 文件
-	MessageTypeLocation  MessageType = "location"  // 位置
-	MessageTypeSticker   MessageType = "sticker"   // 贴纸
+	MessageTypeText      MessageType = "text"       // 纯文本
+	MessageTypeImage     MessageType = "image"      // 图片
+	MessageTypeVideo     MessageType = "video"      // 视频
+	MessageTypeAudio     MessageType = "audio"      // 音频
+	MessageTypeVoice     MessageType = "voice"      // 语音消息
+	MessageTypeFile      MessageType = "file"       // 文件
+	MessageTypeLocation  MessageType = "location"   // 位置
+	MessageTypeSticker   MessageType = "sticker"    // 贴纸
 	MessageTypeRichMedia MessageType = "rich_media" // 富媒体（图文、卡片等）
 )
 
@@ -31,12 +31,12 @@ const (
 
 // MessageEntity 消息实体，表示文本中的特殊元素
 type MessageEntity struct {
-	Type    EntityType `json:"type"`                // 实体类型
-	Offset  int        `json:"offset"`              // 在文本中的起始位置
-	Length  int        `json:"length"`              // 长度
-	URL     string     `json:"url,omitempty"`       // 链接URL
-	UserID  string     `json:"user_id,omitempty"`   // @的用户ID
-	Mention string     `json:"mention,omitempty"`   // @的内容（如@全体成员）
+	Type    EntityType `json:"type"`              // 实体类型
+	Offset  int        `json:"offset"`            // 在文本中的起始位置
+	Length  int        `json:"length"`            // 长度
+	URL     string     `json:"url,omitempty"`     // 链接URL
+	UserID  string     `json:"user_id,omitempty"` // @的用户ID
+	Mention string     `json:"mention,omitempty"` // @的内容（如@全体成员）
 }
 
 // ReferenceType 引用类型
@@ -50,13 +50,13 @@ const (
 
 // MessageReference 消息引用
 type MessageReference struct {
-	MessageID     string        `json:"message_id"`      // 被引用的消息ID
-	ChatID        string        `json:"chat_id"`         // 所属聊天ID
-	SenderID      string        `json:"sender_id"`       // 发送者ID
-	SenderName    string        `json:"sender_name"`     // 发送者名称
-	Content       string        `json:"content"`         // 内容摘要
-	MessageType   MessageType   `json:"message_type"`    // 消息类型
-	ReferenceType ReferenceType `json:"reference_type"`  // 引用类型
+	MessageID     string        `json:"message_id"`     // 被引用的消息ID
+	ChatID        string        `json:"chat_id"`        // 所属聊天ID
+	SenderID      string        `json:"sender_id"`      // 发送者ID
+	SenderName    string        `json:"sender_name"`    // 发送者名称
+	Content       string        `json:"content"`        // 内容摘要
+	MessageType   MessageType   `json:"message_type"`   // 消息类型
+	ReferenceType ReferenceType `json:"reference_type"` // 引用类型
 }
 
 // MediaType 媒体类型
@@ -71,32 +71,32 @@ const (
 
 // MediaContent 媒体内容
 type MediaContent struct {
-	Type      MediaType `json:"type"`                        // 媒体类型
-	URL       string    `json:"url,omitempty"`               // 媒体URL
-	FilePath  string    `json:"file_path,omitempty"`         // 本地文件路径
-	Thumbnail string    `json:"thumbnail,omitempty"`         // 缩略图URL
-	Size      int64     `json:"size,omitempty"`              // 文件大小
-	Duration  int       `json:"duration,omitempty"`          // 时长（秒，音视频）
-	Width     int       `json:"width,omitempty"`             // 宽度（图片/视频）
-	Height    int       `json:"height,omitempty"`            // 高度（图片/视频）
-	FileName  string    `json:"file_name,omitempty"`         // 文件名
-	MimeType  string    `json:"mime_type,omitempty"`         // MIME类型
+	Type      MediaType `json:"type"`                // 媒体类型
+	URL       string    `json:"url,omitempty"`       // 媒体URL
+	FilePath  string    `json:"file_path,omitempty"` // 本地文件路径
+	Thumbnail string    `json:"thumbnail,omitempty"` // 缩略图URL
+	Size      int64     `json:"size,omitempty"`      // 文件大小
+	Duration  int       `json:"duration,omitempty"`  // 时长（秒，音视频）
+	Width     int       `json:"width,omitempty"`     // 宽度（图片/视频）
+	Height    int       `json:"height,omitempty"`    // 高度（图片/视频）
+	FileName  string    `json:"file_name,omitempty"` // 文件名
+	MimeType  string    `json:"mime_type,omitempty"` // MIME类型
 }
 
 // LocationInfo 位置信息
 type LocationInfo struct {
-	Latitude  float64 `json:"latitude"`            // 纬度
-	Longitude float64 `json:"longitude"`           // 经度
-	Title     string  `json:"title,omitempty"`     // 位置名称
-	Address   string  `json:"address,omitempty"`   // 详细地址
+	Latitude  float64 `json:"latitude"`          // 纬度
+	Longitude float64 `json:"longitude"`         // 经度
+	Title     string  `json:"title,omitempty"`   // 位置名称
+	Address   string  `json:"address,omitempty"` // 详细地址
 }
 
 // Keyboard 交互键盘
 type Keyboard struct {
-	Inline     bool           `json:"inline"`                // 是否为内联键盘（显示在消息下方）
-	Rows       []KeyboardRow  `json:"rows"`
-	Resizeable bool           `json:"resizeable,omitempty"`  // 是否可调整大小
-	OneTime    bool           `json:"one_time,omitempty"`    // 是否一次性键盘
+	Inline     bool          `json:"inline"` // 是否为内联键盘（显示在消息下方）
+	Rows       []KeyboardRow `json:"rows"`
+	Resizeable bool          `json:"resizeable,omitempty"` // 是否可调整大小
+	OneTime    bool          `json:"one_time,omitempty"`   // 是否一次性键盘
 }
 
 // KeyboardRow 键盘行
@@ -106,43 +106,45 @@ type KeyboardRow struct {
 
 // KeyboardButton 键盘按钮
 type KeyboardButton struct {
-	Text            string `json:"text"`                        // 按钮文本
-	Data            string `json:"data,omitempty"`              // 回调数据
-	URL             string `json:"url,omitempty"`               // 链接URL
+	Text            string `json:"text"`                       // 按钮文本
+	Data            string `json:"data,omitempty"`             // 回调数据
+	URL             string `json:"url,omitempty"`              // 链接URL
 	RequestContact  bool   `json:"request_contact,omitempty"`  // 请求联系人
 	RequestLocation bool   `json:"request_location,omitempty"` // 请求位置
 }
 
 // MessageForwardInfo 转发信息
 type MessageForwardInfo struct {
-	FromChatID      string `json:"from_chat_id"`       // 来源聊天ID
-	FromMessageID   string `json:"from_message_id"`    // 来源消息ID
-	FromSenderName  string `json:"from_sender_name"`   // 来源发送者名称
-	FromSenderID    string `json:"from_sender_id"`     // 来源发送者ID
+	FromChatID     string `json:"from_chat_id"`     // 来源聊天ID
+	FromMessageID  string `json:"from_message_id"`  // 来源消息ID
+	FromSenderName string `json:"from_sender_name"` // 来源发送者名称
+	FromSenderID   string `json:"from_sender_id"`   // 来源发送者ID
 }
 
 // MessageMetadata 消息元数据
 type MessageMetadata struct {
-	MessageID       string              `json:"message_id"`                   // 消息ID
-	SenderID        string              `json:"sender_id"`                    // 发送者ID
-	SenderName      string              `json:"sender_name"`                  // 发送者名称
-	ChatID          string              `json:"chat_id"`                      // 聊天ID
-	Timestamp       time.Time           `json:"timestamp"`                    // 发送时间
-	EditTimestamp   *time.Time          `json:"edit_timestamp,omitempty"`     // 编辑时间
-	ForwardFrom     *MessageForwardInfo `json:"forward_from,omitempty"`       // 转发信息
-	ReplyToID       string              `json:"reply_to_id,omitempty"`        // 回复的消息ID
-	Pinned          bool                `json:"pinned,omitempty"`             // 是否被置顶
-	Views           int                 `json:"views,omitempty"`              // 查看次数
-	Forwards        int                 `json:"forwards,omitempty"`           // 转发次数
-	Channel         string              `json:"channel"`                      // 渠道标识
+	MessageID     string              `json:"message_id"`               // 消息ID
+	SenderID      string              `json:"sender_id"`                // 发送者ID
+	SenderName    string              `json:"sender_name"`              // 发送者名称
+	ChatID        string              `json:"chat_id"`                  // 聊天ID
+	ChatName      string              `json:"chat_name"`                // 聊天名称
+	ChatType      string              `json:"chat_type"`                // 聊天类型, p2p group topic?
+	Timestamp     time.Time           `json:"timestamp"`                // 发送时间
+	EditTimestamp *time.Time          `json:"edit_timestamp,omitempty"` // 编辑时间
+	ForwardFrom   *MessageForwardInfo `json:"forward_from,omitempty"`   // 转发信息
+	ReplyToID     string              `json:"reply_to_id,omitempty"`    // 回复的消息ID
+	Pinned        bool                `json:"pinned,omitempty"`         // 是否被置顶
+	Views         int                 `json:"views,omitempty"`          // 查看次数
+	Forwards      int                 `json:"forwards,omitempty"`       // 转发次数
+	Channel       string              `json:"channel"`                  // 渠道标识
 }
 
 // Message 统一的消息结构
 type Message struct {
 	// 基础信息
-	Type        MessageType       `json:"type"`                  // 消息类型
-	Content     string            `json:"content"`               // 文本内容
-	Entities    []MessageEntity   `json:"entities,omitempty"`    // 消息实体
+	Type     MessageType     `json:"type"`               // 消息类型
+	Content  string          `json:"content"`            // 文本内容
+	Entities []MessageEntity `json:"entities,omitempty"` // 消息实体
 
 	// 媒体内容
 	Media *MediaContent `json:"media,omitempty"` // 媒体内容

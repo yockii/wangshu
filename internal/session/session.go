@@ -13,16 +13,19 @@ import (
 )
 
 type Session struct {
-	ID        string
-	Channel   string
-	ChatID    string
-	SenderID  string
-	Messages  []types.Message
-	Metadata  map[string]string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	workspace string
-	mu        sync.RWMutex
+	ID         string
+	ChatType   string // p2p group topic?
+	Channel    string
+	ChatID     string
+	ChatName   string
+	SenderID   string
+	SenderName string
+	Messages   []types.Message
+	Metadata   map[string]string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	workspace  string
+	mu         sync.RWMutex
 
 	PendingImage   *types.ContentBlock
 	PendingImageAt time.Time

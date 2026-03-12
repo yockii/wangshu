@@ -159,6 +159,9 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	parentID, ok := params["parent_id"]
 	if !ok {
 		parentID = ""
+		if taskID, has := params[constant.ToolCallParamTaskID]; has {
+			parentID = taskID
+		}
 	}
 
 	workspace := params[constant.ToolCallParamWorkspace]

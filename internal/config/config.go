@@ -31,8 +31,8 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 	data, err := os.ReadFile(cfgFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// 引导用户在控制台上填写内容
-			leadUserToFillConfig(cfg)
+			// // 引导用户在控制台上填写内容
+			// leadUserToFillConfig(cfg)
 			// 写入文件
 			err = os.MkdirAll(filepath.Dir(cfgFilePath), 0755)
 			if err != nil {
@@ -159,6 +159,10 @@ func (c *Config) validateProviders() []string {
 			continue
 		}
 		usedProviders[agent.Provider] = true
+	}
+
+	if len(usedProviders) == 0 {
+		errors = append(errors, "  - 未配置任何被使用的Provider")
 	}
 
 	for providerName, provider := range c.Providers {

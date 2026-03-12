@@ -44,7 +44,7 @@ func (c *FeishuChannel) convertMentionsToAtTags(chatID, text string) string {
 		if openID, found := nameToOpenID[userName]; found {
 			// 计算用户名的实际结束位置（@用户名 部分，不包括后面的空格）
 			userNameEnd := start + 1 + len(userName)
-			atTag := fmt.Sprintf("<at user_id=\"%s\"></at>", openID)
+			atTag := fmt.Sprintf("<at id=\"%s\"></at>", openID)
 			result = result[:start] + atTag + result[userNameEnd:]
 			slog.Debug("Feishu Channel converted mention", "userName", userName, "openID", openID, "mention", mention, "atTag", atTag)
 		} else {

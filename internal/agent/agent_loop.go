@@ -71,7 +71,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 		// 执行所有的工具调用
 		for _, tc := range resp.Message.ToolCalls {
-			toolResult, err := a.executeToolCall(ctx, tc, sess.Channel, sess.ChatID, sess.SenderID)
+			toolResult, err := a.executeToolCall(ctx, tc, sess.Channel, sess.ChatID, sess.ChatType, sess.SenderID)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 			}

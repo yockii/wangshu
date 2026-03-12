@@ -12,5 +12,6 @@ type BasicJobInfo struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Channel     string     `json:"channel"`
 	ChatID      string     `json:"chat_id"`
-	Once        bool       `json:"once"` // 是否只执行一次
+	Once        bool       `json:"once"`     // 是否只执行一次
+	InGroup     bool       `json:"in_group"` // 是否在群聊中执行
 }

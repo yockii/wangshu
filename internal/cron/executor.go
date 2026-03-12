@@ -23,8 +23,14 @@ type CronJobExecutionResult struct {
 }
 
 // Execute 执行定时任务
-func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) error {
+func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo, retryTimes ...int) error {
 	slog.Debug("执行定时任务", "jobID", job.ID)
+
+	userMsgContent := fmt.Sprintf("任务ID: %s\n\n任务内容: %s", job.ID, job.Description)
+	if job.InGroup {
+		userMsgContent += "\n\n你当前在群聊中，如果任务内容涉及到群聊中的某个人，你需要@那个人"
+	}
+
 	// 1. 准备消息
 	messages := []llm.Message{
 		{
@@ -33,7 +39,7 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 		},
 		{
 			Role:    constant.RoleUser,
-			Content: fmt.Sprintf("任务ID: %s\n任务描述: %s", job.ID, job.Description),
+			Content: userMsgContent,
 		},
 	}
 
@@ -50,23 +56,33 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 				},
 				"messageContent": map[string]any{
 					"type":        "string",
-					"description": "要发送给用户的消息内容（仅 message 类型需要）",
+					"description": "要发送给用户的消息内容（message类型**必须**包含）",
 				},
 				"taskName": map[string]any{
 					"type":        "string",
-					"description": "任务名称（仅 task 类型需要）",
+					"description": "任务名称（task类型**必须**包含）",
 				},
 				"taskDescription": map[string]any{
 					"type":        "string",
-					"description": "任务描述（仅 task 类型需要）",
+					"description": "任务描述（task类型**必须**包含）",
 				},
 				"taskPriority": map[string]any{
 					"type":        "string",
-					"enum":        []string{"low", "normal", "high"},
-					"description": "任务优先级（仅 task 类型需要）",
+					"enum":        []string{"low", "normal", "high", "urgent"}, // ow, normal, high, urgent
+					"description": "任务优先级（task类型包含）",
 				},
 			},
-			"required":             []string{"taskType"},
+			"required": []string{"taskType"},
+			"oneOf": []map[string]any{
+				{
+					"properties": map[string]any{"taskType": map[string]any{"const": "message"}},
+					"required":   []string{"taskType", "messageContent"}, // message 类型必须含 content
+				},
+				{
+					"properties": map[string]any{"taskType": map[string]any{"const": "task"}},
+					"required":   []string{"taskType", "taskName", "taskDescription"}, // task 类型必须含 name 和 desc
+				},
+			},
 			"additionalProperties": false,
 		},
 		Strict: true,
@@ -81,7 +97,7 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 			options["max_tokens"] = agentCfg.MaxTokens
 		}
 	}
-	options["temperature"] = 0.1
+	options["temperature"] = 0
 
 	resp, err := mgr.provider.ChatWithJSONSchema(ctx, mgr.model, messages, schema, options)
 	if err != nil {
@@ -93,6 +109,25 @@ func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) er
 	content := llm.ExtractJSONFromContent(resp.Message.Content)
 	if err := json.Unmarshal([]byte(content), &result); err != nil {
 		return fmt.Errorf("解析LLM响应失败: %w", err)
+	}
+
+	if len(retryTimes) == 0 {
+		retryTimes = append(retryTimes, 0)
+	}
+	if retryTimes[0] < 3 {
+		switch result.TaskType {
+		case "message":
+			if result.MessageContent == "" {
+				// 重新执行
+				return mgr.Execute(ctx, job, retryTimes[0]+1)
+			}
+		case "task":
+			if result.TaskName == "" || result.TaskDescription == "" {
+				return mgr.Execute(ctx, job, retryTimes[0]+1)
+			}
+		default:
+			return fmt.Errorf("未知的type: %s", result.TaskType)
+		}
 	}
 
 	slog.Info("定时任务执行结果", "jobId", job.ID, "taskType", result.TaskType)

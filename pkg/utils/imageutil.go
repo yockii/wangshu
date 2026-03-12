@@ -1,4 +1,4 @@
-package imageutil
+package utils
 
 import (
 	"bytes"

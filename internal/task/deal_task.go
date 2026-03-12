@@ -253,6 +253,8 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 				taskInfo.LastResult = resp
 				if finished {
 					taskInfo.Status = constant.TaskStatusCompleted
+				} else {
+					taskInfo.Status = constant.TaskStatusRunning
 				}
 			}
 		}
@@ -365,7 +367,7 @@ func (tm *TaskManager) changeTask(taskInfo *task.TaskInfo, notifyContent string)
 			ToolCalls: resp.Message.ToolCalls,
 		})
 		for _, tc := range resp.Message.ToolCalls {
-			toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.Channel, taskInfo.ChatID)
+			toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.ID, taskInfo.Channel, taskInfo.ChatID)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 			}
@@ -469,7 +471,7 @@ func (tm *TaskManager) doTask(taskInfo *task.TaskInfo, taskDir string) (string, 
 
 	for _, tc := range resp.Message.ToolCalls {
 		isFinished = false
-		toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.Channel, taskInfo.ChatID)
+		toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.ID, taskInfo.Channel, taskInfo.ChatID)
 		if err != nil {
 			toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 		}
@@ -707,7 +709,7 @@ func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
 		})
 		// 执行所有的工具调用
 		for _, tc := range resp.Message.ToolCalls {
-			toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.Channel, taskInfo.ChatID)
+			toolResult, err := tm.executeToolCall(ctx, tc, taskInfo.ID, taskInfo.Channel, taskInfo.ChatID)
 			if err != nil {
 				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
 			}
@@ -720,7 +722,7 @@ func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
 		}
 	}
 }
-func (tm *TaskManager) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, chatID string) (string, error) {
+func (tm *TaskManager) executeToolCall(ctx context.Context, tc llm.ToolCall, taskID, channel, chatID string) (string, error) {
 	var args map[string]any
 	if tc.Arguments != "" {
 		err := json.Unmarshal([]byte(tc.Arguments), &args)
@@ -736,6 +738,7 @@ func (tm *TaskManager) executeToolCall(ctx context.Context, tc llm.ToolCall, cha
 	args[constant.ToolCallParamWorkspace] = tm.workspace
 	args[constant.ToolCallParamChannel] = channel
 	args[constant.ToolCallParamChatID] = chatID
+	args[constant.ToolCallParamTaskID] = taskID
 
 	// Create ToolContext with agent information
 	toolCtx := tools.NewToolContext(

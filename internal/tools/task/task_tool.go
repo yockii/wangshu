@@ -72,7 +72,7 @@ func NewTaskTool() *TaskTool {
 		"properties": map[string]any{
 			"action": map[string]any{
 				"type":        "string",
-				"description": "Action to perform on the task",
+				"description": "Action to perform on the task. Note: 'update' action only for name & priority update. task description change **SHOULD** use 'add_change' action.",
 				"enum": []string{
 					constant.TaskActionCreate,
 					constant.TaskActionList,
@@ -515,9 +515,9 @@ func (t *TaskTool) update(params map[string]string) (string, error) {
 	if name, ok := params["name"]; ok && name != "" {
 		at.Name = name
 	}
-	if description, ok := params["description"]; ok && description != "" {
-		at.Description = description
-	}
+	// if description, ok := params["description"]; ok && description != "" {
+	// 	at.Description = description
+	// }
 	if priority, ok := params["priority"]; ok && priority != "" {
 		at.Priority = priority
 	}

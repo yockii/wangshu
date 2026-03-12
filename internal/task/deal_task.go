@@ -253,6 +253,8 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 				taskInfo.LastResult = resp
 				if finished {
 					taskInfo.Status = constant.TaskStatusCompleted
+				} else {
+					taskInfo.Status = constant.TaskStatusRunning
 				}
 			}
 		}

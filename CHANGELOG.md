@@ -13,11 +13,13 @@
 - *(agent)* 当消息类型为文件时，添加消息记录以告知大模型文件信息
 - *(task)* 修复任务状态更新逻辑并限制描述修改方式
 - *(feishu)* 优化群聊消息中提及agent时的内容格式
+- *(version_tool)* 修复版本比较逻辑错误
 
 ### 📚 Documentation
 
 - Update CHANGELOG for v0.3.0
 - *(filesystem)* 更新重命名文件工具的说明，增加移动功能和覆盖说明
+- Update CHANGELOG for v0.3.1
 ## [0.3.0] - 2026-03-11
 
 ### 🚀 Features

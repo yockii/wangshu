@@ -104,6 +104,7 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 		}
 		return "", nil
 	} else if msg.Type == bus.MessageTypeFile {
+		sess.AddMessage(constant.RoleUser, msg.Content)
 		return "", nil
 	}
 

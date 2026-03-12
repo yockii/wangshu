@@ -144,7 +144,7 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 			for _, msg := range history {
 				historyContent += fmt.Sprintf("%s: %s\n", msg.Metadata.SenderName, msg.Content)
 			}
-			inboundMsg.Content = fmt.Sprintf("你当前在群聊中，群聊最近消息:\n%s\n当前消息(提到了你):%s\n**有些信息可能与提到你时要你完成的任务无关，仅作为参考**", historyContent, fmt.Sprintf("%s: %s", senderName, inboundMsg.Content))
+			inboundMsg.Content = fmt.Sprintf("你当前在群聊中，**有些信息可能与提到你时要你完成的任务无关，仅作为参考**。群聊最近消息:\n%s\n\n当前消息(**%s**提到了你)：%s\n", historyContent, senderName, inboundMsg.Content)
 			// 由于这里已经提到了agent，所以历史消息可以清空，不再需要作为下一轮的参考
 			c.groupMu.Lock()
 			c.groupHistory[inboundMsg.Metadata.ChatID] = nil

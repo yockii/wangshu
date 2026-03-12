@@ -98,11 +98,11 @@ func (t *VersionTool) checkVersion(ctx context.Context) (string, error) {
 
 	latestVersion := latest.Version()
 
-	if latest.GreaterOrEqual(current) {
+	if latest.LessOrEqual(current) {
 		return fmt.Sprintf("You are running the latest version: %s", current), nil
 	}
-
 	return fmt.Sprintf("Update available: %s -> %s", current, latestVersion), nil
+
 }
 
 func (t *VersionTool) update(ctx context.Context) (string, error) {
@@ -123,7 +123,7 @@ func (t *VersionTool) update(ctx context.Context) (string, error) {
 
 	latestVersion := latest.Version()
 
-	if latest.GreaterOrEqual(current) {
+	if latest.LessOrEqual(current) {
 		return fmt.Sprintf("Already running the latest version: %s", current), nil
 	}
 

@@ -1,3 +1,17 @@
+## [0.4.0] - 2026-03-12
+
+### 🚀 Features
+
+- 添加群聊类型支持并优化定时任务处理
+- *(tui)* 添加终端用户界面配置向导
+
+### 🐛 Bug Fixes
+
+- *(prompts)* 针对定时任务优化系统提示词
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.3.1
 ## [0.3.1] - 2026-03-12
 
 ### 🚀 Features

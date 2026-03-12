@@ -14,7 +14,7 @@ import (
 )
 
 // executeToolCall 执行工具调用
-func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, chatID, senderID string) (string, error) {
+func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, chatID, chatType, senderID string) (string, error) {
 	var args map[string]any
 	if tc.Arguments != "" {
 		err := json.Unmarshal([]byte(tc.Arguments), &args)
@@ -32,6 +32,7 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 	args[constant.ToolCallParamChannel] = channel
 	args[constant.ToolCallParamChatID] = chatID
 	args[constant.ToolCallParamSenderID] = senderID
+	args[constant.ToolCallParamChatType] = chatType
 
 	// Create ToolContext with agent information
 	toolCtx := tools.NewToolContext(

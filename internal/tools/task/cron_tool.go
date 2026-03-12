@@ -21,7 +21,7 @@ type CronTool struct {
 func NewCronTool() *CronTool {
 	tool := new(CronTool)
 	tool.Name_ = constant.ToolNameCron
-	tool.Desc_ = "Manage scheduled tasks that are stored in the agent workspace and persist across restarts. Supports add, list, pause, resume, disable, status, and update operations."
+	tool.Desc_ = "Manage scheduled tasks that are stored in the agent workspace and persist across restarts. Supports add, list, pause, resume, disable, status, and update operations. NOTE: if user want to do something after 5 minutes, you SHOULD CALCULATE the next run time as 5 minutes later as a once cron."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -98,6 +98,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	channel := params[constant.ToolCallParamChannel]
 	chatID := params[constant.ToolCallParamChatID]
 	once := params["once"] == "true" || params["once"] == "1"
+	inGroup := params[constant.ToolCallParamChatType] == constant.ChatTypeGroup
 
 	jobInfo := &types.BasicJobInfo{
 		ID:          uuid.NewString(),
@@ -108,6 +109,7 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 		Channel: channel,
 		ChatID:  chatID,
 		Once:    once,
+		InGroup: inGroup,
 	}
 
 	// 写入workspace/cron/{id}.json文件中

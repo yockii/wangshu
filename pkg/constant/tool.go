@@ -6,6 +6,7 @@ const (
 	ToolCallParamChannel   = "channel"
 	ToolCallParamChatID    = "chat_id"
 	ToolCallParamSenderID  = "sender_id"
+	ToolCallParamChatType  = "chat_type"
 
 	ToolCallParamTaskID = "task_id"
 )

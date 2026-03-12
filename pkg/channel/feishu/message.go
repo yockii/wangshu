@@ -1,6 +1,7 @@
 package feishu
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -173,9 +174,6 @@ func (c *FeishuChannel) handleMessage(event *larkim.P2MessageReceiveV1) {
 func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error {
 	// 发送文本内容
 	if om.Content != "" {
-		type BodyText struct {
-			Text string `json:"text"`
-		}
 
 		// 处理@用户
 		// 1. 首先处理文本中的@用户名（如 @张三），转换为 <at> 标签
@@ -196,31 +194,67 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 			}
 		}
 
-		body := BodyText{
-			Text: content,
-		}
+		// type BodyText struct {
+		// 	Text string `json:"text"`
+		// }
+		// body := BodyText{
+		// 	Text: content,
+		// }
 
 		// 将 Entities 中的 @标签插入到文本前
 		if atText.Len() > 0 {
-			atText.WriteString(body.Text)
-			body.Text = atText.String()
+			atText.WriteString(content)
+			content = atText.String()
 		}
 
-		bodyContent, err := json.Marshal(body)
-		if err != nil {
-			return err
+		// bodyContent, err := json.Marshal(content)
+		// if err != nil {
+		// 	return err
+		// }
+
+		cardInfo := CardV2{
+			Schema: "2.0",
+			Body: CardBody{
+				Elements: []CardElement{
+					{
+						Tag:       "markdown",
+						Content:   content,
+						ElementID: "md_1",
+					},
+				},
+			},
 		}
-
-		bodyBuilder := larkim.NewCreateMessageReqBodyBuilder().
-			ReceiveId(om.Metadata.ChatID).
-			MsgType(larkim.MsgTypeText).
-			Content(string(bodyContent))
-
+		var buf bytes.Buffer
+		encoder := json.NewEncoder(&buf)
+		encoder.SetEscapeHTML(false)
+		encoder.Encode(cardInfo)
+		j := buf.String()
 		// 注：飞书SDK当前版本不直接支持通过Builder设置mentions和parent_id
 		// 这些功能需要：
 		// 1. @用户：已在文本内容中插入<at>标签
 		// 2. 回复消息：需要通过其他API或直接在content中引用
 		// 这里我们保持基础实现，如果需要高级功能，可以考虑直接调用HTTP API
+
+		// 卡片接入
+		// req := larkcardkit.NewCreateCardReqBuilder().Body(
+		// 	larkcardkit.NewCreateCardReqBodyBuilder().Type("card_json").
+		// 		Data(j).Build()).Build()
+		// resp, err := c.restClient.Cardkit.V1.Card.Create(ctx, req)
+
+		// if err != nil {
+		// 	slog.Error("Feishu Channel SendMessage error", "err", err)
+		// 	return err
+		// }
+
+		// if !resp.Success() {
+		// 	slog.Error("Feishu Channel SendMessage error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
+		// 	return resp.CodeError
+		// }
+
+		bodyBuilder := larkim.NewCreateMessageReqBodyBuilder().
+			ReceiveId(om.Metadata.ChatID).
+			MsgType(larkim.MsgTypeInteractive).
+			Content(string(j))
 
 		req := larkim.NewCreateMessageReqBuilder().
 			ReceiveIdType(larkim.ReceiveIdTypeChatId).
@@ -228,6 +262,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 			Build()
 
 		resp, err := c.restClient.Im.V1.Message.Create(ctx, req)
+
 		if err != nil {
 			slog.Error("Feishu Channel SendMessage error", "err", err)
 			return err
@@ -237,6 +272,7 @@ func (c *FeishuChannel) SendMessage(ctx context.Context, om *bus.Message) error 
 			slog.Error("Feishu Channel SendMessage error", "requestId", resp.RequestId(), "response", larkcore.Prettify(resp.CodeError))
 			return resp.CodeError
 		}
+
 	}
 
 	// 发送媒体（如果有）

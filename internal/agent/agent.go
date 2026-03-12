@@ -14,7 +14,7 @@ import (
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
-	"github.com/yockii/wangshu/pkg/utils/imageutil"
+	"github.com/yockii/wangshu/pkg/utils"
 )
 
 type Agent struct {
@@ -135,7 +135,7 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 }
 
 func (a *Agent) loadImageAsBase64(filePath string) (string, string, error) {
-	data, mediaType, err := imageutil.ReadImageAsBase64(filePath)
+	data, mediaType, err := utils.ReadImageAsBase64(filePath)
 	if err != nil {
 		return "", "", err
 	}

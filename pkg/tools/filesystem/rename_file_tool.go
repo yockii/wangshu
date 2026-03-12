@@ -17,7 +17,7 @@ type RenameFileTool struct {
 func NewRenameFileTool() *RenameFileTool {
 	tool := new(RenameFileTool)
 	tool.Name_ = "rename_file"
-	tool.Desc_ = "Rename a file or directory. Returns success message."
+	tool.Desc_ = "Rename a file or directory. Returns success message. It can also used for MOVE file or directory. Note: If the new_path already exists, it will be overwritten."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{

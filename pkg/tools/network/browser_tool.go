@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -11,7 +14,9 @@ import (
 	"time"
 
 	"github.com/playwright-community/playwright-go"
+	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/utils"
 )
 
 type BrowserTool struct {
@@ -111,43 +116,230 @@ func (t *BrowserTool) execute(ctx context.Context, params map[string]string) (st
 	}
 }
 
+// detectSystemBrowsers 检测系统可用的浏览器
+// 返回：(浏览器类型, 可执行路径, 是否需要安装完整浏览器)
+func detectSystemBrowsers() (browserType string, executablePath string, needFullInstall bool) {
+	switch runtime.GOOS {
+	case "windows":
+		// Windows: 使用where命令查找Microsoft Edge（更可靠，支持任意系统盘）
+		// where会搜索PATH环境变量和常见安装位置
+		if path, err := exec.LookPath("msedge"); err == nil {
+			fmt.Printf("✓ 检测到系统浏览器: Microsoft Edge (%s)\n", path)
+			return "chromium", path, false // 用chromium驱动启动系统Edge，不需要安装完整浏览器
+		}
+
+		// 备选方案：使用环境变量构建常见路径
+		programFiles := os.Getenv("ProgramFiles")
+		programFilesX86 := os.Getenv("ProgramFiles(x86)")
+
+		edgePaths := []string{}
+		if programFiles != "" {
+			edgePaths = append(edgePaths, programFiles+`\Microsoft\Edge\Application\msedge.exe`)
+		}
+		if programFilesX86 != "" {
+			edgePaths = append(edgePaths, programFilesX86+`\Microsoft\Edge\Application\msedge.exe`)
+		}
+
+		for _, path := range edgePaths {
+			if _, err := os.Stat(path); err == nil {
+				fmt.Printf("✓ 检测到系统浏览器: Microsoft Edge\n")
+				return "chromium", path, false
+			}
+		}
+
+		// 没找到Edge，需要安装Chromium
+		fmt.Println("✗ 未检测到Microsoft Edge，将安装Chromium")
+		return "chromium", "", true
+
+	case "darwin":
+		// macOS: Safari是系统自带的，但Playwright需要WebKit驱动
+		if _, err := os.Stat("/Applications/Safari.app"); err == nil {
+			fmt.Println("✓ 检测到系统浏览器: Safari")
+			return "webkit", "", true // WebKit驱动需要完整安装
+		}
+		fmt.Println("✗ 未检测到Safari，将安装Chromium")
+		return "chromium", "", true
+
+	case "linux":
+		// Linux: 尝试检测常见浏览器
+		browsers := []string{
+			"google-chrome",
+			"chromium",
+			"chromium-browser",
+			"firefox",
+		}
+
+		for _, cmd := range browsers {
+			if path, err := exec.LookPath(cmd); err == nil {
+				fmt.Printf("✓ 检测到系统浏览器: %s (%s)\n", cmd, path)
+				// Linux上的系统浏览器可能能用，但为了兼容性还是安装Chromium驱动
+				return "chromium", "", true
+			}
+		}
+
+		// 没找到任何浏览器
+		fmt.Println("✗ 未检测到任何浏览器，将安装Chromium")
+		return "chromium", "", true
+
+	default:
+		fmt.Printf("⚠ 未知操作系统(%s)，将安装Chromium\n", runtime.GOOS)
+		return "chromium", "", true
+	}
+}
+
+// getBrowserDataDir 获取浏览器专用用户数据目录
+// 从配置文件读取，默认为 ~/.wangshu/browser_profile
+func getBrowserDataDir() (string, error) {
+	// 从配置获取浏览器数据目录
+	var dataDir string
+	if config.DefaultCfg != nil {
+		dataDir = config.DefaultCfg.Browser.DataDir
+	}
+
+	if dataDir == "" {
+		// 配置为空或未初始化，使用默认值
+		dataDir = "~/.wangshu/browser_profile"
+	}
+
+	// 展开路径中的 ~ 为用户主目录
+	expandedPath := utils.ExpandPath(dataDir)
+
+	// 确保目录存在
+	if err := os.MkdirAll(expandedPath, 0755); err != nil {
+		return "", fmt.Errorf("failed to create browser profile directory: %w", err)
+	}
+
+	// 转换为绝对路径
+	absDir, err := filepath.Abs(expandedPath)
+	if err != nil {
+		return absDir, fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return absDir, nil
+}
+
 func (t *BrowserTool) init() error {
+	// 尝试启动Playwright
+	browserType, executablePath, needFullInstall := detectSystemBrowsers()
 	pw, err := playwright.Run()
 	if err != nil {
-		if installErr := playwright.Install(); installErr != nil {
-			return fmt.Errorf("playwright install failed: %w", installErr)
+		if !needFullInstall {
+			// 系统有浏览器，只安装驱动
+			fmt.Println("安装Playwright驱动（跳过浏览器下载）...")
+			if installErr := playwright.Install(&playwright.RunOptions{
+				SkipInstallBrowsers: true, // ← 关键：只装驱动，不装浏览器
+				Verbose:             true,
+			}); installErr != nil {
+				return fmt.Errorf("playwright driver install failed: %w", installErr)
+			}
+		} else {
+			// 需要安装完整浏览器
+			fmt.Printf("安装Playwright浏览器和驱动: %s\n", browserType)
+			if installErr := playwright.Install(&playwright.RunOptions{
+				Browsers: []string{browserType},
+				Verbose:  true,
+			}); installErr != nil {
+				return fmt.Errorf("playwright install failed: %w", installErr)
+			}
 		}
+
+		// 再次尝试启动
 		pw, err = playwright.Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("playwright run failed after install: %w", err)
 		}
 	}
 	t.pw = pw
 
+	// 获取浏览器专用用户数据目录（持久化、隔离）
+	browserDataDir, err := getBrowserDataDir()
+	if err != nil {
+		return fmt.Errorf("failed to get browser data directory: %w", err)
+	}
+	fmt.Printf("浏览器数据目录: %s\n", browserDataDir)
+
 	var browser playwright.Browser
+	var context playwright.BrowserContext
 	var launchErr error
 
+	// 根据检测结果启动浏览器（使用持久化上下文）
 	if runtime.GOOS == "windows" {
-		browser, launchErr = pw.Chromium.Launch(
-			playwright.BrowserTypeLaunchOptions{
-				Channel:  playwright.String("msedge"),
-				Headless: playwright.Bool(false),
-			},
-		)
-		if launchErr != nil {
-			fmt.Printf("msedge not available, falling back to chromium: %v\n", launchErr)
-			browser, launchErr = pw.Chromium.Launch(
-				playwright.BrowserTypeLaunchOptions{
+		// Windows: 优先使用系统Edge
+		if executablePath != "" {
+			context, launchErr = pw.Chromium.LaunchPersistentContext(
+				browserDataDir,
+				playwright.BrowserTypeLaunchPersistentContextOptions{
+					Channel:        playwright.String("msedge"),
+					ExecutablePath: playwright.String(executablePath),
+					Headless:       playwright.Bool(false),
+				},
+			)
+			if launchErr != nil {
+				fmt.Printf("系统Edge启动失败: %v，回退到Chromium\n", launchErr)
+				context, launchErr = pw.Chromium.LaunchPersistentContext(
+					browserDataDir,
+					playwright.BrowserTypeLaunchPersistentContextOptions{
+						Headless: playwright.Bool(false),
+					},
+				)
+			} else {
+				fmt.Println("✓ 已启动系统浏览器: Microsoft Edge（持久化环境）")
+			}
+		} else {
+			context, launchErr = pw.Chromium.LaunchPersistentContext(
+				browserDataDir,
+				playwright.BrowserTypeLaunchPersistentContextOptions{
 					Headless: playwright.Bool(false),
 				},
 			)
 		}
-	} else {
-		browser, launchErr = pw.Chromium.Launch(
-			playwright.BrowserTypeLaunchOptions{
+
+	} else if runtime.GOOS == "darwin" {
+		// macOS: 使用WebKit（Safari）
+		context, launchErr = pw.WebKit.LaunchPersistentContext(
+			browserDataDir,
+			playwright.BrowserTypeLaunchPersistentContextOptions{
 				Headless: playwright.Bool(false),
 			},
 		)
+		if launchErr != nil {
+			fmt.Println("WebKit启动失败，回退到Chromium")
+			context, launchErr = pw.Chromium.LaunchPersistentContext(
+				browserDataDir,
+				playwright.BrowserTypeLaunchPersistentContextOptions{
+					Headless: playwright.Bool(false),
+				},
+			)
+		}
+
+	} else {
+		// Linux和其他系统: 使用Chromium
+		context, launchErr = pw.Chromium.LaunchPersistentContext(
+			browserDataDir,
+			playwright.BrowserTypeLaunchPersistentContextOptions{
+				Headless: playwright.Bool(false),
+			},
+		)
+	}
+
+	if launchErr != nil {
+		return launchErr
+	}
+
+	// 从context获取browser
+	browser = context.Browser()
+	t.browser = browser
+
+	// 从context获取或创建第一个page
+	pages := context.Pages()
+	if len(pages) > 0 {
+		t.page = pages[0]
+	} else {
+		page, err := context.NewPage()
+		if err != nil {
+			return err
+		}
+		t.page = page
 	}
 
 	if launchErr != nil {

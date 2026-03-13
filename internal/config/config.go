@@ -73,6 +73,10 @@ func dealCfgPath(cfg *Config) {
 	if cfg.Skill.GlobalPath != "" {
 		cfg.Skill.GlobalPath = utils.ExpandPath(cfg.Skill.GlobalPath)
 	}
+
+	if cfg.Browser.DataDir != "" {
+		cfg.Browser.DataDir = utils.ExpandPath(cfg.Browser.DataDir)
+	}
 }
 
 // Validate 验证配置，一次性返回所有错误

@@ -1,3 +1,12 @@
+## [0.4.1] - 2026-03-13
+
+### 🚀 Features
+
+- *(browser)* 添加浏览器配置和持久化支持
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.0
 ## [0.4.0] - 2026-03-12
 
 ### 🚀 Features

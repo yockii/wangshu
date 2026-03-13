@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -28,16 +29,15 @@ import (
 	"github.com/yockii/wangshu/pkg/tools/runtime"
 )
 
-func Run() {
+var defaultAgent *agent.Agent
+
+func Initialize() (*agent.Agent, error) {
 	if err := config.DefaultCfg.Validate(); err != nil {
-		slog.Error("Config validation failed", "error", err)
-		return
+		return nil, err
 	}
 
-	// 释放技能
 	config.ReleaseSkills()
 
-	// 初始化大模型
 	providerCount := 0
 	for providerName, providerCfg := range config.DefaultCfg.Providers {
 		if providerCfg.Type == "" {
@@ -57,8 +57,6 @@ func Run() {
 			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
 			llm.RegisterProvider(providerName, claudeProvider)
 			providerCount++
-		// case "ollama":
-		// 	llm.RegisterProvider(providerName, llm.NewOllamaProvider(providerCfg.APIKey, providerCfg.BaseURL))
 		default:
 			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
 		}
@@ -66,23 +64,16 @@ func Run() {
 
 	if providerCount == 0 {
 		slog.Error("No LLM provider configured")
-		return
+		return nil, fmt.Errorf("no LLM provider configured")
 	}
 
 	bus.Default().Start(context.Background())
-	defer bus.Close()
 
-	// 初始化工具注册中心
 	tools.RegisterBuiltinTools()
 	tools.RegisterFileSystemTools()
-	// Register shell tools
-	// shellTools.RegisterShellTools()
-	// Register network tools
 	network.RegisterNetworkTools()
-	// Register memory tools
 	memory.RegisterMemoryTools()
 
-	// Register runtime tools
 	tools.GetDefaultToolRegistry().Register(runtime.NewPythonRunTool())
 	tools.GetDefaultToolRegistry().Register(runtime.NewNpmRunTool())
 	tools.GetDefaultToolRegistry().Register(runtime.NewGitRunTool())
@@ -90,15 +81,16 @@ func Run() {
 	tools.GetDefaultToolRegistry().Register(task.NewCronTool())
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
-	// TODO 实现并注册更多工具
 
 	skills.InitializeSkillLoader()
 
-	// 初始化agents
-	defaultAgent := agent.InitializeAgentManager()
+	defaultAgent = agent.InitializeAgentManager()
 
+	return defaultAgent, nil
+}
+
+func InitializeChannels(defaultAgent *agent.Agent) bool {
 	noChannelFound := true
-	// 初始化channel
 	for name, ch := range config.DefaultCfg.Channels {
 		if ch.Enabled {
 			switch ch.Type {
@@ -127,19 +119,16 @@ func Run() {
 					noChannelFound = false
 					feishuChannel := feishu.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
 
-					// 设置 workspace（从关联的 agent 配置中获取）
 					var feishuAgent *agent.Agent
 					if ch.Agent != "" {
 						a, has := agent.GetAgent(ch.Agent)
 						if has {
 							feishuAgent = a
-							// 设置 workspace
 							feishuChannel.SetWorkspace(a.GetWorkspace())
 						}
 					}
 					if feishuAgent == nil {
 						feishuAgent = defaultAgent
-						// 使用 defaultAgent 的 workspace
 						feishuChannel.SetWorkspace(defaultAgent.GetWorkspace())
 					}
 
@@ -150,7 +139,17 @@ func Run() {
 			}
 		}
 	}
+	return noChannelFound
+}
 
+func Run() {
+	defaultAgent, err := Initialize()
+	if err != nil {
+		slog.Error("Initialization failed", "error", err)
+		return
+	}
+
+	noChannelFound := InitializeChannels(defaultAgent)
 	if noChannelFound {
 		slog.Error("No channel configured")
 		return
@@ -158,14 +157,12 @@ func Run() {
 
 	flagFileCheck()
 
-	// Wait for interrupt signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigCh
 
 	channel.StopAllChannel()
-	// Stop all agent
 	agent.StopAllAgents()
 	slog.Info("All agents stopped")
 }
@@ -185,24 +182,20 @@ func flagFileCheck() {
 
 	restartFlagPath := filepath.Join(filepath.Dir(exePath), ".restart_flag")
 
-	// 检查重启标记是否存在
 	if _, err := os.Stat(restartFlagPath); os.IsNotExist(err) {
-		return // 没有重启标记，直接返回
+		return
 	}
 
-	// 读取标记文件内容
 	flagData, err := os.ReadFile(restartFlagPath)
 	if err != nil {
 		slog.Error("Failed to read restart flag", "error", err)
 		return
 	}
 
-	// 删除重启标记
 	if err := os.Remove(restartFlagPath); err != nil {
 		slog.Error("Failed to remove restart flag", "error", err)
 	}
 
-	// 解析标记数据: agentName|channel|chatID
 	parts := strings.Split(string(flagData), "|")
 	if len(parts) != 4 {
 		slog.Error("Invalid restart flag data", "data", string(flagData))
@@ -210,13 +203,12 @@ func flagFileCheck() {
 	}
 
 	agentName := parts[0]
-	channel := parts[1]
+	channelName := parts[1]
 	chatID := parts[2]
 	senderID := parts[3]
 
-	slog.Info("Restart detected", "agent", agentName, "channel", channel, "chatID", chatID, "senderID", senderID)
+	slog.Info("Restart detected", "agent", agentName, "channel", channelName, "chatID", chatID, "senderID", senderID)
 
-	// 构建重启成功消息
 	ag, has := agent.GetAgent(agentName)
 	if !has {
 		slog.Error("Agent not found", "agent", agentName)
@@ -226,7 +218,7 @@ func flagFileCheck() {
 	err = ag.RestartMessage(context.Background(), bus.InboundMessage{
 		Message: bus.Message{
 			Metadata: bus.MessageMetadata{
-				Channel:  channel,
+				Channel:  channelName,
 				ChatID:   chatID,
 				SenderID: senderID,
 			},
@@ -236,4 +228,8 @@ func flagFileCheck() {
 	if err != nil {
 		slog.Error("Restart notification error", "error", err)
 	}
+}
+
+func GetDefaultAgent() *agent.Agent {
+	return defaultAgent
 }

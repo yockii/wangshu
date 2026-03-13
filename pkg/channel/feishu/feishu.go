@@ -46,14 +46,13 @@ func NewFeishuChannel(name, appID, appSecret string) *FeishuChannel {
 		c.appID,
 		c.appSecret,
 		larkws.WithEventHandler(eventHandler),
-		larkws.WithLogLevel(larkcore.LogLevelDebug),
+		larkws.WithLogger(newFeishuLogger()),
 	)
 
 	c.restClient = lark.NewClient(
 		c.appID,
 		c.appSecret,
-		lark.WithLogLevel(larkcore.LogLevelDebug),
-		lark.WithLogReqAtDebug(true),
+		lark.WithLogger(newFeishuLogger()),
 	)
 
 	return c

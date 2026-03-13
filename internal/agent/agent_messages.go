@@ -62,21 +62,66 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 	return response.Message.Content, nil
 }
 
+// checkAndCompressIfNeeded 检查是否需要压缩历史消息（异步执行）
+// 双重条件：message数量 > 200 或 总字符数 > 100K
+// 带防抖机制：避免短时间内重复压缩
+func (a *Agent) checkAndCompressIfNeeded(sess *session.Session) {
+	sessionMessages := sess.GetMessages()
+
+	// 计算总字符数（用于条件判断）
+	totalChars := 0
+	for _, msg := range sessionMessages {
+		totalChars += len(msg.Content)
+	}
+
+	// 双重条件：满足任一即触发压缩
+	needCompress := false
+	if len(sessionMessages) > constant.ReachCompressHistory {
+		needCompress = true
+	}
+	if totalChars > constant.MaxHistoryChars {
+		needCompress = true
+	}
+
+	if !needCompress {
+		return
+	}
+
+	// 防抖检查：距离上次压缩时间是否足够
+	lastCompressed := sess.GetLastCompressedAt()
+
+	if time.Since(lastCompressed) < time.Duration(constant.CompressDebounce)*time.Second {
+		slog.Debug("压缩防抖：距离上次压缩时间过短，跳过",
+			"last_compressed", lastCompressed,
+			"elapsed", time.Since(lastCompressed))
+		return
+	}
+
+	// 需要压缩，异步执行
+	go func() {
+		slog.Debug("开始压缩历史消息",
+			"chat_id", sess.ChatID,
+			"message数量", len(sessionMessages),
+			"总字符数", totalChars)
+
+		summary, err := a.compressHistory(sessionMessages)
+		if err != nil {
+			slog.Warn("Failed to compress history", "error", err)
+			return
+		}
+
+		sess.TrimMessages(summary, constant.KeptHistory)
+		slog.Debug("历史消息压缩完成",
+			"chat_id", sess.ChatID,
+			"保留message数", constant.KeptHistory)
+	}()
+}
+
 const maxMessagesWithImage = 3
 
 // buildMessages 构建发送给LLM的消息列表
 func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	sessionMessages := sess.GetMessages()
-
-	if len(sessionMessages) > constant.ReachCompressHistory {
-		summary, err := a.compressHistory(sessionMessages)
-		if err != nil {
-			slog.Warn("Failed to compress history", "error", err)
-			sessionMessages = sess.GetLastN(constant.KeptHistory)
-		} else {
-			sessionMessages = sess.TrimMessages(summary, constant.KeptHistory)
-		}
-	}
 
 	msgs := make([]llm.Message, 0, len(sessionMessages)+1)
 

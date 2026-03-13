@@ -129,6 +129,10 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 	if err != nil {
 		return "", fmt.Errorf("Agent loop failed: %w", err)
 	}
+
+	// 异步检查并压缩历史（不阻塞响应）
+	go a.checkAndCompressIfNeeded(sess)
+
 	return response, nil
 
 	// resp, err := a.provider.Chat(ctx, sessionID, msgs, tools, nil)
@@ -191,6 +195,9 @@ func (a *Agent) RestartMessage(ctx context.Context, msg bus.InboundMessage) erro
 			if err != nil {
 				return fmt.Errorf("Agent loop failed: %w", err)
 			}
+
+			// 异步检查并压缩历史（不阻塞响应）
+			go a.checkAndCompressIfNeeded(sess)
 
 			bus.Default().PublishOutbound(bus.Message{
 				Type:     bus.MessageTypeText,

@@ -31,15 +31,27 @@ import (
 
 var defaultAgent *agent.Agent
 
-func Initialize() (*agent.Agent, error) {
-	if err := config.DefaultCfg.Validate(); err != nil {
+func Initialize(isTUIMode bool) (*agent.Agent, error) {
+	if err := config.DefaultCfg.ValidateWithMode(isTUIMode); err != nil {
 		return nil, err
 	}
 
 	config.ReleaseSkills()
 
+	usedProviders := make(map[string]bool)
+	for _, agent := range config.DefaultCfg.Agents {
+		if agent.Provider == "" {
+			continue
+		}
+		usedProviders[agent.Provider] = true
+	}
+
 	providerCount := 0
 	for providerName, providerCfg := range config.DefaultCfg.Providers {
+		if !usedProviders[providerName] {
+			continue
+		}
+
 		if providerCfg.Type == "" {
 			slog.Error("LLM provider type is empty", "provider", providerName)
 			continue
@@ -48,6 +60,7 @@ func Initialize() (*agent.Agent, error) {
 			slog.Error("LLM provider API key is empty", "provider", providerName)
 			continue
 		}
+
 		switch providerCfg.Type {
 		case "openai":
 			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
@@ -84,7 +97,7 @@ func Initialize() (*agent.Agent, error) {
 
 	skills.InitializeSkillLoader()
 
-	defaultAgent = agent.InitializeAgentManager()
+	defaultAgent = agent.InitializeAgentManager(isTUIMode)
 
 	return defaultAgent, nil
 }
@@ -143,7 +156,7 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 }
 
 func Run() {
-	defaultAgent, err := Initialize()
+	defaultAgent, err := Initialize(false)
 	if err != nil {
 		slog.Error("Initialization failed", "error", err)
 		return

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -44,7 +43,7 @@ func (l BufferLogger) Error(ctx context.Context, args ...interface{}) {
 	AppendLog("[Error] ", args)
 }
 
-func Setup() (cleanup func(), stdoutWriter io.Writer) {
+func Setup() (cleanup func(), stdoutWriter *os.File) {
 	logBufferMu.Lock()
 	defer logBufferMu.Unlock()
 

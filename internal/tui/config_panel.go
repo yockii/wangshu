@@ -35,6 +35,8 @@ type configPanelModel struct {
 	boolVal         map[string]bool
 	editKey         string
 	prevChannelType string
+	configChanged   bool
+	showSaveConfirm bool
 }
 
 var (
@@ -120,6 +122,10 @@ func (m configPanelModel) Update(msg tea.Msg) (configPanelModel, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		if m.showSaveConfirm {
+			return m.handleSaveConfirm(msg)
+		}
+
 		if m.editMode {
 			return m.handleEditKeys(msg)
 		}
@@ -162,10 +168,23 @@ func (m configPanelModel) Update(msg tea.Msg) (configPanelModel, tea.Cmd) {
 			if m.focus == focusContent {
 				m.focus = focusSidebar
 			}
+		case "f10":
+			m.showSaveConfirm = true
 		}
 	}
 
 	return m, cmd
+}
+
+func (m configPanelModel) handleSaveConfirm(msg tea.KeyMsg) (configPanelModel, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y", "enter":
+		m.showSaveConfirm = false
+		return m, tea.Quit
+	case "n", "N", "esc":
+		m.showSaveConfirm = false
+	}
+	return m, nil
 }
 
 func (m configPanelModel) handleEditKeys(msg tea.KeyMsg) (configPanelModel, tea.Cmd) {
@@ -197,6 +216,7 @@ func (m configPanelModel) handleEditKeys(msg tea.KeyMsg) (configPanelModel, tea.
 		}
 	case "enter":
 		m.saveEdit()
+		m.configChanged = true
 		m.editMode = false
 		m.loadItems()
 	default:
@@ -538,6 +558,10 @@ func (m *configPanelModel) saveEdit() {
 }
 
 func (m configPanelModel) View() string {
+	if m.showSaveConfirm {
+		return m.renderSaveConfirm()
+	}
+
 	sidebarWidth := m.width/4 - 2
 	contentWidth := m.width*3/4 - 2
 	contentHeight := m.height - 6
@@ -552,6 +576,30 @@ func (m configPanelModel) View() string {
 	)
 
 	return fmt.Sprintf("%s\n%s", mainContent, help)
+}
+
+func (m configPanelModel) renderSaveConfirm() string {
+	confirmBoxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#ffb86c")).
+		Padding(1, 2).
+		Width(60)
+
+	var sb strings.Builder
+	sb.WriteString("⚠️  配置保存确认\n\n")
+	if m.configChanged {
+		sb.WriteString("检测到配置已修改。\n")
+		sb.WriteString("保存后需要重启程序才能生效。\n\n")
+	} else {
+		sb.WriteString("配置未修改。\n\n")
+	}
+	sb.WriteString("是否保存并退出？ [Y/n]")
+
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		Align(lipgloss.Center, lipgloss.Center).
+		Render(confirmBoxStyle.Render(sb.String()))
 }
 
 func (m configPanelModel) renderSidebar(width, height int) string {
@@ -738,7 +786,7 @@ func (m configPanelModel) renderHelp() string {
 		return cfgHelpStyle.Render("[↑↓切换字段] [←→切换选项] [Space切换布尔] [Enter保存] [Esc取消]")
 	}
 	if m.focus == focusSidebar {
-		return cfgHelpStyle.Render("[↑↓选择分类] [Enter进入] [Tab切换视图] [Ctrl+Q退出]")
+		return cfgHelpStyle.Render("[↑↓选择分类] [Enter进入] [F10保存退出] [Tab切换视图]")
 	}
-	return cfgHelpStyle.Render("[↑↓选择项目] [Enter编辑] [Esc返回主菜单] [Tab切换视图] [Ctrl+Q退出]")
+	return cfgHelpStyle.Render("[↑↓选择项目] [Enter编辑] [Esc返回] [F10保存退出] [Tab切换视图]")
 }

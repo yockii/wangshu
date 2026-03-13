@@ -9,8 +9,8 @@ import (
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
-func runConfigWizard() error {
-	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
+func runConfigWizard(stdoutWriter *os.File) error {
+	p := tea.NewProgram(newWizardModel(), tea.WithAltScreen(), tea.WithOutput(stdoutWriter))
 	_, err := p.Run()
 	if err != nil {
 		slog.Error("配置向导运行出错", "error", err)

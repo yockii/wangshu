@@ -16,8 +16,8 @@ func RunTui() {
 	cleanup, stdoutWriter := logger.Setup()
 	defer cleanup()
 
-	if err := config.DefaultCfg.Validate(); err != nil {
-		err = runConfigWizard()
+	if err := config.DefaultCfg.ValidateWithMode(true); err != nil {
+		err = runConfigWizard(stdoutWriter)
 		if err != nil {
 			slog.Error("配置向导执行失败", "error", err)
 			return
@@ -25,17 +25,18 @@ func RunTui() {
 		slog.Info("配置向导执行完成")
 	}
 
-	defaultAgent, err := runner.Initialize()
+	defaultAgent, err := runner.Initialize(true)
 	if err != nil {
 		slog.Error("初始化失败", "error", err)
 		return
 	}
 
-	tuiChannel := NewTUIChannel()
 	if defaultAgent == nil {
 		slog.Error("没有可用的 Agent")
 		return
 	}
+
+	tuiChannel := NewTUIChannel()
 
 	channel.RegisterChannel(TUIChannelName, tuiChannel)
 	bus.Default().RegisterInboundHandler(TUIChannelName, defaultAgent.SubscribeInbound)

@@ -225,6 +225,9 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if m.view == configView {
 			var cmd tea.Cmd
 			m.configPanel, cmd = m.configPanel.Update(msg)
+			if m.configPanel.showSaveConfirm {
+				return m, tea.Quit
+			}
 			return m, cmd
 		}
 	}

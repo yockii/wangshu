@@ -30,7 +30,7 @@ type runtimeModel struct {
 	chatViewport viewport.Model
 	logViewport  viewport.Model
 	chatMessages []chatMessage
-	configModel  model
+	configPanel  configPanelModel
 	tuiChannel   *TUIChannel
 	agentName    string
 	isProcessing bool
@@ -120,8 +120,8 @@ func newRuntimeModel(tuiChannel *TUIChannel, agentName string) runtimeModel {
 	vp := viewport.New(80, 20)
 	logVp := viewport.New(80, 20)
 
-	cfgModel := initialModel()
-	cfgModel.state = mainMenuState
+	cfgPanel := newConfigPanelModel()
+	cfgPanel.loadItems()
 
 	return runtimeModel{
 		view:         chatView,
@@ -131,7 +131,7 @@ func newRuntimeModel(tuiChannel *TUIChannel, agentName string) runtimeModel {
 		chatMessages: make([]chatMessage, 0),
 		tuiChannel:   tuiChannel,
 		agentName:    agentName,
-		configModel:  cfgModel,
+		configPanel:  cfgPanel,
 		startTime:    time.Now(),
 	}
 }
@@ -168,8 +168,8 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logViewport.Width = (m.width * 2 / 3) - 6
 		m.logViewport.Height = m.height - 10
 		m.chatInput.Width = m.width - 6
-		m.configModel.width = m.width
-		m.configModel.height = m.height
+		m.configPanel.width = m.width
+		m.configPanel.height = m.height
 
 	case tickMsg:
 		if m.view == monitorView {
@@ -200,12 +200,16 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.view = (m.view + 1) % 3
 			if m.view == monitorView {
 				m.updateLogViewport()
+			} else if m.view == configView {
+				m.configPanel.loadItems()
 			}
 			return m, nil
 		case "shift+tab":
 			m.view = (m.view + 2) % 3
 			if m.view == monitorView {
 				m.updateLogViewport()
+			} else if m.view == configView {
+				m.configPanel.loadItems()
 			}
 			return m, nil
 		case "ctrl+l":
@@ -220,13 +224,7 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateChatView(msg)
 		} else if m.view == configView {
 			var cmd tea.Cmd
-			newModel, cmd := m.configModel.Update(msg)
-			if newModel, ok := newModel.(model); ok {
-				m.configModel = newModel
-			}
-			if m.configModel.state == doneState {
-				return m, tea.Quit
-			}
+			m.configPanel, cmd = m.configPanel.Update(msg)
 			return m, cmd
 		}
 	}
@@ -301,7 +299,7 @@ func (m runtimeModel) View() string {
 	case monitorView:
 		content = m.renderMonitorView()
 	case configView:
-		content = m.configModel.View()
+		content = m.configPanel.View()
 	}
 
 	return fmt.Sprintf("%s\n%s", tabRow, content)

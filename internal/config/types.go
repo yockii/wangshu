@@ -11,11 +11,16 @@ type Config struct {
 	Providers map[string]*ProviderConfig `json:"providers"`
 	Channels  map[string]*ChannelConfig  `json:"channels"`
 	Skill     SkillConfig                `json:"skill"`
+	Browser   BrowserConfig              `json:"browser"`
 	mu        sync.RWMutex
 }
 
 type SkillConfig struct {
 	GlobalPath string `json:"global_path"`
+}
+
+type BrowserConfig struct {
+	DataDir string `json:"data_dir"` // 浏览器用户数据目录，用于持久化cookies、登录状态等
 }
 
 type AgentConfig struct {
@@ -84,6 +89,9 @@ func defaultConfig() *Config {
 		},
 		Skill: SkillConfig{
 			GlobalPath: "~/.wangshu/skills",
+		},
+		Browser: BrowserConfig{
+			DataDir: "~/.wangshu/browser_profile",
 		},
 	}
 }

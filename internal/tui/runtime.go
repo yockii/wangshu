@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -17,24 +18,23 @@ type runtimeView int
 
 const (
 	chatView runtimeView = iota
-	statusView
-	logView
+	monitorView
 	configView
 )
 
 type runtimeModel struct {
-	view          runtimeView
-	width         int
-	height        int
-	chatInput     textinput.Model
-	chatViewport  viewport.Model
-	logViewport   viewport.Model
-	chatMessages  []chatMessage
-	statusContent string
-	configModel   model
-	tuiChannel    *TUIChannel
-	agentName     string
-	isProcessing  bool
+	view         runtimeView
+	width        int
+	height       int
+	chatInput    textinput.Model
+	chatViewport viewport.Model
+	logViewport  viewport.Model
+	chatMessages []chatMessage
+	configModel  model
+	tuiChannel   *TUIChannel
+	agentName    string
+	isProcessing bool
+	startTime    time.Time
 }
 
 type chatMessage struct {
@@ -80,11 +80,36 @@ var (
 	processingStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ffb86c")).
 			Faint(true)
+
+	panelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#6272a4")).
+			Padding(0, 1)
+
+	infoLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#8B5CF6")).
+			Bold(true)
+
+	infoValueStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#fafafa"))
+
+	statusOkStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#50fa7b"))
+
+	statusWarnStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ffb86c"))
+
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#6272a4")).
+			Background(lipgloss.Color("#1a1b26")).
+			Padding(0, 1)
 )
 
 type agentResponseMsg struct {
 	content string
 }
+
+type tickMsg struct{}
 
 func newRuntimeModel(tuiChannel *TUIChannel, agentName string) runtimeModel {
 	ti := textinput.New()
@@ -107,6 +132,7 @@ func newRuntimeModel(tuiChannel *TUIChannel, agentName string) runtimeModel {
 		tuiChannel:   tuiChannel,
 		agentName:    agentName,
 		configModel:  cfgModel,
+		startTime:    time.Now(),
 	}
 }
 
@@ -114,6 +140,9 @@ func (m runtimeModel) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
 		waitForAgentResponse(m.tuiChannel),
+		tea.Tick(time.Second, func(t time.Time) tea.Msg {
+			return tickMsg{}
+		}),
 	)
 }
 
@@ -136,11 +165,19 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.chatViewport.Width = m.width - 4
 		m.chatViewport.Height = m.height - 8
-		m.logViewport.Width = m.width - 4
-		m.logViewport.Height = m.height - 6
+		m.logViewport.Width = (m.width * 2 / 3) - 6
+		m.logViewport.Height = m.height - 10
 		m.chatInput.Width = m.width - 6
 		m.configModel.width = m.width
 		m.configModel.height = m.height
+
+	case tickMsg:
+		if m.view == monitorView {
+			m.updateLogViewport()
+		}
+		cmds = append(cmds, tea.Tick(time.Second, func(t time.Time) tea.Msg {
+			return tickMsg{}
+		}))
 
 	case agentResponseMsg:
 		if msg.content != "" {
@@ -160,14 +197,14 @@ func (m runtimeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+q", "ctrl+c":
 			return m, tea.Quit
 		case "tab":
-			m.view = (m.view + 1) % 4
-			if m.view == logView {
+			m.view = (m.view + 1) % 3
+			if m.view == monitorView {
 				m.updateLogViewport()
 			}
 			return m, nil
 		case "shift+tab":
-			m.view = (m.view + 3) % 4
-			if m.view == logView {
+			m.view = (m.view + 2) % 3
+			if m.view == monitorView {
 				m.updateLogViewport()
 			}
 			return m, nil
@@ -247,7 +284,7 @@ func (m *runtimeModel) updateChatViewport() {
 
 func (m runtimeModel) View() string {
 	var tabs []string
-	tabNames := []string{"💬 聊天", "📊 状态", "📋 日志", "⚙️ 配置"}
+	tabNames := []string{"💬 聊天", "📊 监控", "⚙️ 配置"}
 	for i, name := range tabNames {
 		if i == int(m.view) {
 			tabs = append(tabs, activeTabStyle.Render(name))
@@ -261,10 +298,8 @@ func (m runtimeModel) View() string {
 	switch m.view {
 	case chatView:
 		content = m.renderChatView()
-	case statusView:
-		content = m.renderStatusView()
-	case logView:
-		content = m.renderLogView()
+	case monitorView:
+		content = m.renderMonitorView()
 	case configView:
 		content = m.configModel.View()
 	}
@@ -292,39 +327,95 @@ func (m runtimeModel) renderChatView() string {
 	return fmt.Sprintf("%s\n%s\n%s", chatBox, inputBox, helpText)
 }
 
-func (m runtimeModel) renderStatusView() string {
+func (m runtimeModel) renderMonitorView() string {
+	leftWidth := m.width/3 - 2
+	rightWidth := m.width*2/3 - 2
+	contentHeight := m.height - 6
+
+	leftPanel := m.renderInfoPanel(leftWidth, contentHeight)
+	rightPanel := m.renderLogPanel(rightWidth, contentHeight)
+
+	mainContent := lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Width(leftWidth).Render(leftPanel),
+		lipgloss.NewStyle().Width(rightWidth).Render(rightPanel),
+	)
+
+	statusBar := m.renderStatusBar()
+
+	return fmt.Sprintf("%s\n%s", mainContent, statusBar)
+}
+
+func (m runtimeModel) renderInfoPanel(width, height int) string {
 	var sb strings.Builder
 
-	sb.WriteString(titleStyle.Render("📊 系统状态"))
+	sb.WriteString(infoLabelStyle.Render("🤖 Agent"))
+	sb.WriteString("\n")
+	sb.WriteString(infoValueStyle.Render("  "))
+	sb.WriteString(infoValueStyle.Render(m.agentName))
 	sb.WriteString("\n\n")
 
-	sb.WriteString(labelStyle.Render("🤖 Agent: "))
-	sb.WriteString(m.agentName)
+	uptime := time.Since(m.startTime)
+	sb.WriteString(infoLabelStyle.Render("⏱️ 运行时长"))
+	sb.WriteString("\n")
+	sb.WriteString(infoValueStyle.Render("  "))
+	sb.WriteString(infoValueStyle.Render(formatDuration(uptime)))
 	sb.WriteString("\n\n")
 
-	sb.WriteString(labelStyle.Render("📡 Providers: "))
-	sb.WriteString(fmt.Sprintf("%d 个配置", len(config.DefaultCfg.Providers)))
+	sb.WriteString(infoLabelStyle.Render("📡 Providers"))
 	sb.WriteString("\n")
 	for name, prov := range config.DefaultCfg.Providers {
-		sb.WriteString(fmt.Sprintf("  • %s (%s)\n", name, prov.Type))
+		sb.WriteString(infoValueStyle.Render(fmt.Sprintf("  • %s (%s)\n", name, prov.Type)))
 	}
-
 	sb.WriteString("\n")
-	sb.WriteString(labelStyle.Render("💬 Channels: "))
-	sb.WriteString(fmt.Sprintf("%d 个配置", len(config.DefaultCfg.Channels)))
+
+	sb.WriteString(infoLabelStyle.Render("💬 Channels"))
 	sb.WriteString("\n")
 	for name, ch := range config.DefaultCfg.Channels {
-		status := "禁用"
+		status := statusWarnStyle.Render("禁用")
 		if ch.Enabled {
-			status = "启用"
+			status = statusOkStyle.Render("启用")
 		}
-		sb.WriteString(fmt.Sprintf("  • %s (%s) - %s\n", name, ch.Type, status))
+		sb.WriteString(infoValueStyle.Render(fmt.Sprintf("  • %s ", name)))
+		sb.WriteString(status)
+		sb.WriteString("\n")
 	}
 
-	sb.WriteString("\n\n")
-	sb.WriteString(helpStyle.Render("[Tab切换视图] [Ctrl+Q退出]"))
+	content := sb.String()
 
-	return docStyle.Render(sb.String())
+	return panelStyle.
+		Width(width - 2).
+		Height(height - 2).
+		Render(content)
+}
+
+func (m runtimeModel) renderLogPanel(width, height int) string {
+	return panelStyle.
+		Width(width - 2).
+		Height(height - 2).
+		Render(m.logViewport.View())
+}
+
+func (m runtimeModel) renderStatusBar() string {
+	var mbs runtime.MemStats
+	runtime.ReadMemStats(&mbs)
+
+	allocMB := float64(mbs.Alloc) / 1024 / 1024
+	sysMB := float64(mbs.Sys) / 1024 / 1024
+	numGoroutine := runtime.NumGoroutine()
+
+	memInfo := fmt.Sprintf("内存: %.1fMB / %.1fMB | Goroutines: %d", allocMB, sysMB, numGoroutine)
+	uptimeInfo := fmt.Sprintf("运行: %s", formatDuration(time.Since(m.startTime)))
+
+	leftPart := statusBarStyle.Render(memInfo)
+	rightPart := statusBarStyle.Render(uptimeInfo)
+
+	width := m.width - lipgloss.Width(leftPart) - lipgloss.Width(rightPart) - 2
+	if width < 0 {
+		width = 0
+	}
+	middlePart := lipgloss.NewStyle().Width(width).Render("")
+
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, leftPart, middlePart, rightPart)
 }
 
 func (m *runtimeModel) updateLogViewport() {
@@ -333,13 +424,19 @@ func (m *runtimeModel) updateLogViewport() {
 	m.logViewport.GotoBottom()
 }
 
-func (m runtimeModel) renderLogView() string {
-	logBox := chatBoxStyle.
-		Width(m.width - 2).
-		Height(m.height - 4).
-		Render(m.logViewport.View())
+func formatDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
 
-	helpText := helpStyle.Render("[Tab切换视图] [↑↓滚动] [Ctrl+Q退出]")
-
-	return fmt.Sprintf("%s\n%s", logBox, helpText)
+	if h > 0 {
+		return fmt.Sprintf("%d时%d分%d秒", h, m, s)
+	}
+	if m > 0 {
+		return fmt.Sprintf("%d分%d秒", m, s)
+	}
+	return fmt.Sprintf("%d秒", s)
 }

@@ -17,7 +17,7 @@ var (
 )
 
 // InitializeAgentManager initializes the global agent manager with all agents
-func InitializeAgentManager() (defaultAgent *Agent) {
+func InitializeAgentManager(isTUIMode bool) (defaultAgent *Agent) {
 	agentsMutex.Lock()
 	defer agentsMutex.Unlock()
 
@@ -31,28 +31,37 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 
 	workspaceCheckMap := make(map[string]struct{})
 
+	defaultAgentName := ""
+	var defaultAgentCfg *config.AgentConfig
+
 	for name, ac := range config.DefaultCfg.Agents {
+		if defaultAgentName == "" || name == constant.Default {
+			defaultAgentName = name
+			defaultAgentCfg = ac
+		}
+
 		// 只有启用的agent才需要初始化
 		if _, ok := enabledAgentNames[name]; !ok {
 			continue
 		}
 
-		// 检查workspace是否存在
-		if _, ok := workspaceCheckMap[ac.Workspace]; ok {
-			slog.Warn("DUPLICATE workspace FOUND for agent, this MAY CAUSE UNEXPECTED BEHAVIOR", "agent", name, "workspace", ac.Workspace)
-		}
-		workspaceCheckMap[ac.Workspace] = struct{}{}
+		// // 检查workspace是否存在
+		// if _, ok := workspaceCheckMap[ac.Workspace]; ok {
+		// 	slog.Warn("DUPLICATE workspace FOUND for agent, this MAY CAUSE UNEXPECTED BEHAVIOR", "agent", name, "workspace", ac.Workspace)
+		// }
+		// workspaceCheckMap[ac.Workspace] = struct{}{}
 
-		agent, err := NewAgent(
-			llm.GetProvider(ac.Provider),
-			name,
-			ac.Model,
-			ac.MemoryOrganizeTime,
-			24*time.Hour,
-			10,
-			ac.Workspace,
-			ac.EnableImageRecognition,
-		)
+		// agent, err := NewAgent(
+		// 	llm.GetProvider(ac.Provider),
+		// 	name,
+		// 	ac.Model,
+		// 	ac.MemoryOrganizeTime,
+		// 	24*time.Hour,
+		// 	10,
+		// 	ac.Workspace,
+		// 	ac.EnableImageRecognition,
+		// )
+		agent, err := initialAgent(name, ac, workspaceCheckMap)
 		if err != nil {
 			slog.Error("Failed to initialize agent, this agent will not be available", "agent", name, "error", err)
 			continue
@@ -63,7 +72,41 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 			defaultAgent = globalAgents[name]
 		}
 	}
+
+	if defaultAgent == nil && isTUIMode && defaultAgentName != "" && defaultAgentCfg != nil {
+		// 没有任何channel启动，但是在tui mode下
+		var err error
+		defaultAgent, err = initialAgent(defaultAgentName, defaultAgentCfg, workspaceCheckMap)
+		if err != nil {
+			slog.Error("Failed to initialize default agent, this agent will not be available", "agent", defaultAgentName, "error", err)
+			defaultAgent = nil
+		}
+	}
+
 	return
+}
+
+func initialAgent(name string, ac *config.AgentConfig, workspaceCheckMap map[string]struct{}) (*Agent, error) {
+	// 检查workspace是否存在
+	if _, ok := workspaceCheckMap[ac.Workspace]; ok {
+		slog.Warn("DUPLICATE workspace FOUND for agent, this MAY CAUSE UNEXPECTED BEHAVIOR", "agent", name, "workspace", ac.Workspace)
+	}
+	workspaceCheckMap[ac.Workspace] = struct{}{}
+
+	agent, err := NewAgent(
+		llm.GetProvider(ac.Provider),
+		name,
+		ac.Model,
+		ac.MemoryOrganizeTime,
+		24*time.Hour,
+		10,
+		ac.Workspace,
+		ac.EnableImageRecognition,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return agent, nil
 }
 
 // GetAgent retrieves an agent by name

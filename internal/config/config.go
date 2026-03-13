@@ -79,14 +79,16 @@ func dealCfgPath(cfg *Config) {
 	}
 }
 
-// Validate 验证配置，一次性返回所有错误
 func (c *Config) Validate() error {
+	return c.ValidateWithMode(false)
+}
+
+func (c *Config) ValidateWithMode(isTUIMode bool) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	var errors []string
 
-	// 收集所有验证错误
 	if errs := c.validateAgents(); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
@@ -95,7 +97,7 @@ func (c *Config) Validate() error {
 		errors = append(errors, errs...)
 	}
 
-	if errs := c.validateChannels(); len(errs) > 0 {
+	if errs := c.validateChannels(isTUIMode); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 
@@ -103,7 +105,6 @@ func (c *Config) Validate() error {
 		errors = append(errors, errs...)
 	}
 
-	// 如果有错误，返回包含所有错误的格式化消息
 	if len(errors) > 0 {
 		return fmt.Errorf("配置验证失败，发现 %d 个问题：\n%s",
 			len(errors),
@@ -139,25 +140,12 @@ func (c *Config) validateAgents() []string {
 }
 
 // validateProviders 验证Provider配置，返回所有错误
-// 只验证被Agent引用的Provider，忽略未使用的Provider
+// 验证所有Agent引用的Provider
 func (c *Config) validateProviders() []string {
 	var errors []string
 
-	// 找出可用的channel
-	usedAgent := make(map[string]struct{})
-	for _, ch := range c.Channels {
-		if ch.Enabled {
-			usedAgent[ch.Agent] = struct{}{}
-		}
-	}
-
-	// 找出被使用的provider
 	usedProviders := make(map[string]bool)
-	for agentName := range usedAgent {
-		agent, has := c.Agents[agentName]
-		if !has {
-			continue
-		}
+	for agentName, agent := range c.Agents {
 		if agent.Provider == "" {
 			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 缺少Provider配置（请添加 \"provider\": \"provider名称\"）", agentName))
 			continue
@@ -170,8 +158,8 @@ func (c *Config) validateProviders() []string {
 	}
 
 	for providerName, provider := range c.Providers {
-		// 跳过未被使用的provider
 		if !usedProviders[providerName] {
+			// 未被任何智能体引用的Provider不需要验证
 			continue
 		}
 
@@ -179,12 +167,10 @@ func (c *Config) validateProviders() []string {
 			errors = append(errors, fmt.Sprintf("  - Provider '%s' 缺少类型配置（请添加 \"type\": \"openai/anthropic/ollama\"）", providerName))
 		}
 
-		// ollama类型不需要API Key
 		if provider.Type != "ollama" && provider.APIKey == "" {
 			errors = append(errors, fmt.Sprintf("  - Provider '%s' 缺少API密钥（请添加 \"api_key\": \"your-api-key\"）", providerName))
 		}
 
-		// 如果设置了BaseURL，验证格式
 		if provider.BaseURL != "" && !strings.HasPrefix(provider.BaseURL, "http://") && !strings.HasPrefix(provider.BaseURL, "https://") {
 			errors = append(errors, fmt.Sprintf("  - Provider '%s' 的BaseURL格式错误（应以 http:// 或 https:// 开头）", providerName))
 		}
@@ -194,13 +180,16 @@ func (c *Config) validateProviders() []string {
 }
 
 // validateChannels 验证Channel配置，返回所有错误
-func (c *Config) validateChannels() []string {
+func (c *Config) validateChannels(isTUIMode bool) []string {
 	var errors []string
+
+	hasChannel := false
 
 	for name, ch := range c.Channels {
 		if !ch.Enabled {
 			continue
 		}
+		hasChannel = true
 
 		if ch.Type == "" {
 			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 缺少类型配置（请添加 \"type\": \"feishu/web\"）", name))
@@ -230,6 +219,10 @@ func (c *Config) validateChannels() []string {
 		}
 	}
 
+	if !hasChannel && !isTUIMode {
+		errors = append(errors, "  - 未配置任何启用的渠道（请在channels中添加至少一个渠道配置）")
+	}
+
 	return errors
 }
 
@@ -237,14 +230,12 @@ func (c *Config) validateChannels() []string {
 func (c *Config) validateReferences() []string {
 	var errors []string
 
-	// 验证Agent引用的Provider是否存在
 	for agentName, agent := range c.Agents {
 		if _, exists := c.Providers[agent.Provider]; !exists {
 			errors = append(errors, fmt.Sprintf("  - 智能体 '%s' 引用的Provider '%s' 不存在（请在providers中添加该配置）", agentName, agent.Provider))
 		}
 	}
 
-	// 验证Channel引用的Agent是否存在
 	for channelName, channel := range c.Channels {
 		if !channel.Enabled {
 			continue

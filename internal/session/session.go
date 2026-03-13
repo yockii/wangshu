@@ -24,6 +24,7 @@ type Session struct {
 	Metadata   map[string]string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	LastCompressedAt time.Time // 上次压缩历史的时间
 	workspace  string
 	mu         sync.RWMutex
 
@@ -253,6 +254,7 @@ func (s *Session) TrimMessages(summary string, keptHistory int) []types.Message 
 	// 保存到文件
 	s.Messages = trimmedMessages
 	s.UpdatedAt = time.Now()
+	s.LastCompressedAt = time.Now() // 更新压缩时间
 
 	sessionFile := filepath.Join(s.workspace, constant.DirSessions, s.Channel, s.ChatID+constant.ExtJSONL)
 	// 如果目录不存在则创建
@@ -277,8 +279,15 @@ func (s *Session) TrimMessages(summary string, keptHistory int) []types.Message 
 	for _, msg := range trimmedMessages {
 		if err := encoder.Encode(msg); err != nil {
 			slog.Error("Failed to encode message", "error", err)
-			return trimmedMessages
 		}
 	}
-	return trimmedMessages
+
+	return s.Messages
+}
+
+// GetLastCompressedAt 获取上次压缩时间（带读锁）
+func (s *Session) GetLastCompressedAt() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.LastCompressedAt
 }

@@ -2,11 +2,13 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /build
 
+ARG VERSION=dev
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o wangshu ./cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${VERSION}'" -o wangshu ./cmd
 
 FROM python:3.12-alpine
 

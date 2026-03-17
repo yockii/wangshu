@@ -1,4 +1,4 @@
-package network
+package browser
 
 import (
 	"context"
@@ -47,8 +47,12 @@ func NewBrowserTool() *BrowserTool {
 - wait: 等待元素出现
 - close: 关闭浏览器
 - list_tabs: 列出所有标签页
+- run_task: 执行任务脚本（自动化任务编排）
+  * script: JSON格式的任务脚本，包含多个步骤
+  * 支持的步骤类型: open, click, fill, wait, wait_for_user, extract, screenshot, scroll, hover, select, condition, goto, back, refresh
+  * 支持的检测条件: url_changed, url_contains, element_appear, element_disappear, manual_confirm
 
-每次操作（除close/list_tabs外）都会自动返回当前页面的可交互元素信息，包括：
+每次操作（除close/list_tabs/run_task外）都会自动返回当前页面的可交互元素信息，包括：
   元素类型、选择器（id/class/name/xpath/data属性）、可见性、可编辑性等。
 
 特别说明：
@@ -62,8 +66,8 @@ func NewBrowserTool() *BrowserTool {
 		"properties": map[string]any{
 			"action": map[string]any{
 				"type":        "string",
-				"enum":        []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs"},
-				"description": "操作类型: open(打开页面), screenshot(截图), close(关闭), click(点击), fill(填充), text(获取文本), html(获取页面HTML), wait(等待元素), list_tabs(列出标签)",
+				"enum":        []string{"open", "screenshot", "close", "click", "fill", "text", "html", "wait", "list_tabs", "run_task"},
+				"description": "操作类型: open(打开页面), screenshot(截图), close(关闭), click(点击), fill(填充), text(获取文本), html(获取页面HTML), wait(等待元素), list_tabs(列出标签), run_task(执行任务脚本)",
 			},
 			"url":             map[string]any{"type": "string", "description": "要打开的URL (open action)"},
 			"selector":        map[string]any{"type": "string", "description": "CSS选择器 (click/fill/text/wait action)"},
@@ -73,6 +77,7 @@ func NewBrowserTool() *BrowserTool {
 			"format":          map[string]any{"type": "string", "description": "HTML格式: full(完整HTML), body(body内容), inner(body内部HTML), text(只文本) (html action, 默认: body)"},
 			"start":           map[string]any{"type": "number", "description": "起始位置（字符偏移），用于分页获取大型页面 (html action, 默认: 0)"},
 			"max_length":      map[string]any{"type": "number", "description": "最大获取长度，默认50000 (html action)"},
+			"script":          map[string]any{"type": "string", "description": "JSON格式的任务脚本 (run_task action)"},
 		},
 		"required": []string{"action"},
 	}
@@ -111,6 +116,8 @@ func (t *BrowserTool) execute(ctx context.Context, params map[string]string) (st
 		return t.wait(params)
 	case "list_tabs":
 		return "1 tab open", nil
+	case "run_task":
+		return t.runTask(params)
 	default:
 		return "", fmt.Errorf("unknown action")
 	}
@@ -347,12 +354,14 @@ func (t *BrowserTool) init() error {
 	}
 	t.browser = browser
 
-	page, err := browser.NewPage()
-	if err != nil {
-		return err
-	}
+	if t.page == nil {
+		page, err := browser.NewPage()
+		if err != nil {
+			return err
+		}
 
-	t.page = page
+		t.page = page
+	}
 	t.initialized = true
 	return nil
 }
@@ -429,7 +438,7 @@ func (t *BrowserTool) click(params map[string]string) (string, error) {
 	result := "Clicked: " + selector
 
 	// 等待可能的导航或页面更新
-	t.page.WaitForTimeout(500)
+	time.Sleep(500 * time.Millisecond)
 
 	return t.appendElementInfo(result), nil
 }
@@ -807,4 +816,44 @@ func (t *BrowserTool) appendElementInfo(baseResult string) string {
 		return baseResult + "\n\n" + elements
 	}
 	return baseResult
+}
+
+// ensureInitialized 确保浏览器已初始化（供 TaskEngine 使用）
+func (t *BrowserTool) ensureInitialized() error {
+	if !t.initialized {
+		return t.init()
+	}
+	return nil
+}
+
+// runTask 执行任务脚本
+func (t *BrowserTool) runTask(params map[string]string) (string, error) {
+	scriptJSON, ok := params["script"]
+	if !ok || scriptJSON == "" {
+		return "", fmt.Errorf("缺少 script 参数")
+	}
+
+	var script TaskScript
+	if err := json.Unmarshal([]byte(scriptJSON), &script); err != nil {
+		return "", fmt.Errorf("解析任务脚本失败: %w", err)
+	}
+
+	engine := NewTaskEngine(t)
+
+	// 支持传入变量
+	if varsJSON, ok := params["variables"]; ok && varsJSON != "" {
+		var vars map[string]string
+		if err := json.Unmarshal([]byte(varsJSON), &vars); err == nil {
+			engine.SetVariables(vars)
+		}
+	}
+
+	result := engine.Execute(&script)
+
+	resultJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("序列化结果失败: %w", err)
+	}
+
+	return string(resultJSON), nil
 }

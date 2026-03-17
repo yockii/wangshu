@@ -24,6 +24,7 @@ import (
 	"github.com/yockii/wangshu/pkg/llm/openai"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools/browser"
 	"github.com/yockii/wangshu/pkg/tools/memory"
 	"github.com/yockii/wangshu/pkg/tools/network"
 	"github.com/yockii/wangshu/pkg/tools/runtime"
@@ -94,6 +95,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(task.NewCronTool())
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
+	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
 
 	skills.InitializeSkillLoader()
 

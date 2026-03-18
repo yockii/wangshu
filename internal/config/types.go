@@ -31,7 +31,7 @@ type AgentConfig struct {
 	MaxTokens              int64   `json:"max_tokens"`
 	EnableImageRecognition bool    `json:"enable_image_recognition"`
 	// 每日0点或配置的时间进行记忆整理
-	MemoryOrganizeTime string `json:"memory_orgnaize_time"`
+	MemoryOrganizeTime string `json:"memory_organize_time"`
 }
 
 type ProviderConfig struct {

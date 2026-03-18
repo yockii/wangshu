@@ -29,3 +29,9 @@ func GetProvider(name string) Provider {
 	defer providerMu.RUnlock()
 	return Providers[name]
 }
+
+func ClearProviders() {
+	providerMu.Lock()
+	defer providerMu.Unlock()
+	Providers = make(map[string]Provider)
+}

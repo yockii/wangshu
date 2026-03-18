@@ -12,6 +12,7 @@ import (
 
 	"github.com/yockii/wangshu/internal/agent"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/tools/configtool"
 	"github.com/yockii/wangshu/internal/tools/message"
 	"github.com/yockii/wangshu/internal/tools/system"
 	"github.com/yockii/wangshu/internal/tools/task"
@@ -19,14 +20,17 @@ import (
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/openai"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
+	"github.com/yockii/wangshu/pkg/tools/browser"
 	"github.com/yockii/wangshu/pkg/tools/memory"
 	"github.com/yockii/wangshu/pkg/tools/network"
 	"github.com/yockii/wangshu/pkg/tools/runtime"
+	"github.com/yockii/wangshu/pkg/utils"
 )
 
 var defaultAgent *agent.Agent
@@ -94,6 +98,9 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(task.NewCronTool())
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
+	configtool.SetReloadFunc(Reload)
+	tools.GetDefaultToolRegistry().Register(configtool.NewConfigTool())
+	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
 
 	skills.InitializeSkillLoader()
 
@@ -245,4 +252,95 @@ func flagFileCheck() {
 
 func GetDefaultAgent() *agent.Agent {
 	return defaultAgent
+}
+
+func Reload() error {
+	cfgPath := "~/.wangshu/config.json"
+	if len(os.Args) > 1 {
+		cfgPath = os.Args[1]
+	}
+	cfgPath = utils.ExpandPath(cfgPath)
+
+	newCfg, err := config.LoadConfig(cfgPath)
+	if err != nil {
+		return fmt.Errorf("failed to load new configuration: %w", err)
+	}
+
+	if err := newCfg.Validate(); err != nil {
+		return fmt.Errorf("new configuration is invalid: %w", err)
+	}
+
+	_, isTUIMode := channel.GetChannel(constant.TUIChannelName)
+
+	if isTUIMode {
+		channel.ClearChannelsExcept([]string{constant.TUIChannelName})
+		bus.Default().ClearHandlersExcept([]string{constant.TUIChannelName})
+	} else {
+		channel.ClearChannels()
+		bus.Default().ClearHandlers()
+	}
+	agent.ClearAgents()
+
+	llm.ClearProviders()
+
+	config.DefaultCfg = newCfg
+
+	if err := initializeProviders(); err != nil {
+		return fmt.Errorf("failed to initialize providers: %w", err)
+	}
+
+	defaultAgent = agent.InitializeAgentManager(isTUIMode)
+
+	noChannelFound := InitializeChannels(defaultAgent)
+	if noChannelFound && !isTUIMode {
+		slog.Warn("No channel configured after reload")
+	}
+
+	slog.Info("Configuration reloaded successfully")
+	return nil
+}
+
+func initializeProviders() error {
+	usedProviders := make(map[string]bool)
+	for _, agent := range config.DefaultCfg.Agents {
+		if agent.Provider == "" {
+			continue
+		}
+		usedProviders[agent.Provider] = true
+	}
+
+	providerCount := 0
+	for providerName, providerCfg := range config.DefaultCfg.Providers {
+		if !usedProviders[providerName] {
+			continue
+		}
+
+		if providerCfg.Type == "" {
+			slog.Error("LLM provider type is empty", "provider", providerName)
+			continue
+		}
+		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
+			slog.Error("LLM provider API key is empty", "provider", providerName)
+			continue
+		}
+
+		switch providerCfg.Type {
+		case "openai":
+			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, openaiProvider)
+			providerCount++
+		case "anthropic":
+			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, claudeProvider)
+			providerCount++
+		default:
+			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
+		}
+	}
+
+	if providerCount == 0 {
+		return fmt.Errorf("no LLM provider configured")
+	}
+
+	return nil
 }

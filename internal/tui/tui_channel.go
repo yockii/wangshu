@@ -7,9 +7,8 @@ import (
 
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
+	"github.com/yockii/wangshu/pkg/constant"
 )
-
-const TUIChannelName = "_builtin_"
 
 type TUIChannel struct {
 	name string
@@ -22,7 +21,7 @@ type TUIChannel struct {
 
 func NewTUIChannel() *TUIChannel {
 	return &TUIChannel{
-		name: TUIChannelName,
+		name: constant.TUIChannelName,
 		// messageChan:  make(chan *bus.Message, 100),
 		outboundChan: make(chan *bus.Message, 100),
 		stopCh:       make(chan struct{}),

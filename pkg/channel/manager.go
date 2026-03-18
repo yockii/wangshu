@@ -27,3 +27,29 @@ func StopAllChannel() {
 		ch.Stop()
 	}
 }
+
+func ClearChannels() {
+	channelMu.Lock()
+	defer channelMu.Unlock()
+	for _, ch := range Channels {
+		ch.Stop()
+	}
+	Channels = make(map[string]Channel)
+}
+
+func ClearChannelsExcept(excludeNames []string) {
+	channelMu.Lock()
+	defer channelMu.Unlock()
+
+	excludeMap := make(map[string]bool)
+	for _, name := range excludeNames {
+		excludeMap[name] = true
+	}
+
+	for name, ch := range Channels {
+		if !excludeMap[name] {
+			ch.Stop()
+			delete(Channels, name)
+		}
+	}
+}

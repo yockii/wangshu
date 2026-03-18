@@ -122,3 +122,43 @@ func (b *MessageBus) Close() {
 	close(b.outbound)
 	b.mu.Unlock()
 }
+
+// ClearHandlers clears all registered handlers without closing the bus
+func (b *MessageBus) ClearHandlers() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.inboundHandlers = make(map[string]InboundHandler)
+	b.outboundHandlers = make([]OutboundHandler, 0)
+}
+
+// ClearHandlersExcept clears all handlers except the specified channels
+func (b *MessageBus) ClearHandlersExcept(excludeChannels []string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	excludeMap := make(map[string]bool)
+	for _, ch := range excludeChannels {
+		excludeMap[ch] = true
+	}
+
+	newInboundHandlers := make(map[string]InboundHandler)
+	for ch, handler := range b.inboundHandlers {
+		if excludeMap[ch] {
+			newInboundHandlers[ch] = handler
+		}
+	}
+	b.inboundHandlers = newInboundHandlers
+
+	var newOutboundHandlers []OutboundHandler
+	for _, handler := range b.outboundHandlers {
+		newOutboundHandlers = append(newOutboundHandlers, handler)
+	}
+	b.outboundHandlers = newOutboundHandlers
+}
+
+// UnregisterInboundHandler removes an inbound handler for a specific channel
+func (b *MessageBus) UnregisterInboundHandler(channel string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.inboundHandlers, channel)
+}

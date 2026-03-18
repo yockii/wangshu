@@ -133,11 +133,44 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/wangshu:latest
             ghcr.io/${{ github.repository_owner }}/wangshu:${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  sync-to-gitee:
+    needs: release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Get artifact files list
+        id: files
+        run: |
+          FILES=$(find artifacts -type f | tr '\n' '|')
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+      - name: Create Gitee Release with assets
+        uses: nicennnnnnnlee/action-gitee-release@main
+        with:
+          gitee_action: create_release
+          gitee_owner: yockii
+          gitee_repo: wangshu
+          gitee_token: ${{ secrets.GITEE_TOKEN }}
+          gitee_tag_name: ${{ github.ref_name }}
+          gitee_release_name: ${{ github.ref_name }}
+          gitee_release_body: "请查看 GitHub Release 页面获取详细更新说明: https://github.com/yockii/wangshu/releases/tag/${{ github.ref_name }}"
+          gitee_target_commitish: main
+          gitee_upload_retry_times: 3
+          gitee_files: ${{ steps.files.outputs.files }}
 
   update-changelog:
     needs: docker

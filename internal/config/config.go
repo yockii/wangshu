@@ -264,6 +264,110 @@ func SaveConfig(path string, cfg *Config) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+// UpdateAgents updates agents configuration with lock protection
+func (c *Config) UpdateAgents(agents map[string]*AgentConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for name, agent := range agents {
+		if agent != nil {
+			agent.Workspace = utils.ExpandPath(agent.Workspace)
+		}
+		c.Agents[name] = agent
+	}
+}
+
+// UpdateProviders updates providers configuration with lock protection
+func (c *Config) UpdateProviders(providers map[string]*ProviderConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for name, provider := range providers {
+		c.Providers[name] = provider
+	}
+}
+
+// UpdateChannels updates channels configuration with lock protection
+func (c *Config) UpdateChannels(channels map[string]*ChannelConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for name, channel := range channels {
+		c.Channels[name] = channel
+	}
+}
+
+// UpdateSkill updates skill configuration with lock protection
+func (c *Config) UpdateSkill(skill SkillConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if skill.GlobalPath != "" {
+		skill.GlobalPath = utils.ExpandPath(skill.GlobalPath)
+	}
+	c.Skill = skill
+}
+
+// UpdateBrowser updates browser configuration with lock protection
+func (c *Config) UpdateBrowser(browser BrowserConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if browser.DataDir != "" {
+		browser.DataDir = utils.ExpandPath(browser.DataDir)
+	}
+	c.Browser = browser
+}
+
+// SetAgent sets a single agent configuration with lock protection
+func (c *Config) SetAgent(name string, agent *AgentConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if agent != nil {
+		agent.Workspace = utils.ExpandPath(agent.Workspace)
+	}
+	if c.Agents == nil {
+		c.Agents = make(map[string]*AgentConfig)
+	}
+	c.Agents[name] = agent
+}
+
+// SetProvider sets a single provider configuration with lock protection
+func (c *Config) SetProvider(name string, provider *ProviderConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Providers == nil {
+		c.Providers = make(map[string]*ProviderConfig)
+	}
+	c.Providers[name] = provider
+}
+
+// SetChannel sets a single channel configuration with lock protection
+func (c *Config) SetChannel(name string, channel *ChannelConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Channels == nil {
+		c.Channels = make(map[string]*ChannelConfig)
+	}
+	c.Channels[name] = channel
+}
+
+// DeleteAgent deletes an agent configuration with lock protection
+func (c *Config) DeleteAgent(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.Agents, name)
+}
+
+// DeleteProvider deletes a provider configuration with lock protection
+func (c *Config) DeleteProvider(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.Providers, name)
+}
+
+// DeleteChannel deletes a channel configuration with lock protection
+func (c *Config) DeleteChannel(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.Channels, name)
+}
+
 //go:embed workspace
 var embeddedFiles embed.FS
 

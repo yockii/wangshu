@@ -9,6 +9,7 @@ import (
 	"github.com/yockii/wangshu/internal/runner"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/logger"
 )
 
@@ -38,8 +39,8 @@ func RunTui() {
 
 	tuiChannel := NewTUIChannel()
 
-	channel.RegisterChannel(TUIChannelName, tuiChannel)
-	bus.Default().RegisterInboundHandler(TUIChannelName, defaultAgent.SubscribeInbound)
+	channel.RegisterChannel(constant.TUIChannelName, tuiChannel)
+	bus.Default().RegisterInboundHandler(constant.TUIChannelName, defaultAgent.SubscribeInbound)
 	bus.Default().RegisterOutboundHandler(tuiChannel.SubscribeOutbound)
 
 	runner.InitializeChannels(defaultAgent)

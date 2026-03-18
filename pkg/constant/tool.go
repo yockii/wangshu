@@ -12,6 +12,7 @@ const (
 )
 
 const (
+	ToolNameConfig  = "config"
 	ToolNameCron    = "cron"
 	ToolNameMessage = "message"
 	ToolNameTask    = "task"

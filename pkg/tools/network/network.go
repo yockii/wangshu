@@ -8,5 +8,4 @@ import (
 func RegisterNetworkTools() {
 	tools.GetDefaultToolRegistry().Register(NewWebSearchTool())
 	tools.GetDefaultToolRegistry().Register(NewWebFetchTool())
-	tools.GetDefaultToolRegistry().Register(NewBrowserTool())
 }

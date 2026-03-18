@@ -1,4 +1,4 @@
-package network
+package browser
 
 import (
 	"context"
@@ -857,7 +857,7 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	defer tool.close() // 确保测试结束时关闭浏览器
 
 	// 获取测试文件的绝对路径
-	// 测试文件位于 pkg/tools/network/testdata/test_page.html
+	// 测试文件位于 pkg/tools/browser/testdata/test_page.html
 	testFile := "./testdata/test_page.html"
 
 	// 转换为绝对路径
@@ -1341,4 +1341,3 @@ func TestBrowserTool_HTML_Pagination(t *testing.T) {
 
 	t.Logf("Full fetch result (first 300 chars):\n%s", resultFull[:min(300, len(resultFull))])
 }
-

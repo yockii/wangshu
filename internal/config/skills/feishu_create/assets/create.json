@@ -1,0 +1,227 @@
+{
+    "name": "飞书应用配置",
+    "description": "自动创建飞书应用并获取凭证",
+    "steps": [
+        {
+            "id": "s1_open_url", "action": "open", "params": {"url": "https://open.feishu.cn/app"}
+        },
+        {
+            "id": "s2_check_login", "action": "condition", "check": {
+                "selector": ".newLogin_scan-QR-code", "exists": true
+            },
+            "then": [
+                {
+                    "id": "s2_1_wait_login", "action": "wait_for_user", "description": "请登录飞书后继续", "timeout": 300000, "detect": {
+                        "condition": "element_appear",
+                        "selector": "._pp-header-avatar"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "s3_click_create_app", "action": "click", "params": {"text": "创建企业自建应用"}
+        },
+        {
+            "id": "s4_wait", "action": "wait", "params": {"selector": ".ud__modal", "timeout": 3000}
+        },
+        {
+            "id": "s5_fill_app_name", "action": "fill", "params": {"label": "应用名称", "value": "${app_name:-望舒}", "within": ".ud__modal"}
+        },
+        {
+            "id": "s6_fill_app_desc", "action": "fill", "params": {"label": "应用描述", "value": "望舒自动配置应用", "within": ".ud__modal"}
+        },
+        {
+            "id": "s7_click_create", "action": "click", "params": {"selector": "button:has-text('创建')", "within": ".ud__modal"}
+        },
+        {
+            "id": "s8_wait", "action": "wait", "params": {"text": "凭证与基础信息", "timeout": 10000}
+        },
+        {
+            "id": "s8_1_click_base_info", "action": "click", "params": {"selector": "a:has-text('凭证与基础信息')", "within": "#app-side-menu"}
+        },
+        {
+            "id": "s8_2_wait", "action": "wait", "params": {"text": "应用凭证", "timeout": 3000}
+        },
+        {
+            "id": "s9_extract_app_id", "action": "extract", "fields": {"app_id": {"selector": ".auth-info__appid .secret-code__code", "attr": "text"}}
+        },
+        {
+            "id": "s10_copy_app_secret", "action": "clipboard", "params": {"selector": "svg[data-icon='CopyOutlined']", "within": ".auth-info__secret", "field": "app_secret"}
+        },
+        {
+            "id": "s11_click_menu_add_capability", "action": "click", "params": {"selector": "a:has-text('添加应用能力')", "within": "#app-side-menu"}
+        },
+        {
+            "id": "s12_wait_add_capability", "action": "wait", "params": {"text": "按能力添加", "timeout": 3000}
+        },
+        {
+            "id": "s13_check_add_robot", "action": "condition", "check": {
+                "selector": ".ability-card:has-text('机器人') button:has-text('添加')","exists": true
+            },
+            "then": [
+                {
+                    "id": "s13_1_click_add_robot", "action": "click", "params": {"selector": "button:has-text('添加')", "within": ".ability-card:has-text('机器人')"}
+                },
+                {
+                    "id": "s13_2_wait_robot", "action": "wait", "params": {"text": "机器人配置", "timeout": 10000, "within": "#app-layout-main"}
+                }
+            ]
+        },
+        {
+            "id": "s14_click_menu_auth", "action": "click", "params": {"selector": "a:has-text('权限管理')", "within": "#app-side-menu"}
+        },
+        {
+            "id": "s14_wait_auth", "action": "wait", "params": {"selector": "button:has-text('开通权限')", "timeout": 3000}
+        },
+        {
+            "id": "s14_click_auth", "action": "click", "params": {"selector": "button:has-text('开通权限')", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s15_wait_drawer", "action": "wait", "params": {"selector": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s16_fill_auto_search_contact:contact", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "contact:contact.base:readonly", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s16_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s16_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s16_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s17_fill_auto_search_contact:user", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "contact:user.base:readonly", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s17_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s17_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s17_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s18_fill_auto_search_im:chat:read", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:chat:read", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s18_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s18_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s18_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s19_fill_auto_search_im:message", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:message", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s19_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s19_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s19_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s20_fill_auto_search_im:message.group_msg", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:message.group_msg", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s20_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s20_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s20_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s21_fill_auto_search_im:message.p2p_msg:readonly", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:message.p2p_msg:readonly", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s21_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s21_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s21_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s22_fill_auto_search_im:message:readonly", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:message:readonly", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s22_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s22_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s22_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s23_fill_auto_search_im:message:send_as_bot", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:message:send_as_bot", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s23_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s23_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s23_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s24_fill_auto_search_im:resource", "action": "fill", "params": {"placeholder": "例如：获取群组信息、im:chat:readonly", "value": "im:resource", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s24_wait_loading", "action": "wait", "params": {"duration": 1000}
+        },
+        {
+            "id": "s24_1_wait_auth_list", "action": "wait", "params": {"selector": ".text-text-caption", "within": ".ud__drawer-open", "timeout": 3000}
+        },
+        {
+            "id": "s24_2_check_auth_checkbox", "action": "click", "params": {"selector": "input[type='checkbox']", "within": ".virtual-table__row"}
+        },
+        {
+            "id": "s25_click_submit", "action": "click", "params": {"selector": "button:has-text('确认开通权限')", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s26_wait_auth_finished", "action": "wait", "params": {"selector": "button:has-text('取消')", "state":"hidden", "within": ".ud__drawer-open", "timeout": 10000}
+        },
+        {
+            "id": "s26_1_click_confirm", "action": "click", "params": {"selector": "button:has-text('确认')", "within": ".ud__drawer-open"}
+        },
+        {
+            "id": "s26_2_wait", "action": "wait", "params": {"selector": ".ud__drawer-open", "state": "hidden", "timeout": 30000}
+        },
+        {
+            "id": "s27_publish", "action": "click", "params": {"selector": "a:has-text('版本管理与发布')", "within": "#app-side-menu"}
+        },
+        {
+            "id": "s27_1_publish", "action": "wait", "params": {"selector": "button:has-text('创建版本')", "timeout": 10000}
+        },
+        {
+            "id": "s27_2_publish", "action":"click", "params": {"selector": "button:has-text('创建版本')", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s27_3_wait", "action": "wait", "params": {"selector": "button:has-text('保存')", "timeout": 30000}
+        },
+        {
+            "id": "s28_fill_publish", "action": "fill", "params": {"placeholder": "对用户展示的正式版本号", "value": "1.0.0"}
+        },
+        {
+            "id": "s28_1_fill_publish", "action": "fill", "params": {"placeholder": "该内容将展示在应用的更新日志中", "value": "望舒自动发布"}
+        },
+        {
+            "id": "s28_2_submit", "action": "click", "params": {"selector": "button:has-text('保存')", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s29_confirm", "action": "click", "params": {"selector": "button:has-text('确认发布')"}
+        }
+    ]
+}

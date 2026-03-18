@@ -681,7 +681,7 @@ interface Step {
 
 ### 6. extract - 提取数据
 
-从页面提取数据，支持单值和列表。
+从页面提取数据，支持单值和列表。**提取的数据会自动注册为变量**，可在后续步骤中使用。
 
 **提取单个字段**：
 
@@ -696,6 +696,8 @@ interface Step {
   }
 }
 ```
+
+上述步骤会提取 `title`、`price`、`image` 三个字段，同时注册为变量 `${title}`、`${price}`、`${image}`。
 
 **提取列表数据**：
 
@@ -714,6 +716,30 @@ interface Step {
       }
     }
   }
+}
+```
+
+**链式使用提取的数据**：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1",
+      "action": "extract",
+      "fields": {
+        "user_id": {"selector": "#user-id", "attr": "value"}
+      }
+    },
+    {
+      "id": "s2",
+      "action": "fill",
+      "params": {
+        "selector": "#search",
+        "value": "${user_id}"
+      }
+    }
+  ]
 }
 ```
 
@@ -905,7 +931,7 @@ interface Step {
 
 ### 15. clipboard - 剪贴板操作
 
-点击复制按钮并读取剪贴板内容，用于获取隐藏的密钥等信息。
+点击复制按钮并读取剪贴板内容，用于获取隐藏的密钥等信息。**读取的内容会自动注册为变量**，可在后续步骤中使用。
 
 **基本用法**：
 
@@ -919,6 +945,8 @@ interface Step {
   }
 }
 ```
+
+上述步骤会读取剪贴板内容并存储到 `app_secret` 字段，同时注册为变量 `${app_secret}`。
 
 **使用 within 限定范围**：
 
@@ -943,6 +971,31 @@ interface Step {
   "params": {
     "field": "clipboard_content"
   }
+}
+```
+
+**链式使用剪贴板内容**：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1",
+      "action": "clipboard",
+      "params": {
+        "selector": ".copy-btn",
+        "field": "api_key"
+      }
+    },
+    {
+      "id": "s2",
+      "action": "fill",
+      "params": {
+        "selector": "#api-key-input",
+        "value": "${api_key}"
+      }
+    }
+  ]
 }
 ```
 

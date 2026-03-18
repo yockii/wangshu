@@ -424,6 +424,16 @@ func (e *TaskEngine) actionExtract(step Step) error {
 
 	for k, v := range data {
 		e.result.Data[k] = v
+		switch val := v.(type) {
+		case string:
+			e.variables[k] = val
+		case map[string]interface{}:
+			for subKey, subVal := range val {
+				if strVal, ok := subVal.(string); ok {
+					e.variables[k+"_"+subKey] = strVal
+				}
+			}
+		}
 	}
 
 	return nil
@@ -648,7 +658,6 @@ func (e *TaskEngine) actionSelect(step Step) error {
 }
 
 func (e *TaskEngine) actionClipboard(step Step) error {
-	// 1. 可选：点击复制按钮（支持所有定位方式）
 	if _, hasClick := step.Params["click"]; hasClick || step.Params["selector"] != nil || step.Params["text"] != nil || step.Params["label"] != nil {
 		locator, err := e.resolveLocator(step)
 		if err != nil {
@@ -658,22 +667,20 @@ func (e *TaskEngine) actionClipboard(step Step) error {
 		if err != nil {
 			return &StepError{StepID: step.ID, Message: "点击复制按钮失败: " + err.Error()}
 		}
-		// 等待复制完成
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	// 2. 读取剪贴板
 	value, err := e.readClipboard()
 	if err != nil {
 		return &StepError{StepID: step.ID, Message: err.Error()}
 	}
 
-	// 3. 存储到结果中
 	fieldName := "clipboard"
 	if name, ok := step.Params["field"].(string); ok && name != "" {
 		fieldName = name
 	}
 	e.result.Data[fieldName] = value
+	e.variables[fieldName] = value
 
 	return nil
 }

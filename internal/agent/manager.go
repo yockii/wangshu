@@ -178,3 +178,13 @@ func StopAllAgents() {
 		ag.Stop()
 	}
 }
+
+func ClearAgents() {
+	agentsMutex.Lock()
+	defer agentsMutex.Unlock()
+
+	for _, ag := range globalAgents {
+		ag.Stop()
+	}
+	globalAgents = make(map[string]*Agent)
+}

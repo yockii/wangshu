@@ -1,0 +1,134 @@
+{
+    "name": "飞书事件回调",
+    "description": "自动配置飞书事件回调",
+    "steps": [
+        {
+            "id": "s1_open_event_url",
+            "action": "open",
+            "params": {
+                "url": "https://open.feishu.cn/app/${app_id}/event"
+            }
+        },
+        {
+            "id": "s2_wait_page",
+            "action": "wait",
+            "params": {
+                "selector": "svg[data-icon='EditOutlined']",
+                "timeout": 30000
+            }
+        },
+        {
+            "id": "s3_click_edit",
+            "action": "click",
+            "params": {
+                "selector": "svg[data-icon='EditOutlined']"
+            }
+        },
+        {
+            "id": "s4_wait_save_btn",
+            "action": "wait",
+            "params": {
+                "selector": "button:has-text('保存')",
+                "timeout": 30000
+            }
+        },
+        {
+            "id": "s4_1_click_save",
+            "action": "click",
+            "params": {
+                "selector": "button:has-text('保存')"
+            }
+        },
+        {
+            "id": "s5_wait_save",
+            "action": "wait",
+            "params": {
+                "duration": 5000
+            }
+        },
+        {
+            "id": "s6_click_add_event",
+            "action": "click",
+            "params": {
+                "selector": "button:has-text('添加事件')"
+            }
+        },
+        {
+            "id": "s7_wait_dialog",
+            "action": "wait",
+            "params": {
+                "selector": ".ud__modal",
+                "timeout": 30000
+            }
+        },
+        {
+            "id": "s8_search_for_event",
+            "action": "fill",
+            "params": {
+                "placeholder": "搜索",
+                "within": ".ud__modal__body",
+                "value": "im.message.receive_v1"
+            }
+        },
+        {
+            "id": "s9_wait_list",
+            "action": "wait",
+            "params": {
+                "duration": 5000
+            }
+        },
+        {
+            "id": "s10_click_event",
+            "action": "click",
+            "params": {
+                "selector": "input[type='checkbox']",
+                "within": ".ud__modal__content"
+            }
+        },
+        {
+            "id": "s11_click_add",
+            "action": "click",
+            "params": {
+                "selector": "button:has-text('添加')",
+                "within": ".ud__modal__content"
+            }
+        },
+        {
+            "id": "s12_wait_add",
+            "action": "wait",
+            "params": {
+                "selector": ".ud__modal__content",
+                "state": "hidden",
+                "timeout": 30000
+            }
+        },
+        
+        {
+            "id": "s13_publish", "action": "click", "params": {"selector": "a:has-text('版本管理与发布')", "within": "#app-side-menu"}
+        },
+        {
+            "id": "s13_1_publish", "action": "wait", "params": {"selector": "button:has-text('创建版本')", "timeout": 10000}
+        },
+        {
+            "id": "s13_2_publish", "action":"click", "params": {"selector": "button:has-text('创建版本')", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s13_3_wait", "action": "wait", "params": {"selector": "button:has-text('保存')", "timeout": 30000}
+        },
+        {
+            "id": "s13_4_fill_publish", "action": "fill", "params": {"label": "应用版本号", "value": "1.0.1", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s13_5_fill_publish", "action": "fill", "params": {"placeholder": "该内容将展示在应用的更新日志中", "value": "望舒自动发布"}
+        },
+        {
+            "id": "s13_6_submit", "action": "click", "params": {"selector": "button:has-text('保存')", "within": "#app-layout-main"}
+        },
+        {
+            "id": "s13_7_confirm", "action": "click", "params": {"selector": "button:has-text('确认发布')"}
+        },
+        {
+            "id": "s13_8_wait", "action": "wait", "params": {"selector": "button:has-text('确认发布')", "state": "hidden", "timeout": 30000}
+        }
+    ]
+}

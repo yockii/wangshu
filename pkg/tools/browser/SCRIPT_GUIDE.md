@@ -33,6 +33,29 @@
 }
 ```
 
+### 使用脚本文件
+
+为避免传递长 JSON 字符串浪费 token，可以使用 `script_file` 参数指定脚本文件路径：
+
+```json
+{
+  "action": "run_task",
+  "script_file": "/path/to/task.json"
+}
+```
+
+### 任务完成后自动关闭浏览器
+
+默认情况下，任务完成后浏览器会自动关闭。如需保持浏览器打开：
+
+```json
+{
+  "action": "run_task",
+  "script": {...},
+  "keep_browser_open": true
+}
+```
+
 ***
 
 ## 脚本结构
@@ -59,7 +82,13 @@ interface TaskScript {
 
 ## 变量支持
 
-脚本支持变量替换，格式为 `${var_name}`。变量可以在调用时传入，实现脚本复用。
+脚本支持变量替换，格式为 `${var_name}`。变量可以在调用时传入，也可以在任务执行过程中自动生成。
+
+### 变量来源
+
+1. **调用时传入**：通过 `variables` 参数传入
+2. **extract 自动注册**：提取的数据自动注册为变量，可在后续步骤中使用
+3. **clipboard 自动注册**：剪贴板读取的内容自动注册为变量
 
 ### 使用示例
 
@@ -98,6 +127,40 @@ params := map[string]string{
 }
 ```
 
+### 提取数据自动注册为变量
+
+`extract` 和 `clipboard` 步骤提取的数据会自动注册为变量，可在后续步骤中直接使用：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1_extract",
+      "action": "extract",
+      "fields": {
+        "user_id": {"selector": "#user-id", "attr": "value"},
+        "user_name": {"selector": "#user-name", "attr": "text"}
+      }
+    },
+    {
+      "id": "s2_search",
+      "action": "fill",
+      "params": {
+        "selector": "#search-input",
+        "value": "${user_id}"
+      }
+    },
+    {
+      "id": "s3_goto",
+      "action": "goto",
+      "params": {
+        "url": "https://example.com/profile/${user_name}"
+      }
+    }
+  ]
+}
+```
+
 ### 变量支持范围
 
 变量可以在以下位置使用：
@@ -107,6 +170,72 @@ params := map[string]string{
 - 填充值（value）
 - 文本内容（text、label 等）
 - 所有字符串参数
+
+### ⚠️ 变量命名冲突警告
+
+**重要**：extract 和 clipboard 步骤会覆盖同名变量。请避免以下情况：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1",
+      "action": "extract",
+      "fields": {
+        "app_id": {"selector": "#id1", "attr": "value"}
+      }
+    },
+    {
+      "id": "s2",
+      "action": "fill",
+      "params": {
+        "selector": "#input",
+        "value": "${app_id}"
+      }
+    },
+    {
+      "id": "s3",
+      "action": "extract",
+      "fields": {
+        "app_id": {"selector": "#id2", "attr": "value"}
+      }
+    },
+    {
+      "id": "s4",
+      "action": "fill",
+      "params": {
+        "selector": "#input2",
+        "value": "${app_id}"
+      }
+    }
+  ]
+}
+```
+
+上述示例中，s4 步骤使用的 `${app_id}` 是 s3 步骤提取的值，而非 s1 步骤的值。
+
+**建议**：为不同步骤提取的数据使用不同的字段名：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1",
+      "action": "extract",
+      "fields": {
+        "app_id_from_page1": {"selector": "#id1", "attr": "value"}
+      }
+    },
+    {
+      "id": "s3",
+      "action": "extract",
+      "fields": {
+        "app_id_from_page2": {"selector": "#id2", "attr": "value"}
+      }
+    }
+  ]
+}
+```
 
 ***
 

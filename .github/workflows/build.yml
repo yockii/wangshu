@@ -159,7 +159,7 @@ jobs:
           echo "files=$FILES" >> $GITHUB_OUTPUT
 
       - name: Create Gitee Release with assets
-        uses: nicennnnnnnlee/action-gitee-release@main
+        uses: nicennnnnnnlee/action-gitee-release@master
         with:
           gitee_action: create_release
           gitee_owner: yockii

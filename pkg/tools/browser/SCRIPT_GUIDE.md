@@ -101,6 +101,7 @@ params := map[string]string{
 ### 变量支持范围
 
 变量可以在以下位置使用：
+
 - URL 地址
 - 选择器（selector、within 等）
 - 填充值（value）
@@ -121,7 +122,7 @@ params := map[string]string{
 | label       | string | 通过 label 文本定位表单元素   | `"用户名"`        |
 | text        | string | 通过元素文本内容定位          | `"登录"`         |
 | role        | string | 通过 ARIA 角色定位        | `button`       |
-| role_name   | string | 配合 role 使用，指定角色名称   | `"提交"`         |
+| role\_name  | string | 配合 role 使用，指定角色名称   | `"提交"`         |
 | testid      | string | 通过 data-testid 属性定位 | `"submit-btn"` |
 | placeholder | string | 通过 placeholder 属性定位 | `"请输入用户名"`     |
 | title       | string | 通过 title 属性定位       | `"关闭"`         |
@@ -131,15 +132,15 @@ params := map[string]string{
 
 ### 范围限定参数
 
-| 参数          | 类型     | 说明                      |
-| ----------- | ------ | ----------------------- |
-| within      | string | 限定搜索范围的容器选择器            |
-| within_index | string/number | 选择第几个容器：`"first"`、`"last"` 或数字（从0开始） |
+| 参数            | 类型            | 说明                                   |
+| ------------- | ------------- | ------------------------------------ |
+| within        | string        | 限定搜索范围的容器选择器                         |
+| within\_index | string/number | 选择第几个容器：`"first"`、`"last"` 或数字（从0开始） |
 
 ### 元素选择参数
 
-| 参数    | 类型            | 说明                                    |
-| ----- | ------------- | ------------------------------------- |
+| 参数    | 类型            | 说明                                       |
+| ----- | ------------- | ---------------------------------------- |
 | index | string/number | 选择第几个元素：`"first"`（默认）、`"last"` 或数字（从0开始） |
 
 ### 优先级
@@ -396,17 +397,17 @@ interface Step {
 }
 ```
 
-| 参数          | 类型            | 必填 | 说明                      |
-| ----------- | ------------- | -- | ----------------------- |
-| selector    | string        | 否  | CSS 选择器                 |
-| label       | string        | 否  | 通过 label 文本定位           |
-| text        | string        | 否  | 通过元素文本定位                |
-| role        | string        | 否  | 通过 ARIA 角色定位            |
-| testid      | string        | 否  | 通过 data-testid 定位       |
-| placeholder | string        | 否  | 通过 placeholder 定位       |
-| within      | string        | 否  | 限定搜索范围                  |
-| within_index | string/number | 否  | 选择第几个容器                 |
-| index       | string/number | 否  | 选择第几个元素                 |
+| 参数            | 类型            | 必填 | 说明                |
+| ------------- | ------------- | -- | ----------------- |
+| selector      | string        | 否  | CSS 选择器           |
+| label         | string        | 否  | 通过 label 文本定位     |
+| text          | string        | 否  | 通过元素文本定位          |
+| role          | string        | 否  | 通过 ARIA 角色定位      |
+| testid        | string        | 否  | 通过 data-testid 定位 |
+| placeholder   | string        | 否  | 通过 placeholder 定位 |
+| within        | string        | 否  | 限定搜索范围            |
+| within\_index | string/number | 否  | 选择第几个容器           |
+| index         | string/number | 否  | 选择第几个元素           |
 
 > **提示**：选择器参数至少提供一个，优先级参见[选择器策略](#选择器策略)。
 
@@ -427,18 +428,18 @@ interface Step {
 }
 ```
 
-| 参数          | 类型            | 必填 | 说明                      |
-| ----------- | ------------- | -- | ----------------------- |
-| value       | string        | 是  | 要填充的值                   |
-| selector    | string        | 否  | CSS 选择器                 |
-| label       | string        | 否  | 通过 label 文本定位（推荐用于表单）   |
-| text        | string        | 否  | 通过元素文本定位                |
-| role        | string        | 否  | 通过 ARIA 角色定位            |
-| testid      | string        | 否  | 通过 data-testid 定位       |
-| placeholder | string        | 否  | 通过 placeholder 定位       |
-| within      | string        | 否  | 限定搜索范围                  |
-| within_index | string/number | 否  | 选择第几个容器                 |
-| index       | string/number | 否  | 选择第几个元素                 |
+| 参数            | 类型            | 必填 | 说明                    |
+| ------------- | ------------- | -- | --------------------- |
+| value         | string        | 是  | 要填充的值                 |
+| selector      | string        | 否  | CSS 选择器               |
+| label         | string        | 否  | 通过 label 文本定位（推荐用于表单） |
+| text          | string        | 否  | 通过元素文本定位              |
+| role          | string        | 否  | 通过 ARIA 角色定位          |
+| testid        | string        | 否  | 通过 data-testid 定位     |
+| placeholder   | string        | 否  | 通过 placeholder 定位     |
+| within        | string        | 否  | 限定搜索范围                |
+| within\_index | string/number | 否  | 选择第几个容器               |
+| index         | string/number | 否  | 选择第几个元素               |
 
 > **提示**：选择器参数至少提供一个，优先级参见[选择器策略](#选择器策略)。
 
@@ -474,23 +475,23 @@ interface Step {
 }
 ```
 
-| 参数       | 类型            | 必填 | 说明                                    |
-| -------- | ------------- | -- | ------------------------------------- |
-| duration | number        | 否  | 直接等待指定时间（毫秒）                          |
-| state    | string        | 否  | 元素状态：`visible`（默认）、`hidden`、`attached`、`detached` |
-| timeout  | number        | 否  | 超时时间（毫秒），默认 30000                     |
-| selector | string        | 否  | CSS 选择器                               |
-| text     | string        | 否  | 通过元素文本定位                              |
-| ...      |               |    | 其他选择器参数                               |
+| 参数       | 类型     | 必填     | 说明                                                |
+| -------- | ------ | ------ | ------------------------------------------------- |
+| duration | number | 否      | 直接等待指定时间（毫秒）                                      |
+| state    | string | 否      | 元素状态：`visible`（默认）、`hidden`、`attached`、`detached` |
+| timeout  | number | 否      | 超时时间（毫秒），默认 30000                                 |
+| selector | string | 否      | CSS 选择器                                           |
+| text     | string | 否      | 通过元素文本定位                                          |
+| ...      | <br /> | <br /> | 其他选择器参数                                           |
 
 **state 参数说明**：
 
-| state      | 说明              |
-| ---------- | --------------- |
-| visible    | 等待元素可见（默认）      |
-| hidden     | 等待元素隐藏/消失       |
-| attached   | 等待元素附加到 DOM     |
-| detached   | 等待元素从 DOM 移除    |
+| state    | 说明           |
+| -------- | ------------ |
+| visible  | 等待元素可见（默认）   |
+| hidden   | 等待元素隐藏/消失    |
+| attached | 等待元素附加到 DOM  |
+| detached | 等待元素从 DOM 移除 |
 
 **使用场景**：
 
@@ -524,7 +525,7 @@ interface Step {
 
 ***
 
-### 5. wait_for_user - 等待用户操作
+### 5. wait\_for\_user - 等待用户操作
 
 等待用户完成某些操作（如登录），通过检测条件判断是否完成。
 
@@ -816,13 +817,13 @@ interface Step {
 }
 ```
 
-| 参数       | 类型     | 必填 | 说明                          |
-| -------- | ------ | -- | --------------------------- |
-| field    | string | 否  | 存储字段名，默认 "clipboard"        |
-| selector | string | 否  | 复制按钮选择器，不提供则直接读取剪贴板        |
-| text     | string | 否  | 通过文本定位复制按钮                  |
-| within   | string | 否  | 限定搜索范围                      |
-| ...      |        |    | 其他选择器参数                     |
+| 参数       | 类型     | 必填     | 说明                   |
+| -------- | ------ | ------ | -------------------- |
+| field    | string | 否      | 存储字段名，默认 "clipboard" |
+| selector | string | 否      | 复制按钮选择器，不提供则直接读取剪贴板  |
+| text     | string | 否      | 通过文本定位复制按钮           |
+| within   | string | 否      | 限定搜索范围               |
+| ...      | <br /> | <br /> | 其他选择器参数              |
 
 > **提示**：如果提供选择器参数，会先点击复制按钮，再读取剪贴板。
 
@@ -832,7 +833,7 @@ interface Step {
 
 用于 `wait_for_user` action 的 `detect` 字段。
 
-### url_changed - URL 变化
+### url\_changed - URL 变化
 
 检测 URL 是否发生变化。
 
@@ -855,7 +856,7 @@ interface Step {
 
 ***
 
-### url_contains - URL 包含
+### url\_contains - URL 包含
 
 检测 URL 是否包含指定字符串。
 
@@ -874,7 +875,7 @@ interface Step {
 
 ***
 
-### element_appear - 元素出现
+### element\_appear - 元素出现
 
 检测指定元素是否出现在页面上。
 
@@ -893,7 +894,7 @@ interface Step {
 
 ***
 
-### element_disappear - 元素消失
+### element\_disappear - 元素消失
 
 检测指定元素是否从页面上消失。
 
@@ -912,7 +913,7 @@ interface Step {
 
 ***
 
-### manual_confirm - 手动确认
+### manual\_confirm - 手动确认
 
 等待用户在控制台按 Enter 键确认。
 
@@ -1081,7 +1082,7 @@ interface CheckCondition {
 
 当步骤执行失败时，任务会立即终止，返回错误信息和当前步骤截图。
 
-### on_error 配置
+### on\_error 配置
 
 可以设置 `on_error` 为 `"continue"` 来忽略错误继续执行：
 
@@ -1262,3 +1263,4 @@ interface CheckCondition {
 8. **范围限定**：多个相同元素时，使用 `within` 限定范围，避免误操作。
 9. **条件判断**：使用 `condition` 处理可选操作，提高脚本健壮性。
 10. **剪贴板获取**：隐藏的密钥等无法直接读取的值，使用 `clipboard` action 获取。
+

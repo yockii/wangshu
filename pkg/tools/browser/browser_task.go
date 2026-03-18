@@ -2,7 +2,10 @@ package browser
 
 import (
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/playwright-community/playwright-go"
 )
 
 var varPattern = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)(?::-([^}]*))?\}`)
@@ -120,6 +123,14 @@ func (e *TaskEngine) Execute(script *TaskScript) *TaskResult {
 	}
 
 	e.tool.page.Context().GrantPermissions([]string{"clipboard-read"})
+	e.tool.page.Context().Route("**/*", func(route playwright.Route) {
+		req := route.Request()
+		if strings.Contains(req.URL(), "google-analytics.com") {
+			route.Abort()
+			return
+		}
+		route.Continue()
+	})
 
 	for i, step := range script.Steps {
 		// 替换步骤中的变量

@@ -5,6 +5,7 @@
 - *(browser)* 添加浏览器自动化任务引擎及相关文档
 - 添加飞书渠道自动化创建技能
 - *(浏览器任务)* 支持变量默认值语法并更新文档
+- *(browser)* 添加拦截google-analytics.com请求的功能
 
 ### 🐛 Bug Fixes
 
@@ -23,10 +24,13 @@
 - Update CHANGELOG for v0.4.2
 - *(browser)* 修正文档中的格式和拼写错误
 - *(SCRIPT_GUIDE)* 补充提取和剪贴板操作的变量注册说明
+- Update CHANGELOG for v0.4.3
 
 ### ⚙️ Miscellaneous Tasks
 
 - *(workflow)* 添加同步发布到Gitee的工作流步骤
+- *(workflow)* 更新Gitee发布action的分支引用
+- *(workflow)* 修复构建产物文件列表输出格式
 ## [0.4.2] - 2026-03-13
 
 ### 🚀 Features

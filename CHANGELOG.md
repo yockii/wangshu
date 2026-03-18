@@ -25,12 +25,14 @@
 - *(browser)* 修正文档中的格式和拼写错误
 - *(SCRIPT_GUIDE)* 补充提取和剪贴板操作的变量注册说明
 - Update CHANGELOG for v0.4.3
+- Update CHANGELOG for v0.4.3
 
 ### ⚙️ Miscellaneous Tasks
 
 - *(workflow)* 添加同步发布到Gitee的工作流步骤
 - *(workflow)* 更新Gitee发布action的分支引用
 - *(workflow)* 修复构建产物文件列表输出格式
+- *(workflow)* 优化Gitee发布流程，使用直接API调用替代action
 ## [0.4.2] - 2026-03-13
 
 ### 🚀 Features

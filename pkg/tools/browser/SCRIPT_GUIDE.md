@@ -84,6 +84,13 @@ interface TaskScript {
 
 脚本支持变量替换，格式为 `${var_name}`。变量可以在调用时传入，也可以在任务执行过程中自动生成。
 
+### 变量语法
+
+| 语法 | 说明 |
+|------|------|
+| `${var_name}` | 引用变量，如果未定义则替换为空字符串 |
+| `${var_name:-default}` | 引用变量，如果未定义则使用默认值 |
+
 ### 变量来源
 
 1. **调用时传入**：通过 `variables` 参数传入
@@ -108,12 +115,43 @@ interface TaskScript {
       "action": "fill",
       "params": {
         "label": "应用名称",
-        "value": "${app_name}"
+        "value": "${app_name:-默认应用}"
       }
     }
   ]
 }
 ```
+
+### 使用默认值
+
+当变量可能未传入时，可以使用默认值避免空字符串：
+
+```json
+{
+  "steps": [
+    {
+      "id": "s1",
+      "action": "fill",
+      "params": {
+        "selector": "#search",
+        "value": "${keyword:-测试关键词}"
+      }
+    },
+    {
+      "id": "s2",
+      "action": "fill",
+      "params": {
+        "selector": "#description",
+        "value": "${desc:-这是一个默认描述文本}"
+      }
+    }
+  ]
+}
+```
+
+上述示例中：
+- 如果传入了 `keyword` 变量，则使用传入的值
+- 如果未传入 `keyword` 变量，则使用默认值 `测试关键词`
 
 ### 调用时传入变量
 

@@ -1,9 +1,11 @@
 package browser
 
 import (
-	"strings"
+	"regexp"
 	"time"
 )
+
+var varPattern = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)(?::-([^}]*))?\}`)
 
 type TaskScript struct {
 	Name        string `json:"name"`
@@ -204,11 +206,22 @@ func (e *TaskEngine) replaceVariables(s string) string {
 	if s == "" {
 		return s
 	}
-	result := s
-	for name, value := range e.variables {
-		result = strings.ReplaceAll(result, "${"+name+"}", value)
-	}
-	return result
+	return varPattern.ReplaceAllStringFunc(s, func(match string) string {
+		submatches := varPattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+		varName := submatches[1]
+		defaultValue := ""
+		if len(submatches) > 2 {
+			defaultValue = submatches[2]
+		}
+
+		if value, ok := e.variables[varName]; ok && value != "" {
+			return value
+		}
+		return defaultValue
+	})
 }
 
 // replaceParamsVariables 替换参数中的变量

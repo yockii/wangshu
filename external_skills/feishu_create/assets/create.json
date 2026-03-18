@@ -25,7 +25,7 @@
             "id": "s4_wait", "action": "wait", "params": {"selector": ".ud__modal", "timeout": 3000}
         },
         {
-            "id": "s5_fill_app_name", "action": "fill", "params": {"label": "应用名称", "value": "${app_name}", "within": ".ud__modal"}
+            "id": "s5_fill_app_name", "action": "fill", "params": {"label": "应用名称", "value": "${app_name:-望舒}", "within": ".ud__modal"}
         },
         {
             "id": "s6_fill_app_desc", "action": "fill", "params": {"label": "应用描述", "value": "望舒自动配置应用", "within": ".ud__modal"}

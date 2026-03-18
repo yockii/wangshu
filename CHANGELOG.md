@@ -1,3 +1,32 @@
+## [0.4.3] - 2026-03-18
+
+### 🚀 Features
+
+- *(browser)* 添加浏览器自动化任务引擎及相关文档
+- 添加飞书渠道自动化创建技能
+- *(浏览器任务)* 支持变量默认值语法并更新文档
+
+### 🐛 Bug Fixes
+
+- *(config)* 修正memory_organize_time的json标签拼写错误
+
+### 💼 Other
+
+- 添加构建时版本号参数支持
+
+### 🚜 Refactor
+
+- *(飞书渠道)* 自动创建飞书渠道技能整合到内嵌技能中
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.2
+- *(browser)* 修正文档中的格式和拼写错误
+- *(SCRIPT_GUIDE)* 补充提取和剪贴板操作的变量注册说明
+
+### ⚙️ Miscellaneous Tasks
+
+- *(workflow)* 添加同步发布到Gitee的工作流步骤
 ## [0.4.2] - 2026-03-13
 
 ### 🚀 Features

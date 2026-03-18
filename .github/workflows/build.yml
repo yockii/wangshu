@@ -155,8 +155,12 @@ jobs:
       - name: Get artifact files list
         id: files
         run: |
-          FILES=$(find artifacts -type f | tr '\n' '|')
-          echo "files=$FILES" >> $GITHUB_OUTPUT
+          FILES=$(find artifacts -type f)
+          {
+            echo "files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Create Gitee Release with assets
         uses: nicennnnnnnlee/action-gitee-release@master

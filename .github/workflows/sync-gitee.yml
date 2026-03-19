@@ -62,33 +62,25 @@ jobs:
               filename=$(basename "$file")
               filesize=$(stat -c%s "$file")
               echo "Uploading $filename ($filesize bytes)..."
-              for attempt in 1 2 3; do
-                echo "Attempt $attempt - uploading $filename..."
-                RESPONSE=$(curl -s -w "\n%{http_code}" \
-                  --connect-timeout 60 \
-                  --max-time 1800 \
-                  --retry 5 \
-                  --retry-delay 15 \
-                  --retry-connrefused \
-                  --speed-limit 1000 \
-                  --speed-time 60 \
-                  -X POST \
-                  "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
-                  -F "access_token=${GITEE_TOKEN}" \
-                  -F "file=@${file}")
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                BODY=$(echo "$RESPONSE" | sed '$d')
-                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-                  echo "Success: $filename (HTTP $HTTP_CODE)"
-                  break
-                else
-                  echo "Attempt $attempt failed for $filename (HTTP $HTTP_CODE): $BODY"
-                  if [ "$attempt" -lt 3 ]; then
-                    echo "Retrying in 10 seconds..."
-                    sleep 10
-                  fi
-                fi
-              done
+              RESPONSE=$(curl -s -w "\n%{http_code}" \
+                --connect-timeout 60 \
+                --max-time 1800 \
+                --retry 5 \
+                --retry-delay 15 \
+                --retry-connrefused \
+                --speed-limit 1000 \
+                --speed-time 60 \
+                -X POST \
+                "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
+                -F "access_token=${GITEE_TOKEN}" \
+                -F "file=@${file}")
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              BODY=$(echo "$RESPONSE" | sed '$d')
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "Success: $filename (HTTP $HTTP_CODE)"
+              else
+                echo "Failed: $filename (HTTP $HTTP_CODE): $BODY"
+              fi
             fi
           done
           

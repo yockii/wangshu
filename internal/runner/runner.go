@@ -23,6 +23,7 @@ import (
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
+	"github.com/yockii/wangshu/pkg/llm/ollama"
 	"github.com/yockii/wangshu/pkg/llm/openai"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
@@ -73,6 +74,10 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 		case "anthropic":
 			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
 			llm.RegisterProvider(providerName, claudeProvider)
+			providerCount++
+		case "ollama":
+			ollamaProvider := ollama.NewProvider(providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, ollamaProvider)
 			providerCount++
 		default:
 			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
@@ -333,6 +338,10 @@ func initializeProviders() error {
 		case "anthropic":
 			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
 			llm.RegisterProvider(providerName, claudeProvider)
+			providerCount++
+		case "ollama":
+			ollamaProvider := ollama.NewProvider(providerCfg.BaseURL)
+			llm.RegisterProvider(providerName, ollamaProvider)
 			providerCount++
 		default:
 			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)

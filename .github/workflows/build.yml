@@ -183,10 +183,24 @@ jobs:
             if [ -f "$file" ]; then
               filename=$(basename "$file")
               echo "Uploading $filename..."
-              curl -s --connect-timeout 30 --max-time 300 -X POST \
-                "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
-                -F "access_token=${GITEE_TOKEN}" \
-                -F "file=@${file}" && echo "Done: $filename" || echo "Failed: $filename"
+              for attempt in 1 2 3; do
+                RESPONSE=$(curl -s -w "\n%{http_code}" --connect-timeout 30 --max-time 300 -X POST \
+                  "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
+                  -F "access_token=${GITEE_TOKEN}" \
+                  -F "file=@${file}")
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                BODY=$(echo "$RESPONSE" | sed '$d')
+                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                  echo "Success: $filename (HTTP $HTTP_CODE)"
+                  break
+                else
+                  echo "Attempt $attempt failed for $filename (HTTP $HTTP_CODE): $BODY"
+                  if [ "$attempt" -lt 3 ]; then
+                    echo "Retrying in 5 seconds..."
+                    sleep 5
+                  fi
+                fi
+              done
             fi
           done
           

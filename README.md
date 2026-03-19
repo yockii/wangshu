@@ -9,6 +9,20 @@
 
 望舒，中国神话中为月亮驾车的神，寓意照亮前路、引导方向。本项目以此为名，致力于成为个人/企业的 AI 助手，驾驭电脑和系统，陪伴工作之旅，照亮工作之路，引导团队高效协作，做稳定可靠的数字员工。
 
+> 望舒率先采用浏览器自动化能力，实现了飞书渠道的全自动配置，无需参考教程来一步步配置飞书的各种权限、回调、发布等，完全由望舒自动完成（当然，你需要扫码登陆一下）
+
+
+<details>
+<summary>你可以查看视频：</summary>
+Youtube视频
+
+[![望舒-自动创建飞书应用](https://img.youtube.com/vi/IL5lKSv4Jl4/0.jpg)](https://www.youtube.com/watch?v=IL5lKSv4Jl4)
+
+请点击观看视频（bilibili）
+
+[望舒-自动化创建飞书应用](https://www.bilibili.com/video/BV11DwrzjEVQ)
+</details>
+
 ## 愿景
 
 望舒的目标是成为你的**个人 AI 助理**和**企业数字员工**：

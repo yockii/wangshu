@@ -33,6 +33,9 @@ jobs:
           - goos: windows
             goarch: arm64
             suffix: '.exe'
+          - goos: linux
+            goarch: loong64
+            suffix: ''
 
     steps:
       - name: Checkout code
@@ -171,7 +174,8 @@ jobs:
                 \"name\": \"${TAG}\",
                 \"body\": \"请查看 GitHub Release 页面获取详细更新说明: https://github.com/yockii/wangshu/releases/tag/${TAG}\",
                 \"draft\": false,
-                \"prerelease\": false
+                \"prerelease\": false,
+                \"target_commitish\": \"main\"
               }")
             RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
           fi
@@ -182,25 +186,27 @@ jobs:
           for file in artifacts/*; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              echo "Uploading $filename..."
-              for attempt in 1 2 3; do
-                RESPONSE=$(curl -s -w "\n%{http_code}" --connect-timeout 30 --max-time 300 -X POST \
-                  "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
-                  -F "access_token=${GITEE_TOKEN}" \
-                  -F "file=@${file}")
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                BODY=$(echo "$RESPONSE" | sed '$d')
-                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-                  echo "Success: $filename (HTTP $HTTP_CODE)"
-                  break
-                else
-                  echo "Attempt $attempt failed for $filename (HTTP $HTTP_CODE): $BODY"
-                  if [ "$attempt" -lt 3 ]; then
-                    echo "Retrying in 5 seconds..."
-                    sleep 5
-                  fi
-                fi
-              done
+              filesize=$(stat -c%s "$file")
+              echo "Uploading $filename ($filesize bytes)..."
+              RESPONSE=$(curl -s -w "\n%{http_code}" \
+                --connect-timeout 60 \
+                --max-time 1800 \
+                --retry 5 \
+                --retry-delay 15 \
+                --retry-connrefused \
+                --speed-limit 1000 \
+                --speed-time 60 \
+                -X POST \
+                "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
+                -F "access_token=${GITEE_TOKEN}" \
+                -F "file=@${file}")
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              BODY=$(echo "$RESPONSE" | sed '$d')
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "Success: $filename (HTTP $HTTP_CODE)"
+              else
+                echo "Failed: $filename (HTTP $HTTP_CODE): $BODY"
+              fi
             fi
           done
           

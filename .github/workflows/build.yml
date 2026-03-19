@@ -59,7 +59,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           output_name="wangshu-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
-          go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${{ steps.version.outputs.version }}'" -o "$output_name" ./cmd
+          go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${{ steps.version.outputs.version }}'" -trimpath -o "$output_name" ./cmd
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

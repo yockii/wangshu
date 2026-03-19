@@ -48,7 +48,8 @@ jobs:
                 \"name\": \"${TAG}\",
                 \"body\": \"请查看 GitHub Release 页面获取详细更新说明: https://github.com/yockii/wangshu/releases/tag/${TAG}\",
                 \"draft\": false,
-                \"prerelease\": false
+                \"prerelease\": false,
+                \"target_commitish\": \"main\"
               }")
             echo "Response: $RESPONSE"
             RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)

@@ -63,7 +63,16 @@ jobs:
               filesize=$(stat -c%s "$file")
               echo "Uploading $filename ($filesize bytes)..."
               for attempt in 1 2 3; do
-                RESPONSE=$(curl -s -w "\n%{http_code}" --connect-timeout 30 --max-time 300 -X POST \
+                echo "Attempt $attempt - uploading $filename..."
+                RESPONSE=$(curl -s -w "\n%{http_code}" \
+                  --connect-timeout 60 \
+                  --max-time 1800 \
+                  --retry 5 \
+                  --retry-delay 15 \
+                  --retry-connrefused \
+                  --speed-limit 1000 \
+                  --speed-time 60 \
+                  -X POST \
                   "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
                   -F "access_token=${GITEE_TOKEN}" \
                   -F "file=@${file}")
@@ -75,8 +84,8 @@ jobs:
                 else
                   echo "Attempt $attempt failed for $filename (HTTP $HTTP_CODE): $BODY"
                   if [ "$attempt" -lt 3 ]; then
-                    echo "Retrying in 5 seconds..."
-                    sleep 5
+                    echo "Retrying in 10 seconds..."
+                    sleep 10
                   fi
                 fi
               done

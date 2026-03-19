@@ -12,9 +12,10 @@ const (
 )
 
 const (
-	ToolNameConfig  = "config"
-	ToolNameCron    = "cron"
-	ToolNameMessage = "message"
-	ToolNameTask    = "task"
-	ToolNameVersion = "version"
+	ToolNameConfig   = "config"
+	ToolNameCron     = "cron"
+	ToolNameMessage  = "message"
+	ToolNameTask     = "task"
+	ToolNameVersion  = "version"
+	ToolNameVariable = "variable"
 )

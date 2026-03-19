@@ -98,6 +98,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(task.NewCronTool())
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
+	tools.GetDefaultToolRegistry().Register(system.NewVariableTool())
 	configtool.SetReloadFunc(Reload)
 	tools.GetDefaultToolRegistry().Register(configtool.NewConfigTool())
 	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())

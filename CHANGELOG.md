@@ -1,3 +1,26 @@
+## [0.4.4] - 2026-03-20
+
+### 🚀 Features
+
+- *(更新系统)* 添加Gitee作为备用更新源并优化构建配置
+- *(系统工具)* 添加变量工具用于获取运行时变量和配置值
+- *(llm)* 添加Ollama支持
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.3
+
+### 🧪 Testing
+
+- *(llm/ollama)* 添加Ollama提供者的测试文件
+
+### ⚙️ Miscellaneous Tasks
+
+- 改进Gitee发布流程并添加同步工作流
+- 测试
+- Test
+- T
+- *(workflow)* 增加loong64构建支持并优化文件上传逻辑
 ## [0.4.3] - 2026-03-18
 
 ### 🚀 Features

@@ -97,6 +97,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	memory.RegisterMemoryTools()
 
 	tools.GetDefaultToolRegistry().Register(runtime.NewPythonRunTool())
+	tools.GetDefaultToolRegistry().Register(runtime.NewNodeRunTool())
 	tools.GetDefaultToolRegistry().Register(runtime.NewNpmRunTool())
 	tools.GetDefaultToolRegistry().Register(runtime.NewGitRunTool())
 	tools.GetDefaultToolRegistry().Register(task.NewTaskTool())

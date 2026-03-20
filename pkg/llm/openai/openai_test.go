@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/yockii/wangshu/pkg/llm"
 	selfConstant "github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/llm"
 )
 
 func TestNewProvider(t *testing.T) {

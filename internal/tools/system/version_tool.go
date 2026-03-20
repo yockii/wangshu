@@ -67,14 +67,9 @@ func (t *VersionTool) getCurrentVersion() (string, error) {
 }
 
 func (t *VersionTool) getLatestVersion(ctx context.Context) (string, error) {
-	repository := selfupdate.NewRepositorySlug(repoOwner, repoName)
-	latest, found, err := selfupdate.DetectLatest(ctx, repository)
+	latest, _, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to detect latest version: %w", err)
-	}
-
-	if !found {
-		return "", fmt.Errorf("no release found for %s/%s", repoOwner, repoName)
+		return "", err
 	}
 
 	return fmt.Sprintf("Latest version: %s", latest.Version()), nil
@@ -86,14 +81,9 @@ func (t *VersionTool) checkVersion(ctx context.Context) (string, error) {
 		return "Development version detected. Cannot compare with latest release.", nil
 	}
 
-	repository := selfupdate.NewRepositorySlug(repoOwner, repoName)
-	latest, found, err := selfupdate.DetectLatest(ctx, repository)
+	latest, _, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to detect latest version: %w", err)
-	}
-
-	if !found {
-		return "", fmt.Errorf("no release found for %s/%s", repoOwner, repoName)
+		return "", err
 	}
 
 	latestVersion := latest.Version()
@@ -102,7 +92,6 @@ func (t *VersionTool) checkVersion(ctx context.Context) (string, error) {
 		return fmt.Sprintf("You are running the latest version: %s", current), nil
 	}
 	return fmt.Sprintf("Update available: %s -> %s", current, latestVersion), nil
-
 }
 
 func (t *VersionTool) update(ctx context.Context) (string, error) {
@@ -111,25 +100,18 @@ func (t *VersionTool) update(ctx context.Context) (string, error) {
 		return "Cannot update development version. Please use a release build.", nil
 	}
 
-	repository := selfupdate.NewRepositorySlug(repoOwner, repoName)
-	latest, found, err := selfupdate.DetectLatest(ctx, repository)
+	latest, updater, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to detect latest version: %w", err)
+		return "", err
 	}
-
-	if !found {
-		return "", fmt.Errorf("no release found for %s/%s", repoOwner, repoName)
-	}
-
-	latestVersion := latest.Version()
 
 	if latest.LessOrEqual(current) {
 		return fmt.Sprintf("Already running the latest version: %s", current), nil
 	}
 
-	updatedRelease, err := selfupdate.UpdateSelf(ctx, current, repository)
+	updatedRelease, err := updater.UpdateSelf(ctx, current, selfupdate.NewRepositorySlug(repoOwner, repoName))
 	if err != nil {
-		return "", fmt.Errorf("failed to update to version %s: %w", latestVersion, err)
+		return "", err
 	}
 
 	return fmt.Sprintf("Successfully updated to version %s. Use 'restart' action to restart the application and load the new version.", updatedRelease.Version()), nil
@@ -218,4 +200,33 @@ func (t *VersionTool) restartSelf(exePath string) error {
 	}
 
 	return nil
+}
+
+func (t *VersionTool) checkLatestWithMultiUpdater(ctx context.Context) (*selfupdate.Release, *selfupdate.Updater, error) {
+	updater := selfupdate.DefaultUpdater()
+
+	repository := selfupdate.NewRepositorySlug(repoOwner, repoName)
+	latest, found, err := updater.DetectLatest(ctx, repository)
+	if err != nil {
+		// 尝试使用gitee
+		source, err := NewGiteeSource()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to detect latest version: %w", err)
+		}
+		updater, err = selfupdate.NewUpdater(selfupdate.Config{
+			Source:    source,
+			Validator: &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"}, // checksum from goreleaser
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to detect latest version: %w", err)
+		}
+		latest, found, err = updater.DetectLatest(ctx, repository)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to detect latest version: %w", err)
+		}
+	}
+	if !found {
+		return nil, nil, fmt.Errorf("no release found for %s/%s", repoOwner, repoName)
+	}
+	return latest, updater, nil
 }

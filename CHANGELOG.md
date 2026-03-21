@@ -1,3 +1,13 @@
+## [0.4.5] - 2026-03-20
+
+### 🚀 Features
+
+- *(runtime)* 新增Node.js执行工具并重构Python工具
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.4
+- 更新README支持架构和系统信息
 ## [0.4.4] - 2026-03-20
 
 ### 🚀 Features

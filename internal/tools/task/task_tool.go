@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	tooltypes "github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type ChangeLogEntry struct {
@@ -116,10 +117,10 @@ func NewTaskTool() *TaskTool {
 	return tool
 }
 
-func (t *TaskTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *TaskTool) execute(ctx context.Context, params map[string]string) *tooltypes.ToolResult {
 	action, ok := params["action"]
 	if !ok {
-		return "", fmt.Errorf("action parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("action parameter is required"))
 	}
 	switch action {
 	case constant.TaskActionCreate:
@@ -139,18 +140,18 @@ func (t *TaskTool) execute(ctx context.Context, params map[string]string) (strin
 	case constant.TaskActionAddChange:
 		return t.addChange(params)
 	default:
-		return "", fmt.Errorf("invalid action: %s", action)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("invalid action: %s", action))
 	}
 }
 
-func (t *TaskTool) create(params map[string]string) (string, error) {
+func (t *TaskTool) create(params map[string]string) *tooltypes.ToolResult {
 	name, ok := params["name"]
 	if !ok || name == "" {
-		return "", fmt.Errorf("name parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("name parameter is required"))
 	}
 	description, ok := params["description"]
 	if !ok || description == "" {
-		return "", fmt.Errorf("description parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("description parameter is required"))
 	}
 	priority, ok := params["priority"]
 	if !ok {
@@ -187,10 +188,10 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	data, err := os.ReadFile(taskRelationsFilePath)
 	if err == nil {
 		if err = json.Unmarshal(data, &trs); err != nil {
-			return "", fmt.Errorf("failed to unmarshal task relations: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task relations: %w", err))
 		}
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("failed to read task relations file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task relations file: %w", err))
 	}
 
 	parentDir := t.getParentDir(at.ParentID, trs.Relations)
@@ -202,32 +203,32 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	subtasksFilePath := filepath.Join(workspace, constant.DirTasks, parentDir, constant.TaskSubtasksInfoFileName)
 	if at.ParentID != "" {
 		if _, ok := trs.Relations[at.ParentID]; !ok {
-			return "", fmt.Errorf("parent task %s not found", at.ParentID)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("parent task %s not found", at.ParentID))
 		}
 		if _, err = os.Stat(subtasksFilePath); err == nil {
 			data, err = os.ReadFile(subtasksFilePath)
 			if err != nil {
-				return "", fmt.Errorf("failed to read subtasks file: %w", err)
+				return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read subtasks file: %w", err))
 			}
 			if err = json.Unmarshal(data, &stRecord); err != nil {
-				return "", fmt.Errorf("failed to unmarshal subtasks: %w", err)
+				return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal subtasks: %w", err))
 			}
 		} else if !os.IsNotExist(err) {
-			return "", fmt.Errorf("failed to read subtasks file: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read subtasks file: %w", err))
 		}
 	}
 
 	// 写入对应文件
 	if err = os.MkdirAll(taskDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create task directory: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to create task directory: %w", err))
 	}
 	taskFilePath := filepath.Join(taskDir, constant.TaskInfoFileName)
 	data, err = json.Marshal(at)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task: %w", err))
 	}
 	if err = os.WriteFile(taskFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task file: %w", err))
 	}
 
 	// 如果是子任务，还需要写入subtasks.json文件
@@ -241,10 +242,10 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 		stRecord.UpdatedAt = now
 		data, err = json.Marshal(stRecord)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal subtasks: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal subtasks: %w", err))
 		}
 		if err = os.WriteFile(subtasksFilePath, data, 0644); err != nil {
-			return "", fmt.Errorf("failed to write subtasks file: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write subtasks file: %w", err))
 		}
 	}
 
@@ -259,22 +260,25 @@ func (t *TaskTool) create(params map[string]string) (string, error) {
 	}
 	data, err = json.Marshal(trs)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task relations: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task relations: %w", err))
 	}
 	if err := os.WriteFile(taskRelationsFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task relations file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task relations file: %w", err))
 	}
 
-	return fmt.Sprintf("Task Created: %s", at.ID), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Created: %s", at.ID)).WithStructured(map[string]any{
+		"taskId": at.ID,
+	})
 }
 
-func (t *TaskTool) list(params map[string]string) (string, error) {
+func (t *TaskTool) list(params map[string]string) *tooltypes.ToolResult {
 	workspace := params[constant.ToolCallParamWorkspace]
 	taskDir := filepath.Join(workspace, constant.DirTasks)
 	files, err := os.ReadDir(taskDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read tasks directory: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read tasks directory: %w", err))
 	}
+	var tasks []*TaskInfo
 	result := "Task List:\n"
 	for _, file := range files {
 		if file.IsDir() {
@@ -290,75 +294,82 @@ func (t *TaskTool) list(params map[string]string) (string, error) {
 			if err := json.Unmarshal(data, &at); err != nil {
 				continue
 			}
+			tasks = append(tasks, &at)
 			result += fmt.Sprintf("- %s: %s [%s]\n", at.ID, at.Name, at.Status)
 		}
 	}
 
-	return result, nil
+	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
+		"data": tasks,
+	})
 }
 
-func (t *TaskTool) status(params map[string]string) (string, error) {
+func (t *TaskTool) status(params map[string]string) *tooltypes.ToolResult {
 	id, ok := params["id"]
 	if !ok || id == "" {
-		return "", fmt.Errorf("id parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id parameter is required"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
-		return "", fmt.Errorf("task not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 	}
 	taskFilePath := filepath.Join(taskDir, constant.TaskInfoFileName)
 	data, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task file: %w", err))
 	}
 	var at TaskInfo
 	if err := json.Unmarshal(data, &at); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 	}
-	return fmt.Sprintf("Task Status: %s\nLast Result: %s", at.Status, at.LastResult), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Status: %s\nLast Result: %s", at.Status, at.LastResult)).WithStructured(map[string]any{
+		"taskId":     at.ID,
+		"status":     at.Status,
+		"lastResult": at.LastResult,
+	})
 
 }
 
-func (t *TaskTool) cancel(params map[string]string) (string, error) {
+func (t *TaskTool) cancel(params map[string]string) *tooltypes.ToolResult {
 	id, ok := params["id"]
 	if !ok || id == "" {
-		return "", fmt.Errorf("id parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id parameter is required"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
-		return "", fmt.Errorf("task not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 	}
 	taskFilePath := filepath.Join(taskDir, constant.TaskInfoFileName)
 	data, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task file: %w", err))
 	}
 	var at TaskInfo
 	if err := json.Unmarshal(data, &at); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 	}
 
 	at.Status = constant.TaskStatusCancelled
 	data, err = json.Marshal(at)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task: %w", err))
 	}
 	if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task file: %w", err))
 	}
 
 	// 删除所有子任务文件夹
 	subTasksDir, err := os.ReadDir(taskDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read sub tasks directory: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read sub tasks directory: %w", err))
 	}
 	for _, file := range subTasksDir {
 		if file.IsDir() {
 			subTaskDir := filepath.Join(taskDir, file.Name())
 			if err := os.RemoveAll(subTaskDir); err != nil {
-				return "", fmt.Errorf("failed to remove sub task directory: %w", err)
+				return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to remove sub task directory: %w", err))
 			}
 		}
 	}
@@ -367,11 +378,11 @@ func (t *TaskTool) cancel(params map[string]string) (string, error) {
 	taskRelationsFilePath := filepath.Join(workspace, constant.DirTasks, constant.TaskRelationsFileName)
 	data, err = os.ReadFile(taskRelationsFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task relations file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task relations file: %w", err))
 	}
 	var trs TaskRelations
 	if err = json.Unmarshal(data, &trs); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task relations: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task relations: %w", err))
 	}
 
 	for stID, st := range trs.Relations {
@@ -382,17 +393,17 @@ func (t *TaskTool) cancel(params map[string]string) (string, error) {
 
 	data, err = json.Marshal(trs)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task relations: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task relations: %w", err))
 	}
 	if err := os.WriteFile(taskRelationsFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task relations file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task relations file: %w", err))
 	}
 
-	return fmt.Sprintf("Task Cancelled: %s\nLast Result: %s", at.ID, at.LastResult), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Cancelled: %s\nLast Result: %s", at.ID, at.LastResult))
 
 }
 
-func (t *TaskTool) clean(params map[string]string) (string, error) {
+func (t *TaskTool) clean(params map[string]string) *tooltypes.ToolResult {
 	id, _ := params["id"]
 
 	workspace := params[constant.ToolCallParamWorkspace]
@@ -401,32 +412,32 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 	if id != "" {
 		taskFilePath := filepath.Join(tasksDir, id, constant.TaskInfoFileName)
 		if _, err := os.Stat(taskFilePath); err != nil {
-			return "", fmt.Errorf("task not found: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 		}
 		// 标记status为remove
 		data, err := os.ReadFile(taskFilePath)
 		if err != nil {
-			return "", fmt.Errorf("failed to read task file: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task file: %w", err))
 		}
 		var at TaskInfo
 		if err = json.Unmarshal(data, &at); err != nil {
-			return "", fmt.Errorf("failed to unmarshal task: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 		}
 		at.Status = constant.TaskStatusRemove
 		data, err = json.Marshal(at)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal task: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task: %w", err))
 		}
 		if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
-			return "", fmt.Errorf("failed to write task file: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task file: %w", err))
 		}
-		return fmt.Sprintf("Task Cleaned: %s\nLast Result: %s", at.ID, at.LastResult), nil
+		return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Cleaned: %s\nLast Result: %s", at.ID, at.LastResult))
 	}
 
 	// 没有传递ID，则清理所有完成、取消的任务
 	files, err := os.ReadDir(tasksDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read tasks directory: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read tasks directory: %w", err))
 	}
 	for _, file := range files {
 		if file.IsDir() {
@@ -454,65 +465,65 @@ func (t *TaskTool) clean(params map[string]string) (string, error) {
 			}
 		}
 	}
-	return "Completed & Cancelled Tasks Cleaned", nil
+	return tooltypes.NewToolResult().WithRaw("Completed & Cancelled Tasks Cleaned")
 }
 
-func (t *TaskTool) restart(params map[string]string) (string, error) {
+func (t *TaskTool) restart(params map[string]string) *tooltypes.ToolResult {
 	id, ok := params["id"]
 	if !ok || id == "" {
-		return "", fmt.Errorf("id parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id parameter is required"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
-		return "", fmt.Errorf("task not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 	}
 	taskFilePath := filepath.Join(taskDir, constant.TaskInfoFileName)
 	data, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task file: %w", err))
 	}
 	var at TaskInfo
 	if err := json.Unmarshal(data, &at); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 	}
 
 	// 只有已完成、失败或已取消的任务可以重启
 	if at.Status != constant.TaskStatusCompleted && at.Status != constant.TaskStatusCancelled && at.Status != constant.TaskStatusFailed {
-		return "", fmt.Errorf("cannot restart task with status '%s', only completed, failed or cancelled tasks can be restarted", at.Status)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("cannot restart task with status '%s', only completed, failed or cancelled tasks can be restarted", at.Status))
 	}
 
 	at.Status = constant.TaskStatusPending
 	at.LastResult = ""
 	data, err = json.Marshal(at)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task: %w", err))
 	}
 	if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task file: %w", err))
 	}
 
-	return fmt.Sprintf("Task Restarted: %s", at.ID), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Restarted: %s", at.ID))
 }
 
-func (t *TaskTool) update(params map[string]string) (string, error) {
+func (t *TaskTool) update(params map[string]string) *tooltypes.ToolResult {
 	id, ok := params["id"]
 	if !ok || id == "" {
-		return "", fmt.Errorf("id parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id parameter is required"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
-		return "", fmt.Errorf("task not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 	}
 	taskFilePath := filepath.Join(taskDir, constant.TaskInfoFileName)
 	data, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task file: %w", err))
 	}
 	var at TaskInfo
 	if err := json.Unmarshal(data, &at); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 	}
 
 	if name, ok := params["name"]; ok && name != "" {
@@ -527,47 +538,47 @@ func (t *TaskTool) update(params map[string]string) (string, error) {
 
 	data, err = json.Marshal(at)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal task: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal task: %w", err))
 	}
 	if err := os.WriteFile(taskFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write task file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task file: %w", err))
 	}
 
-	return fmt.Sprintf("Task Updated: %s", at.ID), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Updated: %s", at.ID))
 }
 
-func (t *TaskTool) addChange(params map[string]string) (string, error) {
+func (t *TaskTool) addChange(params map[string]string) *tooltypes.ToolResult {
 	id, ok := params["id"]
 	if !ok || id == "" {
-		return "", fmt.Errorf("id parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id parameter is required"))
 	}
 	change, ok := params["change"]
 	if !ok || change == "" {
-		return "", fmt.Errorf("change parameter is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("change parameter is required"))
 	}
 
 	workspace := params[constant.ToolCallParamWorkspace]
 
 	tasksRelationFile := filepath.Join(workspace, constant.DirTasks, constant.TaskRelationsFileName)
 	if _, err := os.Stat(tasksRelationFile); err != nil {
-		return "", fmt.Errorf("task relations file not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task relations file not found: %w", err))
 	}
 	data, err := os.ReadFile(tasksRelationFile)
 	if err != nil {
-		return "", fmt.Errorf("failed to read task relations file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read task relations file: %w", err))
 	}
 	var trs TaskRelations
 	if err := json.Unmarshal(data, &trs); err != nil {
-		return "", fmt.Errorf("failed to unmarshal task relations: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task relations: %w", err))
 	}
 
 	if trs.Relations[id].ParentID != "" {
-		return "", fmt.Errorf("task %s is not a root task", id)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task %s is not a root task", id))
 	}
 
 	taskDir := filepath.Join(workspace, constant.DirTasks, id)
 	if _, err := os.Stat(taskDir); err != nil {
-		return "", fmt.Errorf("task not found: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task not found: %w", err))
 	}
 
 	changeLogFilePath := filepath.Join(taskDir, constant.TaskChangeLogFileName)
@@ -577,10 +588,10 @@ func (t *TaskTool) addChange(params map[string]string) (string, error) {
 	data, err = os.ReadFile(changeLogFilePath)
 	if err == nil {
 		if err = json.Unmarshal(data, &cl); err != nil {
-			return "", fmt.Errorf("failed to unmarshal change log: %w", err)
+			return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal change log: %w", err))
 		}
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("failed to read change log file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read change log file: %w", err))
 	}
 	cl.Entries = append(cl.Entries, &ChangeLogEntry{
 		ID:        uuid.New().String(),
@@ -589,12 +600,12 @@ func (t *TaskTool) addChange(params map[string]string) (string, error) {
 	})
 	data, err = json.Marshal(cl)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal change log: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal change log: %w", err))
 	}
 	if err := os.WriteFile(changeLogFilePath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write change log file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write change log file: %w", err))
 	}
-	return fmt.Sprintf("Change Added: %s", change), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Change Added: %s", change))
 }
 
 func (t *TaskTool) getParentDir(parentID string, relations map[string]*TaskRelation) string {

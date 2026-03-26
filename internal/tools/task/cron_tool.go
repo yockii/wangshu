@@ -12,6 +12,7 @@ import (
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	tooltypes "github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type CronTool struct {
@@ -61,10 +62,10 @@ func NewCronTool() *CronTool {
 	return tool
 }
 
-func (t *CronTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *CronTool) execute(ctx context.Context, params map[string]string) *tooltypes.ToolResult {
 	action := params["action"]
 	if action == "" {
-		return "", fmt.Errorf("action is required")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("action is required"))
 	}
 
 	switch action {
@@ -83,14 +84,14 @@ func (t *CronTool) execute(ctx context.Context, params map[string]string) (strin
 	case constant.CronActionUpdate:
 		return t.updateTask(params)
 	default:
-		return "", fmt.Errorf("unknown action: %s", action)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("unknown action: %s", action))
 	}
 }
 
-func (t *CronTool) addTask(params map[string]string) (string, error) {
+func (t *CronTool) addTask(params map[string]string) *tooltypes.ToolResult {
 	schedule := params["schedule"]
 	if schedule == "" {
-		return "", fmt.Errorf("schedule is required for add action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("schedule is required for add action"))
 	}
 
 	description := params["description"]
@@ -118,22 +119,24 @@ func (t *CronTool) addTask(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, jobInfo.ID+constant.ExtJSON)
 	data, err := json.Marshal(jobInfo)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal job: %w", err))
 	}
 	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return fmt.Sprintf("✅ 定时任务已创建\n任务ID: %s",
-		jobInfo.ID), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务已创建\n任务ID: %s",
+		jobInfo.ID)).WithStructured(map[string]any{
+		"jobId": jobInfo.ID,
+	})
 }
 
-func (t *CronTool) listTasks(params map[string]string) (string, error) {
+func (t *CronTool) listTasks(params map[string]string) *tooltypes.ToolResult {
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
 	entries, err := os.ReadDir(cronDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read cron directory: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read cron directory: %w", err))
 	}
 	var jobs []types.BasicJobInfo
 	for _, entry := range entries {
@@ -164,7 +167,7 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 	}
 
 	if len(jobs) == 0 {
-		return "暂无定时任务", nil
+		return tooltypes.NewToolResult().WithRaw("暂无定时任务")
 	}
 
 	result := fmt.Sprintf("定时任务列表 (%d 个):\n\n", len(jobs))
@@ -192,13 +195,15 @@ func (t *CronTool) listTasks(params map[string]string) (string, error) {
 		result += "\n"
 	}
 
-	return result, nil
+	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
+		"jobs": jobs,
+	})
 }
 
-func (t *CronTool) updateTask(params map[string]string) (string, error) {
+func (t *CronTool) updateTask(params map[string]string) *tooltypes.ToolResult {
 	id := params["id"]
 	if id == "" {
-		return "", fmt.Errorf("id is required for update action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id is required for update action"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
@@ -206,14 +211,14 @@ func (t *CronTool) updateTask(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read job file: %w", err))
 	}
 	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
-		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal job: %w", err))
 	}
 	if job.ID == "" {
-		return "", fmt.Errorf("job ID is empty")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("job ID is empty"))
 	}
 
 	if schedule, ok := params["schedule"]; ok && schedule != "" {
@@ -228,19 +233,19 @@ func (t *CronTool) updateTask(params map[string]string) (string, error) {
 
 	data, err = json.Marshal(job)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal job: %w", err))
 	}
 	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return fmt.Sprintf("✅ 定时任务 '%s' 已更新", id), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务 '%s' 已更新", id))
 }
 
-func (t *CronTool) pauseTask(params map[string]string) (string, error) {
+func (t *CronTool) pauseTask(params map[string]string) *tooltypes.ToolResult {
 	id := params["id"]
 	if id == "" {
-		return "", fmt.Errorf("id is required for pause action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id is required for pause action"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
@@ -248,36 +253,36 @@ func (t *CronTool) pauseTask(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read job file: %w", err))
 	}
 	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
-		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal job: %w", err))
 	}
 	if job.ID == "" {
-		return "", fmt.Errorf("job ID is empty")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("job ID is empty"))
 	}
 
 	if job.Status != constant.CronStatusEnabled {
-		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task '%s' status is '%s'", id, job.Status))
 	}
 
 	job.Status = constant.CronStatusPaused
 	data, err = json.Marshal(job)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal job: %w", err))
 	}
 	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return fmt.Sprintf("✅ 定时任务 '%s' 已暂停", id), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务 '%s' 已暂停", id))
 }
 
-func (t *CronTool) resumeTask(params map[string]string) (string, error) {
+func (t *CronTool) resumeTask(params map[string]string) *tooltypes.ToolResult {
 	id := params["id"]
 	if id == "" {
-		return "", fmt.Errorf("id is required for pause action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id is required for pause action"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
@@ -285,36 +290,36 @@ func (t *CronTool) resumeTask(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read job file: %w", err))
 	}
 	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
-		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal job: %w", err))
 	}
 	if job.ID == "" {
-		return "", fmt.Errorf("job ID is empty")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("job ID is empty"))
 	}
 
 	if job.Status != constant.CronStatusPaused {
-		return "", fmt.Errorf("task '%s' status is '%s'", id, job.Status)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("task '%s' status is '%s'", id, job.Status))
 	}
 
 	job.Status = constant.CronStatusEnabled
 	data, err = json.Marshal(job)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal job: %w", err))
 	}
 	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return fmt.Sprintf("✅ 定时任务 '%s' 已启用", id), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务 '%s' 已启用", id))
 }
 
-func (t *CronTool) disableTask(params map[string]string) (string, error) {
+func (t *CronTool) disableTask(params map[string]string) *tooltypes.ToolResult {
 	id := params["id"]
 	if id == "" {
-		return "", fmt.Errorf("id is required for disable action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id is required for disable action"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
@@ -322,32 +327,32 @@ func (t *CronTool) disableTask(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read job file: %w", err))
 	}
 	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
-		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal job: %w", err))
 	}
 	if job.ID == "" {
-		return "", fmt.Errorf("job ID is empty")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("job ID is empty"))
 	}
 	job.Status = constant.CronStatusDisabled
 
 	data, err = json.Marshal(job)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to marshal job: %w", err))
 	}
 	if err := os.WriteFile(jobJsonPath, data, 0644); err != nil {
-		return "", fmt.Errorf("failed to write job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return fmt.Sprintf("✅ 定时任务 '%s' 已禁用", id), nil
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务 '%s' 已禁用", id))
 }
 
-func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
+func (t *CronTool) getTaskStatus(params map[string]string) *tooltypes.ToolResult {
 	id := params["id"]
 	if id == "" {
-		return "", fmt.Errorf("id is required for status action")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("id is required for status action"))
 	}
 	workspace := params[constant.ToolCallParamWorkspace]
 	cronDir := filepath.Join(workspace, constant.DirCron)
@@ -355,14 +360,14 @@ func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
 	jobJsonPath := filepath.Join(cronDir, id+constant.ExtJSON)
 	data, err := os.ReadFile(jobJsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read job file: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to read job file: %w", err))
 	}
 	job := types.BasicJobInfo{}
 	if err := json.Unmarshal(data, &job); err != nil {
-		return "", fmt.Errorf("failed to unmarshal job: %w", err)
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal job: %w", err))
 	}
 	if job.ID == "" {
-		return "", fmt.Errorf("job ID is empty")
+		return tooltypes.NewToolResult().WithError(fmt.Errorf("job ID is empty"))
 	}
 
 	result := fmt.Sprintf("定时任务状态: %s\n\n", job.ID)
@@ -378,5 +383,8 @@ func (t *CronTool) getTaskStatus(params map[string]string) (string, error) {
 		result += fmt.Sprintf("未知状态: %s\n", job.Status)
 	}
 
-	return result, nil
+	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
+		"id":     job.ID,
+		"status": job.Status,
+	})
 }

@@ -58,26 +58,26 @@ func TestFindFileTool_Execute_FindAllFiles(t *testing.T) {
 	}
 
 	// 查找所有txt文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.txt"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了文件
-	if !strings.Contains(result, "Found 2 file(s)") {
-		t.Errorf("Should find 2 .txt files, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 2 file(s)") {
+		t.Errorf("Should find 2 .txt files, got: %s", result.Raw)
 	}
 
 	// 验证包含文件路径
-	if !strings.Contains(result, "file1.txt") || !strings.Contains(result, "file2.txt") {
-		t.Errorf("Result should contain file names, got: %s", result)
+	if !strings.Contains(result.Raw, "file1.txt") || !strings.Contains(result.Raw, "file2.txt") {
+		t.Errorf("Result should contain file names, got: %s", result.Raw)
 	}
 
 	// 验证不包含.md文件
-	if strings.Contains(result, "file3.md") {
+	if strings.Contains(result.Raw, "file3.md") {
 		t.Error("Result should not contain .md files")
 	}
 }
@@ -94,20 +94,20 @@ func TestFindFileTool_Execute_FindSpecificExtension(t *testing.T) {
 	}
 
 	// 查找.go文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.go"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证只返回.go文件
-	if !strings.Contains(result, ".go") {
-		t.Errorf("Result should contain .go file, got: %s", result)
+	if !strings.Contains(result.Raw, ".go") {
+		t.Errorf("Result should contain .go file, got: %s", result.Raw)
 	}
 
-	if strings.Contains(result, ".txt") || strings.Contains(result, ".md") || strings.Contains(result, ".json") {
+	if strings.Contains(result.Raw, ".txt") || strings.Contains(result.Raw, ".md") || strings.Contains(result.Raw, ".json") {
 		t.Error("Result should not contain other extensions")
 	}
 }
@@ -131,22 +131,22 @@ func TestFindFileTool_Execute_FindRecursive(t *testing.T) {
 	}
 
 	// 测试简单的通配符（应该匹配当前目录和子目录，取决于平台）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.go"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证至少找到了root.go
-	if !strings.Contains(result, "root.go") {
-		t.Errorf("Result should contain root.go, got: %s", result)
+	if !strings.Contains(result.Raw, "root.go") {
+		t.Errorf("Result should contain root.go, got: %s", result.Raw)
 	}
 
 	// 验证结果包含文件信息
-	if !strings.Contains(result, "Found") {
-		t.Errorf("Result should contain 'Found', got: %s", result)
+	if !strings.Contains(result.Raw, "Found") {
+		t.Errorf("Result should contain 'Found', got: %s", result.Raw)
 	}
 }
 
@@ -162,24 +162,24 @@ func TestFindFileTool_Execute_FindSpecificFile(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "other.txt"), []byte("content"), 0644)
 
 	// 查找特定文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "docker-compose.yml"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了目标文件
-	if !strings.Contains(result, "Found 1 file(s)") {
-		t.Errorf("Should find exactly 1 file, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 1 file(s)") {
+		t.Errorf("Should find exactly 1 file, got: %s", result.Raw)
 	}
 
-	if !strings.Contains(result, "docker-compose.yml") {
-		t.Errorf("Result should contain docker-compose.yml, got: %s", result)
+	if !strings.Contains(result.Raw, "docker-compose.yml") {
+		t.Errorf("Result should contain docker-compose.yml, got: %s", result.Raw)
 	}
 
-	if strings.Contains(result, "other.txt") {
+	if strings.Contains(result.Raw, "other.txt") {
 		t.Error("Result should not contain other files")
 	}
 }
@@ -187,18 +187,18 @@ func TestFindFileTool_Execute_FindSpecificFile(t *testing.T) {
 func TestFindFileTool_Execute_EmptyPattern(t *testing.T) {
 	tool := NewFindFileTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty pattern")
 	}
 
 	// 测试缺少pattern参数
-	_, err = tool.Execute(context.Background(), map[string]string{})
+	result = tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when pattern parameter is missing")
 	}
 }
@@ -208,17 +208,17 @@ func TestFindFileTool_Execute_NoMatches(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// 在空目录中查找
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.nonexistent"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed even with no matches: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed even with no matches: %v", result.Err)
 	}
 
 	// 验证返回"未找到"消息
-	if !strings.Contains(result, "No files found") {
-		t.Errorf("Result should indicate no files found, got: %s", result)
+	if !strings.Contains(result.Raw, "No files found") {
+		t.Errorf("Result should indicate no files found, got: %s", result.Raw)
 	}
 }
 
@@ -226,14 +226,14 @@ func TestFindFileTool_Execute_InvalidPattern(t *testing.T) {
 	tool := NewFindFileTool()
 
 	// 使用无效的glob模式（包含不合法的字符）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "[invalid",
 	})
 
-	if err != nil {
+	if result.Err != nil {
 		// 某些系统可能会接受这个模式，所以只在失败时检查错误消息
-		if !strings.Contains(err.Error(), "invalid glob pattern") {
-			t.Errorf("Error should mention invalid pattern, got: %v", err)
+		if !strings.Contains(result.Err.Error(), "invalid glob pattern") {
+			t.Errorf("Error should mention invalid pattern, got: %v", result.Err)
 		}
 	}
 
@@ -254,17 +254,17 @@ func TestFindFileTool_Execute_TildeExpansion(t *testing.T) {
 	defer os.Remove(testFile)
 
 	// 使用波浪号查找
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "~/.wangshu_test_find.txt",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde pattern: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde pattern: %v", result.Err)
 	}
 
 	// 验证找到了文件
-	if !strings.Contains(result, ".wangshu_test_find.txt") {
-		t.Errorf("Result should contain test file, got: %s", result)
+	if !strings.Contains(result.Raw, ".wangshu_test_find.txt") {
+		t.Errorf("Result should contain test file, got: %s", result.Raw)
 	}
 }
 
@@ -285,17 +285,17 @@ func TestFindFileTool_Execute_RelativePath(t *testing.T) {
 	}
 
 	// 使用相对路径查找
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "*.go",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with relative path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with relative path: %v", result.Err)
 	}
 
 	// 验证找到了文件
-	if !strings.Contains(result, "Found 2 file(s)") {
-		t.Errorf("Should find 2 files, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 2 file(s)") {
+		t.Errorf("Should find 2 files, got: %s", result.Raw)
 	}
 }
 
@@ -308,18 +308,18 @@ func TestFindFileTool_Execute_AbsolutePathOutput(t *testing.T) {
 	os.WriteFile(testFile, []byte("content"), 0644)
 
 	// 查找文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.txt"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回的是绝对路径
-	if !filepath.IsAbs(result[strings.Index(result, "- ")+2:strings.Index(result, "- ")+2+len("test.txt")+2]) {
+	if !filepath.IsAbs(result.Raw[strings.Index(result.Raw, "- ")+2 : strings.Index(result.Raw, "- ")+2+len("test.txt")+2]) {
 		// 提取路径并检查是否为绝对路径
-		lines := strings.Split(result, "\n")
+		lines := strings.Split(result.Raw, "\n")
 		for _, line := range lines {
 			if strings.HasPrefix(line, "- ") {
 				path := strings.TrimPrefix(line, "- ")
@@ -345,17 +345,17 @@ func TestFindFileTool_Execute_CurrentDirectoryPattern(t *testing.T) {
 	os.WriteFile("test.txt", []byte("content"), 0644)
 
 	// 使用当前目录模式
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": ".",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证至少返回了当前目录
-	if !strings.Contains(result, "Found") {
-		t.Errorf("Result should contain 'Found', got: %s", result)
+	if !strings.Contains(result.Raw, "Found") {
+		t.Errorf("Result should contain 'Found', got: %s", result.Raw)
 	}
 }
 
@@ -378,26 +378,26 @@ func TestFindFileTool_Execute_MultiplePatterns(t *testing.T) {
 	}
 
 	// 查找所有.go文件（包括测试）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*.go"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了3个.go文件
-	if !strings.Contains(result, "Found 3 file(s)") {
-		t.Errorf("Should find 3 .go files, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 3 file(s)") {
+		t.Errorf("Should find 3 .go files, got: %s", result.Raw)
 	}
 
 	// 验证包含所有.go文件
-	if !strings.Contains(result, "main.go") || !strings.Contains(result, "utils.go") || !strings.Contains(result, "main_test.go") {
+	if !strings.Contains(result.Raw, "main.go") || !strings.Contains(result.Raw, "utils.go") || !strings.Contains(result.Raw, "main_test.go") {
 		t.Error("Result should contain all .go files")
 	}
 
 	// 验证不包含其他文件
-	if strings.Contains(result, "README.md") || strings.Contains(result, "config.json") {
+	if strings.Contains(result.Raw, "README.md") || strings.Contains(result.Raw, "config.json") {
 		t.Error("Result should not contain non-.go files")
 	}
 }
@@ -407,16 +407,16 @@ func TestFindFileTool_Execute_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// 在空目录中查找所有文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": filepath.Join(tmpDir, "*"),
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed in empty directory: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed in empty directory: %v", result.Err)
 	}
 
 	// 验证返回"未找到"消息
-	if !strings.Contains(result, "No files found") {
-		t.Errorf("Result should indicate no files found in empty directory, got: %s", result)
+	if !strings.Contains(result.Raw, "No files found") {
+		t.Errorf("Result should indicate no files found in empty directory, got: %s", result.Raw)
 	}
 }

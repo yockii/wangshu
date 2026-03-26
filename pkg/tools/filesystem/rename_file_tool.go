@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type RenameFileTool struct {
@@ -34,11 +35,11 @@ func NewRenameFileTool() *RenameFileTool {
 	}
 	return tool
 }
-func (t *RenameFileTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *RenameFileTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	oldPath := params["old_path"]
 	newPath := params["new_path"]
 	if oldPath == "" || newPath == "" {
-		return "", fmt.Errorf("old_path and new_path are required")
+		return types.NewToolResult().WithError(fmt.Errorf("old_path and new_path are required"))
 	}
 	// Expand ~ to home directory
 	if strings.HasPrefix(oldPath, "~/") {
@@ -58,8 +59,8 @@ func (t *RenameFileTool) Execute(ctx context.Context, params map[string]string) 
 
 	// Rename file or directory
 	if err := os.Rename(oldPath, newPath); err != nil {
-		return "", fmt.Errorf("failed to rename: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to rename: %w", err))
 	}
 
-	return fmt.Sprintf("Successfully renamed %s to %s", oldPath, newPath), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Successfully renamed %s to %s", oldPath, newPath))
 }

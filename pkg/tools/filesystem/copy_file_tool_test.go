@@ -73,17 +73,17 @@ func TestCopyFileTool_Execute_CopyFile(t *testing.T) {
 	content := "test content for copying"
 	os.WriteFile(sourcePath, []byte(content), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should contain success message, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should contain success message, got: %s", result.Raw)
 	}
 
 	sourceData, _ := os.ReadFile(sourcePath)
@@ -112,13 +112,13 @@ func TestCopyFileTool_Execute_CopyToDirectory(t *testing.T) {
 	content := "content to copy to directory"
 	os.WriteFile(sourcePath, []byte(content), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	expectedTarget := filepath.Join(targetDir, "source.txt")
@@ -131,8 +131,8 @@ func TestCopyFileTool_Execute_CopyToDirectory(t *testing.T) {
 		t.Errorf("File content should be preserved")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -155,13 +155,13 @@ func TestCopyFileTool_Execute_CopyDirectory(t *testing.T) {
 	subFile := filepath.Join(subDir, "subfile.txt")
 	os.WriteFile(subFile, []byte("sub content"), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourceDir,
 		"target_path": targetDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -186,8 +186,8 @@ func TestCopyFileTool_Execute_CopyDirectory(t *testing.T) {
 		t.Error("File in subdirectory should be copied")
 	}
 
-	if !strings.Contains(result, "Successfully copied directory") {
-		t.Errorf("Result should indicate directory copy, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied directory") {
+		t.Errorf("Result should indicate directory copy, got: %s", result.Raw)
 	}
 }
 
@@ -195,12 +195,12 @@ func TestCopyFileTool_Execute_EmptySourcePath(t *testing.T) {
 	tool := NewCopyFileTool()
 	tmpDir := t.TempDir()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": "",
 		"target_path": filepath.Join(tmpDir, "target.txt"),
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty source_path")
 	}
 }
@@ -212,12 +212,12 @@ func TestCopyFileTool_Execute_EmptyTargetPath(t *testing.T) {
 	sourcePath := filepath.Join(tmpDir, "source.txt")
 	os.WriteFile(sourcePath, []byte("content"), 0644)
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty target_path")
 	}
 }
@@ -225,18 +225,18 @@ func TestCopyFileTool_Execute_EmptyTargetPath(t *testing.T) {
 func TestCopyFileTool_Execute_BothPathsEmpty(t *testing.T) {
 	tool := NewCopyFileTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": "",
 		"target_path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when both paths are empty")
 	}
 
-	_, err = tool.Execute(context.Background(), map[string]string{})
+	result = tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when both parameters are missing")
 	}
 }
@@ -245,12 +245,12 @@ func TestCopyFileTool_Execute_SourceNotExist(t *testing.T) {
 	tool := NewCopyFileTool()
 	tmpDir := t.TempDir()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": filepath.Join(tmpDir, "nonexistent.txt"),
 		"target_path": filepath.Join(tmpDir, "target.txt"),
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when source file does not exist")
 	}
 }
@@ -265,12 +265,12 @@ func TestCopyFileTool_Execute_TargetExistsNoOverwrite(t *testing.T) {
 	os.WriteFile(sourcePath, []byte("source content"), 0644)
 	os.WriteFile(targetPath, []byte("target content"), 0644)
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when target exists and overwrite is false")
 	}
 
@@ -290,14 +290,14 @@ func TestCopyFileTool_Execute_TargetExistsWithOverwrite(t *testing.T) {
 	os.WriteFile(sourcePath, []byte("source content"), 0644)
 	os.WriteFile(targetPath, []byte("target content"), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 		"overwrite":   "true",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with overwrite=true: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with overwrite=true: %v", result.Err)
 	}
 
 	data, err := os.ReadFile(targetPath)
@@ -309,8 +309,8 @@ func TestCopyFileTool_Execute_TargetExistsWithOverwrite(t *testing.T) {
 		t.Error("Target file should be overwritten with source content")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -331,13 +331,13 @@ func TestCopyFileTool_Execute_TildeExpansion(t *testing.T) {
 
 	os.WriteFile(sourcePath, []byte(content), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": "~/.wangshu_test_copy_source.txt",
 		"target_path": "~/.wangshu_test_copy_target.txt",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde paths: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde paths: %v", result.Err)
 	}
 
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
@@ -353,8 +353,8 @@ func TestCopyFileTool_Execute_TildeExpansion(t *testing.T) {
 		t.Error("File content should be preserved")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -379,13 +379,13 @@ func TestCopyFileTool_Execute_RelativePath(t *testing.T) {
 
 	os.WriteFile(sourcePath, []byte(content), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with relative paths: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with relative paths: %v", result.Err)
 	}
 
 	data, err := os.ReadFile(targetPath)
@@ -397,8 +397,8 @@ func TestCopyFileTool_Execute_RelativePath(t *testing.T) {
 		t.Error("File content should be preserved")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -410,14 +410,14 @@ func TestCopyFileTool_Execute_CopyToSameLocation(t *testing.T) {
 	content := "test content"
 	os.WriteFile(filePath, []byte(content), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": filePath,
 		"target_path": filePath,
 		"overwrite":   "true",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed when copying to same location with overwrite: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed when copying to same location with overwrite: %v", result.Err)
 	}
 
 	data, err := os.ReadFile(filePath)
@@ -429,8 +429,8 @@ func TestCopyFileTool_Execute_CopyToSameLocation(t *testing.T) {
 		t.Error("File content should be unchanged")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -444,13 +444,13 @@ func TestCopyFileTool_Execute_CopyBinaryFile(t *testing.T) {
 	binaryData := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD, 0x80, 0x7F}
 	os.WriteFile(sourcePath, binaryData, 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for binary file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for binary file: %v", result.Err)
 	}
 
 	copiedData, err := os.ReadFile(targetPath)
@@ -468,8 +468,8 @@ func TestCopyFileTool_Execute_CopyBinaryFile(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -483,13 +483,13 @@ func TestCopyFileTool_Execute_CopyLargeFile(t *testing.T) {
 	largeContent := strings.Repeat("This is a test line.\n", 10000)
 	os.WriteFile(sourcePath, []byte(largeContent), 0644)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"source_path": sourcePath,
 		"target_path": targetPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for large file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for large file: %v", result.Err)
 	}
 
 	copiedData, err := os.ReadFile(targetPath)
@@ -501,7 +501,7 @@ func TestCopyFileTool_Execute_CopyLargeFile(t *testing.T) {
 		t.Error("Large file content should be preserved")
 	}
 
-	if !strings.Contains(result, "Successfully copied") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully copied") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }

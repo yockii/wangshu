@@ -68,16 +68,16 @@ func TestReadFileTool_Execute_Success(t *testing.T) {
 	}
 
 	// 读取文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if result != expectedContent {
-		t.Errorf("Expected content '%s', got '%s'", expectedContent, result)
+	if result.Raw != expectedContent {
+		t.Errorf("Expected content '%s', got '%s'", expectedContent, result.Raw)
 	}
 }
 
@@ -85,18 +85,18 @@ func TestReadFileTool_Execute_EmptyPath(t *testing.T) {
 	tool := NewReadFileTool()
 
 	// 测试空路径
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty path")
 	}
 
 	// 测试缺少path参数
-	_, err = tool.Execute(context.Background(), map[string]string{})
+	result = tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when path parameter is missing")
 	}
 }
@@ -105,11 +105,11 @@ func TestReadFileTool_Execute_FileNotExist(t *testing.T) {
 	tool := NewReadFileTool()
 
 	// 测试读取不存在的文件
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "/non/existent/file.txt",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail for non-existent file")
 	}
 }
@@ -135,16 +135,16 @@ func TestReadFileTool_Execute_TildeExpansion(t *testing.T) {
 	}
 
 	// 使用波浪号路径读取
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "~/.wangshu_test_read_file.txt",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde path: %v", result.Err)
 	}
 
-	if result != expectedContent {
-		t.Errorf("Expected content '%s', got '%s'", expectedContent, result)
+	if result.Raw != expectedContent {
+		t.Errorf("Expected content '%s', got '%s'", expectedContent, result.Raw)
 	}
 }
 
@@ -169,16 +169,16 @@ func TestReadFileTool_Execute_RelativePath(t *testing.T) {
 	}
 
 	// 使用相对路径读取
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "test_relative.txt",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with relative path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with relative path: %v", result.Err)
 	}
 
-	if result != expectedContent {
-		t.Errorf("Expected content '%s', got '%s'", expectedContent, result)
+	if result.Raw != expectedContent {
+		t.Errorf("Expected content '%s', got '%s'", expectedContent, result.Raw)
 	}
 }
 
@@ -195,16 +195,16 @@ func TestReadFileTool_Execute_EmptyFile(t *testing.T) {
 	}
 
 	// 读取空文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for empty file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for empty file: %v", result.Err)
 	}
 
-	if result != "" {
-		t.Errorf("Expected empty content, got '%s'", result)
+	if result.Raw != "" {
+		t.Errorf("Expected empty content, got '%s'", result.Raw)
 	}
 }
 
@@ -222,17 +222,17 @@ func TestReadFileTool_Execute_BinaryFile(t *testing.T) {
 	}
 
 	// 读取二进制文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for binary file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for binary file: %v", result.Err)
 	}
 
 	expectedResult := string(binaryContent)
-	if result != expectedResult {
-		t.Errorf("Binary content mismatch")
+	if result.Raw != expectedResult {
+		t.Errorf("Expected content '%s', got '%s'", expectedResult, result.Raw)
 	}
 }
 
@@ -255,16 +255,16 @@ func TestReadFileTool_Execute_LargeFile(t *testing.T) {
 	}
 
 	// 读取大文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for large file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for large file: %v", result.Err)
 	}
 
-	if len(result) != len(largeContent) {
-		t.Errorf("Large file content size mismatch, expected %d, got %d", len(largeContent), len(result))
+	if len(result.Raw) != len(largeContent) {
+		t.Errorf("Large file content size mismatch, expected %d, got %d", len(largeContent), len(result.Raw))
 	}
 }
 
@@ -286,21 +286,21 @@ func TestReadFileTool_Execute_XLSX(t *testing.T) {
 		t.Fatalf("Failed to create test XLSX file: %v", err)
 	}
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for XLSX file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for XLSX file: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Sheet1") {
+	if !strings.Contains(result.Raw, "Sheet1") {
 		t.Error("Result should contain sheet name")
 	}
-	if !strings.Contains(result, "Name") {
+	if !strings.Contains(result.Raw, "Name") {
 		t.Error("Result should contain 'Name'")
 	}
-	if !strings.Contains(result, "Alice") {
+	if !strings.Contains(result.Raw, "Alice") {
 		t.Error("Result should contain 'Alice'")
 	}
 }
@@ -322,18 +322,18 @@ func TestReadFileTool_Execute_XLSX_MultiSheet(t *testing.T) {
 		t.Fatalf("Failed to create test XLSX file: %v", err)
 	}
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for multi-sheet XLSX file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for multi-sheet XLSX file: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Sheet1") || !strings.Contains(result, "Sheet2") {
+	if !strings.Contains(result.Raw, "Sheet1") || !strings.Contains(result.Raw, "Sheet2") {
 		t.Error("Result should contain both sheet names")
 	}
-	if !strings.Contains(result, "Sheet1Data") || !strings.Contains(result, "Sheet2Data") {
+	if !strings.Contains(result.Raw, "Sheet1Data") || !strings.Contains(result.Raw, "Sheet2Data") {
 		t.Error("Result should contain data from both sheets")
 	}
 }
@@ -377,16 +377,16 @@ func TestReadFileTool_Execute_DOCX(t *testing.T) {
 
 	zipWriter.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for DOCX file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for DOCX file: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Hello World") {
-		t.Errorf("Result should contain 'Hello World', got: %s", result)
+	if !strings.Contains(result.Raw, "Hello World") {
+		t.Errorf("Result should contain 'Hello World', got: %s", result.Raw)
 	}
 }
 
@@ -398,29 +398,29 @@ func TestReadFileTool_Execute_UnsupportedFormat(t *testing.T) {
 	docFile := filepath.Join(tmpDir, "test.doc")
 	os.WriteFile(docFile, []byte("test"), 0644)
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": docFile,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail for .doc format")
 	}
-	if !strings.Contains(err.Error(), "not supported") {
-		t.Errorf("Error should mention format not supported, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "not supported") {
+		t.Errorf("Error should mention format not supported, got: %v", result.Err)
 	}
 
 	xlsFile := filepath.Join(tmpDir, "test.xls")
 	os.WriteFile(xlsFile, []byte("test"), 0644)
 
-	_, err = tool.Execute(context.Background(), map[string]string{
+	result = tool.Execute(context.Background(), map[string]string{
 		"path": xlsFile,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail for .xls format")
 	}
-	if !strings.Contains(err.Error(), "not supported") {
-		t.Errorf("Error should mention format not supported, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "not supported") {
+		t.Errorf("Error should mention format not supported, got: %v", result.Err)
 	}
 }
 
@@ -437,15 +437,15 @@ func TestReadFileTool_Execute_XLSX_EmptySheet(t *testing.T) {
 		t.Fatalf("Failed to create empty XLSX file: %v", err)
 	}
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for empty XLSX file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for empty XLSX file: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Sheet1") {
+	if !strings.Contains(result.Raw, "Sheet1") {
 		t.Error("Result should contain sheet name even for empty sheet")
 	}
 }

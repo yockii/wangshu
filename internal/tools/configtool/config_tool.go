@@ -9,6 +9,7 @@ import (
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
@@ -77,7 +78,7 @@ Available actions:
 	return tool
 }
 
-func (t *ConfigTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *ConfigTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	action := params["action"]
 
 	switch action {
@@ -94,7 +95,7 @@ func (t *ConfigTool) execute(ctx context.Context, params map[string]string) (str
 	case ConfigActionReload:
 		return t.reload()
 	default:
-		return "", fmt.Errorf("invalid action: %s", action)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid action: %s", action))
 	}
 }
 
@@ -106,21 +107,36 @@ func (t *ConfigTool) getConfigPath() string {
 	return utils.ExpandPath(cfgPath)
 }
 
-func (t *ConfigTool) get(params map[string]string) (string, error) {
-	cfg := config.DefaultCfg
-	if cfg == nil {
-		return "", fmt.Errorf("configuration not initialized")
+func (t *ConfigTool) get(params map[string]string) *types.ToolResult {
+	cfgOrigin := config.DefaultCfg
+	if cfgOrigin == nil {
+		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
 	}
 
+	// 复制一份，不要直接获取原始配置
+	cfg := cfgOrigin.Copy()
+
+	// 出于安全考虑，所有的ak/sk等信息屏蔽掉
+	for _, provider := range cfg.Providers {
+		provider.APIKey = "API-KEY-REDACTED"
+	}
+	for _, channel := range cfg.Channels {
+		channel.AppSecret = "APP-SECRET-REDACTED"
+		channel.Token = "TOKEN-REDACTED"
+	}
+
+	// 处理参数
 	section := params["section"]
 	name := params["name"]
 
 	if section == "" {
 		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal configuration: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal configuration: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg,
+		})
 	}
 
 	if name == "" {
@@ -129,91 +145,107 @@ func (t *ConfigTool) get(params map[string]string) (string, error) {
 	return t.getSectionItem(cfg, section, name)
 }
 
-func (t *ConfigTool) getSection(cfg *config.Config, section string) (string, error) {
+func (t *ConfigTool) getSection(cfg *config.Config, section string) *types.ToolResult {
 	switch section {
 	case "agents":
 		data, err := json.MarshalIndent(cfg.Agents, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal agents: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal agents: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg.Agents,
+		})
 	case "providers":
 		data, err := json.MarshalIndent(cfg.Providers, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal providers: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal providers: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg.Providers,
+		})
 	case "channels":
 		data, err := json.MarshalIndent(cfg.Channels, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal channels: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal channels: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg.Channels,
+		})
 	case "skill":
 		data, err := json.MarshalIndent(cfg.Skill, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal skill: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal skill: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg.Skill,
+		})
 	case "browser":
 		data, err := json.MarshalIndent(cfg.Browser, "", "  ")
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal browser: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal browser: %w", err))
 		}
-		return string(data), nil
+		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+			"data": cfg.Browser,
+		})
 	default:
-		return "", fmt.Errorf("unknown section: %s", section)
+		return types.NewToolResult().WithError(fmt.Errorf("unknown section: %s", section))
 	}
 }
 
-func (t *ConfigTool) getSectionItem(cfg *config.Config, section, name string) (string, error) {
+func (t *ConfigTool) getSectionItem(cfg *config.Config, section, name string) *types.ToolResult {
 	switch section {
 	case "agents":
 		if agent, ok := cfg.Agents[name]; ok {
 			data, err := json.MarshalIndent(agent, "", "  ")
 			if err != nil {
-				return "", fmt.Errorf("failed to marshal agent: %w", err)
+				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal agent: %w", err))
 			}
-			return string(data), nil
+			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+				"data": agent,
+			})
 		}
-		return "", fmt.Errorf("agent '%s' not found", name)
+		return types.NewToolResult().WithError(fmt.Errorf("agent '%s' not found", name))
 	case "providers":
 		if provider, ok := cfg.Providers[name]; ok {
 			data, err := json.MarshalIndent(provider, "", "  ")
 			if err != nil {
-				return "", fmt.Errorf("failed to marshal provider: %w", err)
+				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal provider: %w", err))
 			}
-			return string(data), nil
+			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+				"data": provider,
+			})
 		}
-		return "", fmt.Errorf("provider '%s' not found", name)
+		return types.NewToolResult().WithError(fmt.Errorf("provider '%s' not found", name))
 	case "channels":
 		if channel, ok := cfg.Channels[name]; ok {
 			data, err := json.MarshalIndent(channel, "", "  ")
 			if err != nil {
-				return "", fmt.Errorf("failed to marshal channel: %w", err)
+				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal channel: %w", err))
 			}
-			return string(data), nil
+			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
+				"data": channel,
+			})
 		}
-		return "", fmt.Errorf("channel '%s' not found", name)
+		return types.NewToolResult().WithError(fmt.Errorf("channel '%s' not found", name))
 	default:
-		return "", fmt.Errorf("section '%s' does not support item-level access", section)
+		return types.NewToolResult().WithError(fmt.Errorf("section '%s' does not support item-level access", section))
 	}
 }
 
-func (t *ConfigTool) set(params map[string]string) (string, error) {
+func (t *ConfigTool) set(params map[string]string) *types.ToolResult {
 	section := params["section"]
 	if section == "" {
-		return "", fmt.Errorf("section parameter is required for set action")
+		return types.NewToolResult().WithError(fmt.Errorf("section parameter is required for set action"))
 	}
 
 	dataStr := params["data"]
 	if dataStr == "" {
-		return "", fmt.Errorf("data parameter is required for set action")
+		return types.NewToolResult().WithError(fmt.Errorf("data parameter is required for set action"))
 	}
 
 	cfg := config.DefaultCfg
 	if cfg == nil {
-		return "", fmt.Errorf("configuration not initialized")
+		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
 	}
 
 	name := params["name"]
@@ -226,15 +258,15 @@ func (t *ConfigTool) set(params map[string]string) (string, error) {
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return "", fmt.Errorf("configuration validation failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
 	cfgPath := t.getConfigPath()
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
-		return "", fmt.Errorf("failed to save configuration: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 
-	return result, nil
+	return types.NewToolResult().WithRaw(result)
 }
 
 func (t *ConfigTool) setSection(cfg *config.Config, section, dataStr string) string {
@@ -297,146 +329,146 @@ func (t *ConfigTool) setSectionItem(cfg *config.Config, section, name, dataStr s
 	return fmt.Sprintf("Item '%s' in section '%s' updated", name, section)
 }
 
-func (t *ConfigTool) add(params map[string]string) (string, error) {
+func (t *ConfigTool) add(params map[string]string) *types.ToolResult {
 	section := params["section"]
 	if section == "" {
-		return "", fmt.Errorf("section parameter is required for add action")
+		return types.NewToolResult().WithError(fmt.Errorf("section parameter is required for add action"))
 	}
 
 	name := params["name"]
 	if name == "" {
-		return "", fmt.Errorf("name parameter is required for add action")
+		return types.NewToolResult().WithError(fmt.Errorf("name parameter is required for add action"))
 	}
 
 	dataStr := params["data"]
 	if dataStr == "" {
-		return "", fmt.Errorf("data parameter is required for add action")
+		return types.NewToolResult().WithError(fmt.Errorf("data parameter is required for add action"))
 	}
 
 	cfg := config.DefaultCfg
 	if cfg == nil {
-		return "", fmt.Errorf("configuration not initialized")
+		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
 	}
 
 	switch section {
 	case "agents":
 		if _, exists := cfg.Agents[name]; exists {
-			return "", fmt.Errorf("agent '%s' already exists, use 'set' action to update", name)
+			return types.NewToolResult().WithError(fmt.Errorf("agent '%s' already exists, use 'set' action to update", name))
 		}
 		var agent config.AgentConfig
 		if err := json.Unmarshal([]byte(dataStr), &agent); err != nil {
-			return "", fmt.Errorf("failed to parse agent data: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to parse agent data: %w", err))
 		}
 		cfg.SetAgent(name, &agent)
 
 	case "providers":
 		if _, exists := cfg.Providers[name]; exists {
-			return "", fmt.Errorf("provider '%s' already exists, use 'set' action to update", name)
+			return types.NewToolResult().WithError(fmt.Errorf("provider '%s' already exists, use 'set' action to update", name))
 		}
 		var provider config.ProviderConfig
 		if err := json.Unmarshal([]byte(dataStr), &provider); err != nil {
-			return "", fmt.Errorf("failed to parse provider data: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to parse provider data: %w", err))
 		}
 		cfg.SetProvider(name, &provider)
 
 	case "channels":
 		if _, exists := cfg.Channels[name]; exists {
-			return "", fmt.Errorf("channel '%s' already exists, use 'set' action to update", name)
+			return types.NewToolResult().WithError(fmt.Errorf("channel '%s' already exists, use 'set' action to update", name))
 		}
 		var channel config.ChannelConfig
 		if err := json.Unmarshal([]byte(dataStr), &channel); err != nil {
-			return "", fmt.Errorf("failed to parse channel data: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("failed to parse channel data: %w", err))
 		}
 		cfg.SetChannel(name, &channel)
 
 	default:
-		return "", fmt.Errorf("section '%s' does not support add action", section)
+		return types.NewToolResult().WithError(fmt.Errorf("section '%s' does not support add action", section))
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return "", fmt.Errorf("configuration validation failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
 	cfgPath := t.getConfigPath()
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
-		return "", fmt.Errorf("failed to save configuration: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 
-	return fmt.Sprintf("%s '%s' added successfully", section[:len(section)-1], name), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("%s '%s' added successfully", section[:len(section)-1], name))
 }
 
-func (t *ConfigTool) delete(params map[string]string) (string, error) {
+func (t *ConfigTool) delete(params map[string]string) *types.ToolResult {
 	section := params["section"]
 	if section == "" {
-		return "", fmt.Errorf("section parameter is required for delete action")
+		return types.NewToolResult().WithError(fmt.Errorf("section parameter is required for delete action"))
 	}
 
 	name := params["name"]
 	if name == "" {
-		return "", fmt.Errorf("name parameter is required for delete action")
+		return types.NewToolResult().WithError(fmt.Errorf("name parameter is required for delete action"))
 	}
 
 	cfg := config.DefaultCfg
 	if cfg == nil {
-		return "", fmt.Errorf("configuration not initialized")
+		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
 	}
 
 	switch section {
 	case "agents":
 		if _, exists := cfg.Agents[name]; !exists {
-			return "", fmt.Errorf("agent '%s' not found", name)
+			return types.NewToolResult().WithError(fmt.Errorf("agent '%s' not found", name))
 		}
 		cfg.DeleteAgent(name)
 
 	case "providers":
 		if _, exists := cfg.Providers[name]; !exists {
-			return "", fmt.Errorf("provider '%s' not found", name)
+			return types.NewToolResult().WithError(fmt.Errorf("provider '%s' not found", name))
 		}
 		cfg.DeleteProvider(name)
 
 	case "channels":
 		if _, exists := cfg.Channels[name]; !exists {
-			return "", fmt.Errorf("channel '%s' not found", name)
+			return types.NewToolResult().WithError(fmt.Errorf("channel '%s' not found", name))
 		}
 		cfg.DeleteChannel(name)
 
 	default:
-		return "", fmt.Errorf("section '%s' does not support delete action", section)
+		return types.NewToolResult().WithError(fmt.Errorf("section '%s' does not support delete action", section))
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return "", fmt.Errorf("configuration validation failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
 	cfgPath := t.getConfigPath()
 	if err := config.SaveConfig(cfgPath, cfg); err != nil {
-		return "", fmt.Errorf("failed to save configuration: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 
-	return fmt.Sprintf("%s '%s' deleted successfully", section[:len(section)-1], name), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("%s '%s' deleted successfully", section[:len(section)-1], name))
 }
 
-func (t *ConfigTool) validate() (string, error) {
+func (t *ConfigTool) validate() *types.ToolResult {
 	cfg := config.DefaultCfg
 	if cfg == nil {
-		return "", fmt.Errorf("configuration not initialized")
+		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return fmt.Sprintf("Configuration validation failed:\n%s", err.Error()), nil
+		return types.NewToolResult().WithError(fmt.Errorf("Configuration validation failed:\n%s", err.Error()))
 	}
 
-	return "Configuration is valid", nil
+	return types.NewToolResult().WithRaw("Configuration is valid")
 }
 
-func (t *ConfigTool) reload() (string, error) {
+func (t *ConfigTool) reload() *types.ToolResult {
 	if reloadFunc == nil {
-		return "", fmt.Errorf("reload function not initialized")
+		return types.NewToolResult().WithError(fmt.Errorf("reload function not initialized"))
 	}
 
 	if err := reloadFunc(); err != nil {
-		return "", fmt.Errorf("failed to reload configuration: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to reload configuration: %w", err))
 	}
 
-	return "Configuration reloaded successfully. All agents, providers, and channels have been reinitialized.", nil
+	return types.NewToolResult().WithRaw("Configuration reloaded successfully. All agents, providers, and channels have been reinitialized.")
 }

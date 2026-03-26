@@ -76,18 +76,18 @@ func TestWriteFileTool_Execute_CreateNewFile(t *testing.T) {
 	content := "Hello, World!"
 
 	// 写入新文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": content,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully wrote") {
-		t.Errorf("Result should contain success message, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully wrote") {
+		t.Errorf("Result should contain success message, got: %s", result.Raw)
 	}
 
 	// 验证文件已创建
@@ -117,13 +117,13 @@ func TestWriteFileTool_Execute_OverwriteExistingFile(t *testing.T) {
 
 	// 覆盖文件
 	newContent := "New content"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": newContent,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证文件内容被覆盖
@@ -137,8 +137,8 @@ func TestWriteFileTool_Execute_OverwriteExistingFile(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully wrote") {
-		t.Errorf("Result should indicate overwrite, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully wrote") {
+		t.Errorf("Result should indicate overwrite, got: %s", result.Raw)
 	}
 }
 
@@ -153,19 +153,19 @@ func TestWriteFileTool_Execute_AppendMode(t *testing.T) {
 
 	// 追加内容
 	appendContent := "Line 2\n"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": appendContent,
 		"append":  "true",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "appended") {
-		t.Errorf("Result should indicate append mode, got: %s", result)
+	if !strings.Contains(result.Raw, "appended") {
+		t.Errorf("Result should indicate append mode, got: %s", result.Raw)
 	}
 
 	// 验证内容被追加
@@ -191,19 +191,19 @@ func TestWriteFileTool_Execute_AppendModeNumeric(t *testing.T) {
 
 	// 使用数字1表示追加模式
 	appendContent := "End\n"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": appendContent,
 		"append":  "1",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "appended") {
-		t.Errorf("Result should indicate append mode, got: %s", result)
+	if !strings.Contains(result.Raw, "appended") {
+		t.Errorf("Result should indicate append mode, got: %s", result.Raw)
 	}
 
 	// 验证内容被追加
@@ -226,13 +226,13 @@ func TestWriteFileTool_Execute_CreateDirectory(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "subdir", "nested", "file.txt")
 	content := "Content in nested directory"
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": content,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed and create directories: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed and create directories: %v", result.Err)
 	}
 
 	// 验证文件已创建
@@ -250,21 +250,21 @@ func TestWriteFileTool_Execute_EmptyPath(t *testing.T) {
 	tool := NewWriteFileTool()
 
 	// 测试空路径
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    "",
 		"content": "content",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty path")
 	}
 
 	// 测试缺少path参数
-	_, err = tool.Execute(context.Background(), map[string]string{
+	result = tool.Execute(context.Background(), map[string]string{
 		"content": "content",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when path parameter is missing")
 	}
 }
@@ -275,13 +275,13 @@ func TestWriteFileTool_Execute_EmptyContent(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "empty.txt")
 
 	// 写入空内容（应该创建空文件）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": "",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with empty content: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with empty content: %v", result.Err)
 	}
 
 	// 验证文件已创建
@@ -300,8 +300,8 @@ func TestWriteFileTool_Execute_EmptyContent(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully wrote 0 bytes") {
-		t.Errorf("Result should indicate 0 bytes written, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully wrote 0 bytes") {
+		t.Errorf("Result should indicate 0 bytes written, got: %s", result.Raw)
 	}
 }
 
@@ -311,12 +311,12 @@ func TestWriteFileTool_Execute_MissingContent(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "test.txt")
 
 	// 测试缺少content参数（会被当作空字符串处理）
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with missing content (creates empty file): %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with missing content (creates empty file): %v", result.Err)
 	}
 
 	// 验证创建了空文件
@@ -338,13 +338,13 @@ func TestWriteFileTool_Execute_LargeContent(t *testing.T) {
 	// 创建大内容（1MB）
 	largeContent := strings.Repeat("A", 1024*1024)
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": largeContent,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with large content: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with large content: %v", result.Err)
 	}
 
 	// 验证文件大小
@@ -358,8 +358,8 @@ func TestWriteFileTool_Execute_LargeContent(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully wrote 1048576 bytes") {
-		t.Errorf("Result should indicate correct byte count, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully wrote 1048576 bytes") {
+		t.Errorf("Result should indicate correct byte count, got: %s", result.Raw)
 	}
 }
 
@@ -371,13 +371,13 @@ func TestWriteFileTool_Execute_MultilineContent(t *testing.T) {
 	// 多行内容
 	content := "Line 1\nLine 2\nLine 3\n"
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path":    testFile,
 		"content": content,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证多行内容正确写入

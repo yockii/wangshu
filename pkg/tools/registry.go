@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 var defaultToolRegistry = NewRegistry()
@@ -15,33 +16,33 @@ func GetDefaultToolRegistry() *Registry {
 }
 
 type Registry struct {
-	tools map[string]Tool
+	tools map[string]types.Tool
 	mu    sync.RWMutex
 }
 
 func NewRegistry() *Registry {
 	return &Registry{
-		tools: make(map[string]Tool),
+		tools: make(map[string]types.Tool),
 	}
 }
 
-func (r *Registry) Register(tool Tool) {
+func (r *Registry) Register(tool types.Tool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tools[tool.Name()] = tool
 }
 
-func (r *Registry) Get(name string) (Tool, bool) {
+func (r *Registry) Get(name string) (types.Tool, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	tool, ok := r.tools[name]
 	return tool, ok
 }
 
-func (r *Registry) Execute(ctx context.Context, name string, params map[string]string) (string, error) {
+func (r *Registry) Execute(ctx context.Context, name string, params map[string]string) *types.ToolResult {
 	tool, ok := r.Get(name)
 	if !ok {
-		return "", fmt.Errorf("tool %s not found", name)
+		return types.NewToolResult().WithError(fmt.Errorf("tool %s not found", name))
 	}
 	return tool.Execute(ctx, params)
 }
@@ -108,29 +109,29 @@ func (r *Registry) GetProviderDefs() []llm.ToolDefinition {
 
 // ExecuteExtended executes a tool with extended arguments
 // Deprecated: Use ExecuteWithContext instead
-func (r *Registry) ExecuteExtended(ctx context.Context, name string, args map[string]interface{}, channel, chatID string) *ToolResult {
+func (r *Registry) ExecuteExtended(ctx context.Context, name string, args map[string]interface{}, channel, chatID string) *types.ToolResult {
 	return r.ExecuteWithContext(ctx, name, args, nil, channel, chatID)
 }
 
 // ExecuteWithContext executes a tool with full tool context
-func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map[string]interface{}, toolCtx *ToolContext, channel, chatID string) *ToolResult {
+func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map[string]interface{}, toolCtx *types.ToolContext, channel, chatID string) *types.ToolResult {
 	tool, ok := r.Get(name)
 	if !ok {
-		return ErrorResult(fmt.Sprintf("tool %s not found", name))
+		return types.NewToolResult().WithError(fmt.Errorf("tool %s not found", name))
 	}
 
 	// Try ContextualTool first (new interface)
-	if ctxTool, ok := tool.(ContextualTool); ok {
+	if ctxTool, ok := tool.(types.ContextualTool); ok {
 		return ctxTool.ExecuteWithContext(ctx, argsToStringMap(args), toolCtx)
 	}
 
 	// Fall back to ExtendedTool (legacy interface)
-	if extTool, ok := tool.(ExtendedTool); ok {
+	if extTool, ok := tool.(types.ExtendedTool); ok {
 		return extTool.ExecuteExtended(ctx, args)
 	}
 
 	// Fall back to basic Tool
-	return ExtendedToolAdapter{Tool: tool}.ExecuteExtended(ctx, args)
+	return types.ExtendedToolAdapter{Tool: tool}.ExecuteExtended(ctx, args)
 }
 
 // argsToStringMap converts args to string map for legacy tools

@@ -50,16 +50,16 @@ func TestNewWebSearchTool(t *testing.T) {
 func TestWebSearchTool_Execute_EmptyQuery(t *testing.T) {
 	tool := NewWebSearchTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"query": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty query")
 	}
 
-	if !strings.Contains(err.Error(), "query is required") {
-		t.Errorf("Error should mention 'query is required', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "query is required") {
+		t.Errorf("Error should mention 'query is required', got: %v", result.Err)
 	}
 }
 
@@ -87,31 +87,31 @@ func TestWebSearchTool_Execute_DefaultEngine(t *testing.T) {
 
 	// Note: This test won't actually work without modifying the tool to accept a custom base URL
 	// For now, just test that the tool structure is correct
-	_, err := tool.Execute(context.Background(), map[string]string{
-		"query": "test query",
+	result := tool.Execute(context.Background(), map[string]string{
+		"query":  "test query",
 		"engine": "baidu",
 	})
 
 	// Expected to fail because we can't connect to real Baidu
-	if err != nil {
-		t.Logf("Expected failure (can't connect to real search engine): %v", err)
+	if result.Err != nil {
+		t.Logf("Expected failure (can't connect to real search engine): %v", result.Err)
 	}
 }
 
 func TestWebSearchTool_Execute_UnsupportedEngine(t *testing.T) {
 	tool := NewWebSearchTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"query":  "test",
 		"engine": "unsupported_engine",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with unsupported engine")
 	}
 
-	if !strings.Contains(err.Error(), "unsupported") {
-		t.Errorf("Error should mention unsupported engine, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "unsupported") {
+		t.Errorf("Error should mention unsupported engine, got: %v", result.Err)
 	}
 }
 
@@ -257,14 +257,14 @@ func TestWebSearchTool_Execute_MissingQueryParameter(t *testing.T) {
 	tool := NewWebSearchTool()
 
 	// Test with no query parameter at all
-	_, err := tool.Execute(context.Background(), map[string]string{})
+	result := tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when query parameter is missing")
 	}
 
-	if !strings.Contains(err.Error(), "query is required") {
-		t.Errorf("Error should mention 'query is required', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "query is required") {
+		t.Errorf("Error should mention 'query is required', got: %v", result.Err)
 	}
 }
 

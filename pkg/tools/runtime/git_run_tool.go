@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type GitRunTool struct {
@@ -42,10 +43,10 @@ func NewGitRunTool() *GitRunTool {
 	return tool
 }
 
-func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *GitRunTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	command := params["command"]
 	if command == "" {
-		return "", fmt.Errorf("command is required")
+		return types.NewToolResult().WithError(fmt.Errorf("command is required"))
 	}
 
 	workingDir := params["working_dir"]
@@ -63,7 +64,7 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (str
 
 	gitCmd, err := t.findGit()
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	cmdArgs := strings.Fields(command)
@@ -79,7 +80,7 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (str
 	output, err := cmd.CombinedOutput()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("git command timed out after %v", timeout)
+		return types.NewToolResult().WithError(fmt.Errorf("git command timed out after %v", timeout))
 	}
 
 	outputStr := string(output)
@@ -90,10 +91,13 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (str
 				exitCode = status.ExitStatus()
 			}
 		}
-		return outputStr, fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr)
+
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
+		"output": outputStr,
+	})
 }
 
 func (t *GitRunTool) findGit() (string, error) {

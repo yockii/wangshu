@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type NpmRunTool struct {
@@ -46,10 +47,10 @@ func NewNpmRunTool() *NpmRunTool {
 	return tool
 }
 
-func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	command := params["command"]
 	if command == "" {
-		return "", fmt.Errorf("command is required")
+		return types.NewToolResult().WithError(fmt.Errorf("command is required"))
 	}
 
 	workingDir := params["working_dir"]
@@ -72,7 +73,7 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 
 	npmCmd, err := t.findNpm()
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(fmt.Errorf("failed to find npm: %w", err))
 	}
 
 	cmdArgs := strings.Fields(command)
@@ -91,7 +92,7 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 	output, err := cmd.CombinedOutput()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout)
+		return types.NewToolResult().WithError(fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout))
 	}
 
 	outputStr := string(output)
@@ -102,10 +103,12 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 				exitCode = status.ExitStatus()
 			}
 		}
-		return outputStr, fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr)
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
+		"output": outputStr,
+	})
 }
 
 func (t *NpmRunTool) findNpm() (string, error) {

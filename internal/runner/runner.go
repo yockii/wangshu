@@ -28,6 +28,8 @@ import (
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
 	"github.com/yockii/wangshu/pkg/tools/browser"
+	"github.com/yockii/wangshu/pkg/tools/builtin"
+	"github.com/yockii/wangshu/pkg/tools/filesystem"
 	"github.com/yockii/wangshu/pkg/tools/memory"
 	"github.com/yockii/wangshu/pkg/tools/network"
 	"github.com/yockii/wangshu/pkg/tools/runtime"
@@ -91,10 +93,22 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 
 	bus.Default().Start(context.Background())
 
-	tools.RegisterBuiltinTools()
-	tools.RegisterFileSystemTools()
-	network.RegisterNetworkTools()
-	memory.RegisterMemoryTools()
+	tools.GetDefaultToolRegistry().Register(&builtin.SleepTool{})
+	tools.GetDefaultToolRegistry().Register(&builtin.GetTimeTool{})
+
+	tools.GetDefaultToolRegistry().Register(filesystem.NewReadFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewWriteFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewListDirectoryTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewRenameFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewCopyFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewEditFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewFindFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewGrepTool())
+
+	tools.GetDefaultToolRegistry().Register(network.NewWebSearchTool())
+	tools.GetDefaultToolRegistry().Register(network.NewWebFetchTool())
+
+	tools.GetDefaultToolRegistry().Register(memory.NewMemoryTool())
 
 	tools.GetDefaultToolRegistry().Register(runtime.NewPythonRunTool())
 	tools.GetDefaultToolRegistry().Register(runtime.NewNodeRunTool())

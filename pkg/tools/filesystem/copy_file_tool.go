@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type CopyFileTool struct {
@@ -40,11 +41,11 @@ func NewCopyFileTool() *CopyFileTool {
 	return tool
 }
 
-func (t *CopyFileTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *CopyFileTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	sourcePath := params["source_path"]
 	targetPath := params["target_path"]
 	if sourcePath == "" || targetPath == "" {
-		return "", fmt.Errorf("source_path and target_path are required")
+		return types.NewToolResult().WithError(fmt.Errorf("source_path and target_path are required"))
 	}
 
 	overwrite := params["overwrite"] == "true" || params["overwrite"] == "1"
@@ -54,7 +55,7 @@ func (t *CopyFileTool) Execute(ctx context.Context, params map[string]string) (s
 
 	sourceInfo, err := os.Stat(sourcePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to stat source: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to stat source: %w", err))
 	}
 
 	if sourceInfo.IsDir() {
@@ -72,10 +73,10 @@ func (t *CopyFileTool) expandPath(path string) string {
 	return path
 }
 
-func (t *CopyFileTool) copyFile(sourcePath, targetPath string, overwrite bool) (string, error) {
+func (t *CopyFileTool) copyFile(sourcePath, targetPath string, overwrite bool) *types.ToolResult {
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open source file: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to open source file: %w", err))
 	}
 	defer sourceFile.Close()
 
@@ -89,53 +90,53 @@ func (t *CopyFileTool) copyFile(sourcePath, targetPath string, overwrite bool) (
 	absTarget, _ := filepath.Abs(targetPath)
 	if absSource == absTarget {
 		sourceInfo, _ := os.Stat(sourcePath)
-		return fmt.Sprintf("Successfully copied %s to %s (%d bytes)", sourcePath, targetPath, sourceInfo.Size()), nil
+		return types.NewToolResult().WithRaw(fmt.Sprintf("Successfully copied %s to %s (%d bytes)", sourcePath, targetPath, sourceInfo.Size()))
 	}
 
 	if err == nil && !overwrite {
-		return "", fmt.Errorf("target file %s already exists", targetPath)
+		return types.NewToolResult().WithError(fmt.Errorf("target file %s already exists", targetPath))
 	}
 
 	targetFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return "", fmt.Errorf("failed to create target file: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create target file: %w", err))
 	}
 	defer targetFile.Close()
 
 	copied, err := io.Copy(targetFile, sourceFile)
 	if err != nil {
-		return "", fmt.Errorf("failed to copy file: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to copy file: %w", err))
 	}
 
 	sourceInfo, _ := os.Stat(sourcePath)
 	os.Chmod(targetPath, sourceInfo.Mode())
 
-	return fmt.Sprintf("Successfully copied %s to %s (%d bytes)", sourcePath, targetPath, copied), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Successfully copied %s to %s (%d bytes)", sourcePath, targetPath, copied))
 }
 
-func (t *CopyFileTool) copyDirectory(sourcePath, targetPath string, overwrite bool) (string, error) {
+func (t *CopyFileTool) copyDirectory(sourcePath, targetPath string, overwrite bool) *types.ToolResult {
 	sourceInfo, err := os.Stat(sourcePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to stat source directory: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to stat source directory: %w", err))
 	}
 
 	targetInfo, err := os.Stat(targetPath)
 	if err == nil {
 		if !targetInfo.IsDir() {
-			return "", fmt.Errorf("target exists but is not a directory")
+			return types.NewToolResult().WithError(fmt.Errorf("target exists but is not a directory"))
 		}
 		if !overwrite {
-			return "", fmt.Errorf("target directory %s already exists", targetPath)
+			return types.NewToolResult().WithError(fmt.Errorf("target directory %s already exists", targetPath))
 		}
 	}
 
 	if err := os.MkdirAll(targetPath, sourceInfo.Mode()); err != nil {
-		return "", fmt.Errorf("failed to create target directory: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create target directory: %w", err))
 	}
 
 	entries, err := os.ReadDir(sourcePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read source directory: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read source directory: %w", err))
 	}
 
 	var copiedFiles int
@@ -144,18 +145,18 @@ func (t *CopyFileTool) copyDirectory(sourcePath, targetPath string, overwrite bo
 		targetEntry := filepath.Join(targetPath, entry.Name())
 
 		if entry.IsDir() {
-			_, err := t.copyDirectory(sourceEntry, targetEntry, overwrite)
-			if err != nil {
-				return "", err
+			result := t.copyDirectory(sourceEntry, targetEntry, overwrite)
+			if result.Err != nil {
+				return result
 			}
 		} else {
-			_, err := t.copyFile(sourceEntry, targetEntry, overwrite)
-			if err != nil {
-				return "", err
+			result := t.copyFile(sourceEntry, targetEntry, overwrite)
+			if result.Err != nil {
+				return result
 			}
 			copiedFiles++
 		}
 	}
 
-	return fmt.Sprintf("Successfully copied directory %s to %s (%d files)", sourcePath, targetPath, copiedFiles), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Successfully copied directory %s to %s (%d files)", sourcePath, targetPath, copiedFiles))
 }

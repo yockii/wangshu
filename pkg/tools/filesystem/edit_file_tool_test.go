@@ -75,19 +75,19 @@ func TestEditFileTool_Execute_SimpleReplace(t *testing.T) {
 	os.WriteFile(testFile, []byte(originalContent), 0644)
 
 	// 替换"World"为"Universe"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Hello World",
 		"new_str":   "Hi Universe",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回成功消息
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证文件已修改
@@ -105,23 +105,23 @@ func TestEditFileTool_Execute_SimpleReplace(t *testing.T) {
 func TestEditFileTool_Execute_MissingFilePath(t *testing.T) {
 	tool := NewEditFileTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": "",
 		"old_str":   "old",
 		"new_str":   "new",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with missing file_path")
 	}
 
 	// 测试缺少file_path参数
-	_, err = tool.Execute(context.Background(), map[string]string{
+	result = tool.Execute(context.Background(), map[string]string{
 		"old_str": "old",
 		"new_str": "new",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when file_path parameter is missing")
 	}
 }
@@ -132,13 +132,13 @@ func TestEditFileTool_Execute_MissingOldStr(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "test.txt")
 	os.WriteFile(testFile, []byte("content"), 0644)
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "",
 		"new_str":   "new",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with missing old_str")
 	}
 }
@@ -152,23 +152,23 @@ func TestEditFileTool_Execute_OldStrNotFound(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 尝试替换不存在的内容
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "NonExistent",
 		"new_str":   "Replacement",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when old_str not found")
 	}
 
 	// 验证错误消息包含预览
-	if !strings.Contains(err.Error(), "not found") {
-		t.Errorf("Error should mention 'not found', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "not found") {
+		t.Errorf("Error should mention 'not found', got: %v", result.Err)
 	}
 
-	if !strings.Contains(err.Error(), "File preview") {
-		t.Errorf("Error should contain file preview, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "File preview") {
+		t.Errorf("Error should contain file preview, got: %v", result.Err)
 	}
 }
 
@@ -181,23 +181,23 @@ func TestEditFileTool_Execute_AmbiguousMatch(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 尝试替换出现多次的内容
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Hello World",
 		"new_str":   "Goodbye Universe",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when old_str appears multiple times")
 	}
 
 	// 验证错误消息
-	if !strings.Contains(err.Error(), "ambiguous") {
-		t.Errorf("Error should mention 'ambiguous', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "ambiguous") {
+		t.Errorf("Error should mention 'ambiguous', got: %v", result.Err)
 	}
 
-	if !strings.Contains(err.Error(), "3 occurrences") {
-		t.Errorf("Error should mention occurrence count, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "3 occurrences") {
+		t.Errorf("Error should mention occurrence count, got: %v", result.Err)
 	}
 }
 
@@ -211,18 +211,18 @@ func TestEditFileTool_Execute_PreserveWhitespace(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 替换包括缩进的内容
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "  Indented Line",
 		"new_str":   "  Modified Indented Line",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证缩进被保留
@@ -246,18 +246,18 @@ func TestEditFileTool_Execute_MultilineReplace(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 替换多行内容
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Line 2\nLine 3",
 		"new_str":   "Modified Line 2\nModified Line 3",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证多行替换成功
@@ -287,18 +287,18 @@ func TestEditFileTool_Execute_TildeExpansion(t *testing.T) {
 	defer os.Remove(testFile)
 
 	// 使用波浪号路径编辑
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": "~/.wangshu_test_edit.txt",
 		"old_str":   "Hello World",
 		"new_str":   "Goodbye Universe",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde path: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证文件已修改
@@ -316,18 +316,18 @@ func TestEditFileTool_Execute_FileNotExist(t *testing.T) {
 	tool := NewEditFileTool()
 	tmpDir := t.TempDir()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": filepath.Join(tmpDir, "nonexistent.txt"),
 		"old_str":   "old",
 		"new_str":   "new",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when file does not exist")
 	}
 
-	if !strings.Contains(err.Error(), "read failed") {
-		t.Errorf("Error should mention 'read failed', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "cannot find the file specified") && !strings.Contains(result.Err.Error(), "no such file") {
+		t.Errorf("Error should mention file not found, got: %v", result.Err)
 	}
 }
 
@@ -340,18 +340,18 @@ func TestEditFileTool_Execute_ReplaceWithEmpty(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 替换为空字符串（删除）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Remove This",
 		"new_str":   "",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with empty new_str: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with empty new_str: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证内容被删除
@@ -377,18 +377,18 @@ Phone: 123-456-7890`
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 替换包含特殊字符的行
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Price: $100",
 		"new_str":   "Price: $200",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证特殊字符被正确处理
@@ -414,18 +414,18 @@ func TestEditFileTool_Execute_EmptyFile(t *testing.T) {
 	os.WriteFile(testFile, []byte(""), 0644)
 
 	// 在空文件中搜索
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "anything",
 		"new_str":   "replacement",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when old_str not found in empty file")
 	}
 
-	if !strings.Contains(err.Error(), "not found") {
-		t.Errorf("Error should mention 'not found', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "not found") {
+		t.Errorf("Error should mention 'not found', got: %v", result.Err)
 	}
 }
 
@@ -444,7 +444,7 @@ function another() {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 替换第一个函数（包含足够的上下文使其唯一）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str": `function test() {
     return "hello";
@@ -454,12 +454,12 @@ function another() {
 }`,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证只替换了第一个函数，第二个保持不变
@@ -491,19 +491,19 @@ func TestEditFileTool_Execute_LongContent(t *testing.T) {
 	os.WriteFile(testFile, []byte(longContent), 0644)
 
 	// 替换中间的某一行（使用唯一的内容）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"file_path": testFile,
 		"old_str":   "Line 50\n",
 		"new_str":   "Modified Line 50\n",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证执行成功
-	if result != "Success" {
-		t.Errorf("Result should be 'Success', got: %s", result)
+	if result.Raw != "Success" {
+		t.Errorf("Result should be 'Success', got: %s", result.Raw)
 	}
 
 	// 验证只替换了第50行

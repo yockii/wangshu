@@ -20,6 +20,7 @@ import (
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
+	tooltypes "github.com/yockii/wangshu/pkg/tools/types"
 )
 
 func (tm *TaskManager) run() {
@@ -741,7 +742,7 @@ func (tm *TaskManager) executeToolCall(ctx context.Context, tc llm.ToolCall, tas
 	args[constant.ToolCallParamTaskID] = taskID
 
 	// Create ToolContext with agent information
-	toolCtx := tools.NewToolContext(
+	toolCtx := tooltypes.NewToolContext(
 		"",
 		"", // agent owner - can be added later
 		tm.workspace,
@@ -753,8 +754,8 @@ func (tm *TaskManager) executeToolCall(ctx context.Context, tc llm.ToolCall, tas
 	)
 
 	result := tools.GetDefaultToolRegistry().ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
-	if result.IsError {
-		return result.ForLLM, fmt.Errorf("Tool execution failed: %s", result.Err)
+	if result.Err != nil {
+		return result.Raw, fmt.Errorf("Tool execution failed: %s", result.Err)
 	}
-	return result.ForLLM, nil
+	return result.Raw, nil
 }

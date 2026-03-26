@@ -1,4 +1,4 @@
-package tools
+package types
 
 import (
 	"context"
@@ -15,10 +15,7 @@ func (a ExtendedToolAdapter) ExecuteExtended(ctx context.Context, args map[strin
 		params[k] = fmt.Sprintf("%v", v)
 	}
 
-	result, err := a.Tool.Execute(ctx, params)
-	if err != nil {
-		return ErrorResult(result).WithError(err)
-	}
+	result := a.Tool.Execute(ctx, params)
 
-	return &ToolResult{ForLLM: result, ForUser: result}
+	return result
 }

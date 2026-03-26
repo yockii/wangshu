@@ -78,18 +78,18 @@ func TestRenameFileTool_Execute_RenameFile(t *testing.T) {
 	os.WriteFile(oldPath, []byte(content), 0644)
 
 	// 重命名文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should contain success message, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should contain success message, got: %s", result.Raw)
 	}
 
 	// 验证旧文件不存在
@@ -123,13 +123,13 @@ func TestRenameFileTool_Execute_RenameDirectory(t *testing.T) {
 	os.WriteFile(testFile, []byte("content"), 0644)
 
 	// 重命名目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证旧目录不存在
@@ -149,8 +149,8 @@ func TestRenameFileTool_Execute_RenameDirectory(t *testing.T) {
 	}
 
 	// 验证返回消息包含路径
-	if !strings.Contains(result, oldPath) || !strings.Contains(result, newPath) {
-		t.Errorf("Result should contain both paths, got: %s", result)
+	if !strings.Contains(result.Raw, oldPath) || !strings.Contains(result.Raw, newPath) {
+		t.Errorf("Result should contain both paths, got: %s", result.Raw)
 	}
 }
 
@@ -173,13 +173,13 @@ func TestRenameFileTool_Execute_MoveToDifferentDirectory(t *testing.T) {
 	newPath := filepath.Join(targetDir, "file.txt")
 
 	// 移动文件
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证文件已移动
@@ -197,8 +197,8 @@ func TestRenameFileTool_Execute_MoveToDifferentDirectory(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -206,12 +206,12 @@ func TestRenameFileTool_Execute_EmptyOldPath(t *testing.T) {
 	tool := NewRenameFileTool()
 	tmpDir := t.TempDir()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": "",
 		"new_path": filepath.Join(tmpDir, "new.txt"),
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty old_path")
 	}
 }
@@ -223,12 +223,12 @@ func TestRenameFileTool_Execute_EmptyNewPath(t *testing.T) {
 	oldPath := filepath.Join(tmpDir, "old.txt")
 	os.WriteFile(oldPath, []byte("content"), 0644)
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty new_path")
 	}
 }
@@ -236,19 +236,19 @@ func TestRenameFileTool_Execute_EmptyNewPath(t *testing.T) {
 func TestRenameFileTool_Execute_BothPathsEmpty(t *testing.T) {
 	tool := NewRenameFileTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": "",
 		"new_path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when both paths are empty")
 	}
 
 	// 测试缺少参数
-	_, err = tool.Execute(context.Background(), map[string]string{})
+	result = tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when both parameters are missing")
 	}
 }
@@ -257,12 +257,12 @@ func TestRenameFileTool_Execute_SourceNotExist(t *testing.T) {
 	tool := NewRenameFileTool()
 	tmpDir := t.TempDir()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": filepath.Join(tmpDir, "nonexistent.txt"),
 		"new_path": filepath.Join(tmpDir, "new.txt"),
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when source file does not exist")
 	}
 }
@@ -276,12 +276,12 @@ func TestRenameFileTool_Execute_TargetDirectoryNotExist(t *testing.T) {
 
 	newPath := filepath.Join(tmpDir, "nonexistent", "file.txt")
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when target directory does not exist")
 	}
 }
@@ -298,13 +298,13 @@ func TestRenameFileTool_Execute_OverwriteExisting(t *testing.T) {
 	os.WriteFile(newPath, []byte("new content"), 0644)
 
 	// 重命名（应该覆盖）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed and overwrite: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed and overwrite: %v", result.Err)
 	}
 
 	// 验证文件内容
@@ -318,8 +318,8 @@ func TestRenameFileTool_Execute_OverwriteExisting(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -342,13 +342,13 @@ func TestRenameFileTool_Execute_TildeExpansion(t *testing.T) {
 	os.WriteFile(oldPath, []byte(content), 0644)
 
 	// 使用波浪号路径重命名
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": "~/.wangshu_test_rename_old.txt",
 		"new_path": "~/.wangshu_test_rename_new.txt",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde paths: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde paths: %v", result.Err)
 	}
 
 	// 验证重命名成功
@@ -366,8 +366,8 @@ func TestRenameFileTool_Execute_TildeExpansion(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -395,13 +395,13 @@ func TestRenameFileTool_Execute_RelativePath(t *testing.T) {
 	os.WriteFile(oldPath, []byte(content), 0644)
 
 	// 使用相对路径重命名
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": oldPath,
 		"new_path": newPath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with relative paths: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with relative paths: %v", result.Err)
 	}
 
 	// 验证重命名成功
@@ -415,8 +415,8 @@ func TestRenameFileTool_Execute_RelativePath(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }
 
@@ -429,13 +429,13 @@ func TestRenameFileTool_Execute_RenameToSameName(t *testing.T) {
 	os.WriteFile(filePath, []byte(content), 0644)
 
 	// 重命名到相同名称（应该成功但不做任何事）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": filePath,
 		"new_path": filePath,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed when renaming to same name: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed when renaming to same name: %v", result.Err)
 	}
 
 	// 验证文件仍然存在且内容未变
@@ -449,7 +449,7 @@ func TestRenameFileTool_Execute_RenameToSameName(t *testing.T) {
 	}
 
 	// 验证返回消息
-	if !strings.Contains(result, "Successfully renamed") {
-		t.Errorf("Result should indicate success, got: %s", result)
+	if !strings.Contains(result.Raw, "Successfully renamed") {
+		t.Errorf("Result should indicate success, got: %s", result.Raw)
 	}
 }

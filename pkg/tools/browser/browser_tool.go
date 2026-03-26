@@ -16,6 +16,7 @@ import (
 	"github.com/playwright-community/playwright-go"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
@@ -23,6 +24,7 @@ type BrowserTool struct {
 	basic.SimpleTool
 	pw          *playwright.Playwright
 	browser     playwright.Browser
+	context     playwright.BrowserContext
 	page        playwright.Page
 	mu          sync.RWMutex
 	initialized bool
@@ -89,15 +91,15 @@ func NewBrowserTool() *BrowserTool {
 	return tool
 }
 
-func (t *BrowserTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *BrowserTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	action := params["action"]
 	if action == "" {
-		return "", fmt.Errorf("action required")
+		return types.NewToolResult().WithError(fmt.Errorf("action required"))
 	}
 
 	if !t.initialized && action != "close" {
 		if err := t.init(); err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 	}
 
@@ -119,11 +121,11 @@ func (t *BrowserTool) execute(ctx context.Context, params map[string]string) (st
 	case "wait":
 		return t.wait(params)
 	case "list_tabs":
-		return "1 tab open", nil
+		return t.listTabs()
 	case "run_task":
 		return t.runTask(params)
 	default:
-		return "", fmt.Errorf("unknown action")
+		return types.NewToolResult().WithError(fmt.Errorf("unknown action"))
 	}
 }
 
@@ -337,6 +339,9 @@ func (t *BrowserTool) init() error {
 		return launchErr
 	}
 
+	// 存储context
+	t.context = context
+
 	// 从context获取browser
 	browser = context.Browser()
 	t.browser = browser
@@ -370,21 +375,24 @@ func (t *BrowserTool) init() error {
 	return nil
 }
 
-func (t *BrowserTool) open(params map[string]string) (string, error) {
+func (t *BrowserTool) open(params map[string]string) *types.ToolResult {
 	url := params["url"]
 	if url == "" {
-		return "", fmt.Errorf("url required")
+		return types.NewToolResult().WithError(fmt.Errorf("url required"))
 	}
 	_, err := t.page.Goto(url)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
+	elements := t.collectElements()
 	result := "Opened: " + url
-	return t.appendElementInfo(result), nil
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
+		"elements": elements,
+	})
 }
 
-func (t *BrowserTool) screenshot(params map[string]string) (string, error) {
+func (t *BrowserTool) screenshot(params map[string]string) *types.ToolResult {
 	path := params["screenshot_path"]
 	if path == "" {
 		path = fmt.Sprintf("screenshot_%d.png", time.Now().Unix())
@@ -393,14 +401,16 @@ func (t *BrowserTool) screenshot(params map[string]string) (string, error) {
 		Path: playwright.String(path),
 	})
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	result := "Screenshot saved: " + path
-	return t.appendElementInfo(result), nil
+	return types.NewToolResult().WithRaw(result).WithStructured(map[string]any{
+		"screenshotFile": path,
+	})
 }
 
-func (t *BrowserTool) close() (string, error) {
+func (t *BrowserTool) close() *types.ToolResult {
 	// Close page first
 	if t.page != nil {
 		if err := t.page.Close(); err != nil {
@@ -409,13 +419,16 @@ func (t *BrowserTool) close() (string, error) {
 		t.page = nil
 	}
 
-	// Then close browser
-	if t.browser != nil {
-		if err := t.browser.Close(); err != nil {
-			fmt.Printf("Error closing browser: %v\n", err)
+	// Close context (this also closes the browser for persistent contexts)
+	if t.context != nil {
+		if err := t.context.Close(); err != nil {
+			fmt.Printf("Error closing context: %v\n", err)
 		}
-		t.browser = nil
+		t.context = nil
 	}
+
+	// Clear browser reference
+	t.browser = nil
 
 	// Finally stop playwright
 	if t.pw != nil {
@@ -426,17 +439,17 @@ func (t *BrowserTool) close() (string, error) {
 	}
 
 	t.initialized = false
-	return "Browser closed", nil
+	return types.NewToolResult().WithRaw("Browser closed")
 }
 
-func (t *BrowserTool) click(params map[string]string) (string, error) {
+func (t *BrowserTool) click(params map[string]string) *types.ToolResult {
 	selector := params["selector"]
 	if selector == "" {
-		return "", fmt.Errorf("selector required")
+		return types.NewToolResult().WithError(fmt.Errorf("selector required"))
 	}
 	err := t.page.Click(selector)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	result := "Clicked: " + selector
@@ -444,37 +457,47 @@ func (t *BrowserTool) click(params map[string]string) (string, error) {
 	// 等待可能的导航或页面更新
 	time.Sleep(500 * time.Millisecond)
 
-	return t.appendElementInfo(result), nil
+	elements := t.collectElements()
+	// return t.appendElementInfo(result)
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
+		"elements": elements,
+	})
 }
 
-func (t *BrowserTool) fill(params map[string]string) (string, error) {
+func (t *BrowserTool) fill(params map[string]string) *types.ToolResult {
 	selector := params["selector"]
 	text := params["text"]
 	if selector == "" || text == "" {
-		return "", fmt.Errorf("selector and text required")
+		return types.NewToolResult().WithError(fmt.Errorf("selector and text required"))
 	}
 	err := t.page.Fill(selector, text)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
+	elements := t.collectElements()
+
 	result := fmt.Sprintf("Filled: %s with '%s'", selector, text)
-	return t.appendElementInfo(result), nil
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
+		"elements": elements,
+	})
 }
 
-func (t *BrowserTool) getText(params map[string]string) (string, error) {
+func (t *BrowserTool) getText(params map[string]string) *types.ToolResult {
 	selector := params["selector"]
 	if selector == "" {
-		return "", fmt.Errorf("selector required")
+		return types.NewToolResult().WithError(fmt.Errorf("selector required"))
 	}
 	text, err := t.page.InnerText(selector)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
-	return text, nil
+	return types.NewToolResult().WithRaw(text).WithStructured(map[string]any{
+		"data": text,
+	})
 }
 
-func (t *BrowserTool) getHTML(params map[string]string) (string, error) {
+func (t *BrowserTool) getHTML(params map[string]string) *types.ToolResult {
 	// 支持不同的返回格式
 	// format: full（完整HTML）, body（只body内容）, inner（body innerHTML）, text（只文本内容）
 	format := params["format"]
@@ -489,32 +512,32 @@ func (t *BrowserTool) getHTML(params map[string]string) (string, error) {
 	case "full":
 		content, err = t.page.Content()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 
 	case "body":
 		// 获取body的innerHTML
 		content, err = t.page.Locator("body").InnerHTML()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 
 	case "inner":
 		// 获取body的innerHTML（与body相同）
 		content, err = t.page.Locator("body").InnerHTML()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 
 	case "text":
 		// 只获取文本内容
 		content, err = t.page.Locator("body").InnerText()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 
 	default:
-		return "", fmt.Errorf("unknown format: %s (use: full, body, inner, text)", format)
+		return types.NewToolResult().WithError(fmt.Errorf("unknown format: %s (use: full, body, inner, text)", format))
 	}
 
 	totalLength := len(content)
@@ -525,9 +548,9 @@ func (t *BrowserTool) getHTML(params map[string]string) (string, error) {
 		if s, parseErr := strconv.Atoi(params["start"]); parseErr == nil && s >= 0 && s < totalLength {
 			start = s
 		} else if parseErr != nil {
-			return "", fmt.Errorf("invalid start parameter: %v", parseErr)
+			return types.NewToolResult().WithError(fmt.Errorf("invalid start parameter: %v", parseErr))
 		} else if s >= totalLength {
-			return fmt.Sprintf("⚠️ 起始位置超出范围 (start: %d, 总长度: %d)", s, totalLength), nil
+			return types.NewToolResult().WithError(fmt.Errorf("⚠️ 起始位置超出范围 (start: %d, 总长度: %d)", s, totalLength))
 		}
 	}
 
@@ -576,30 +599,77 @@ func (t *BrowserTool) getHTML(params map[string]string) (string, error) {
 		result.WriteString(fmt.Sprintf("\n\n... (还有 %d 字符未显示，使用 start=%d 继续获取)", totalLength-end, end))
 	}
 
+	tr := types.NewToolResult()
+	trStruct := map[string]any{}
 	// 如果是HTML格式，添加元素信息摘要（只在第一次获取时）
 	if format != "text" && start == 0 {
 		result.WriteString("\n\n--- 元素摘要 ---\n")
 		elements := t.collectElements()
-		result.WriteString(elements)
+		for _, el := range elements {
+			elStr, err := json.MarshalIndent(el, "", "  ")
+			if err != nil {
+				continue
+			}
+			result.WriteString(string(elStr))
+			result.WriteString("\n")
+		}
+		trStruct["elements"] = elements
 	}
+	c := result.String()
+	trStruct["data"] = c
+	tr.WithRaw(c)
+	tr.WithStructured(trStruct)
 
-	return result.String(), nil
+	return tr
 }
 
-func (t *BrowserTool) wait(params map[string]string) (string, error) {
+func (t *BrowserTool) wait(params map[string]string) *types.ToolResult {
 	selector := params["selector"]
 	if selector == "" {
-		return "", fmt.Errorf("selector required")
+		return types.NewToolResult().WithError(fmt.Errorf("selector required"))
 	}
 	_, err := t.page.WaitForSelector(selector)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
+
 	result := "Waited for: " + selector
-	if elements := t.collectElements(); elements != "" {
-		result += "\n\n" + elements
+
+	elements := t.collectElements()
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{"elements": elements})
+}
+
+func (t *BrowserTool) listTabs() *types.ToolResult {
+	var tabs []map[string]string
+	var result strings.Builder
+	result.WriteString("当前打开的标签页:\n\n")
+
+	// 使用 context 获取页面列表（支持持久化上下文）
+	if t.context != nil {
+		ctxPages := t.context.Pages()
+		for _, page := range ctxPages {
+			title, err := page.Title()
+			if err != nil {
+				continue
+			}
+			tabs = append(tabs, map[string]string{"title": title, "url": page.URL()})
+			result.WriteString(fmt.Sprintf("- Title: %s, URL: %s\n", title, page.URL()))
+		}
+	} else if t.browser != nil {
+		ctxList := t.browser.Contexts()
+		for _, ctx := range ctxList {
+			ctxPages := ctx.Pages()
+			for _, page := range ctxPages {
+				title, err := page.Title()
+				if err != nil {
+					continue
+				}
+				tabs = append(tabs, map[string]string{"title": title, "url": page.URL()})
+				result.WriteString(fmt.Sprintf("- Title: %s, URL: %s\n", title, page.URL()))
+			}
+		}
 	}
-	return result, nil
+	return types.NewToolResult().WithRaw(result.String()).WithStructured(map[string]any{"data": tabs})
 }
 
 // ElementInfo 包含元素的所有选择器和属性信息
@@ -634,12 +704,12 @@ type ElementInfo struct {
 
 // collectElements 收集页面上所有可交互元素的完整信息
 // 不做任何过滤、排序或优先级判断，返回所有可用信息供LLM分析
-func (t *BrowserTool) collectElements() string {
+func (t *BrowserTool) collectElements() []ElementInfo {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	if t.page == nil {
-		return ""
+		return nil
 	}
 
 	// 使用单一查询获取所有可交互元素
@@ -737,7 +807,7 @@ func (t *BrowserTool) collectElements() string {
 	`)
 
 	if err != nil {
-		return ""
+		return nil
 	}
 
 	// 解析结果
@@ -782,16 +852,10 @@ func (t *BrowserTool) collectElements() string {
 	}
 
 	if len(elements) == 0 {
-		return ""
+		return nil
 	}
 
-	// 转换为JSON格式返回给LLM
-	jsonData, err := json.MarshalIndent(elements, "", "  ")
-	if err != nil {
-		return ""
-	}
-
-	return fmt.Sprintf("Page Elements (%d found):\n%s", len(elements), string(jsonData))
+	return elements
 }
 
 // getString 从map中安全获取字符串值
@@ -815,11 +879,19 @@ func getBool(m map[string]interface{}, key string) bool {
 }
 
 // appendElementInfo 在操作结果后附加元素信息
-func (t *BrowserTool) appendElementInfo(baseResult string) string {
-	if elements := t.collectElements(); elements != "" {
-		return baseResult + "\n\n" + elements
+func (t *BrowserTool) appendElementInfo(baseResult string, elements []ElementInfo) string {
+	var result strings.Builder
+	result.WriteString(baseResult)
+
+	result.WriteString(fmt.Sprintf("Page Elements (%d found):\n", len(elements)))
+	for _, el := range elements {
+		eleStr, err := json.MarshalIndent(el, "", "  ")
+		if err != nil {
+			continue
+		}
+		result.WriteString(fmt.Sprintf("%s\n", string(eleStr)))
 	}
-	return baseResult
+	return result.String()
 }
 
 // ensureInitialized 确保浏览器已初始化（供 TaskEngine 使用）
@@ -831,19 +903,19 @@ func (t *BrowserTool) ensureInitialized() error {
 }
 
 // runTask 执行任务脚本
-func (t *BrowserTool) runTask(params map[string]string) (string, error) {
+func (t *BrowserTool) runTask(params map[string]string) *types.ToolResult {
 	scriptInput := params["script"]
 	scriptFile := params["script_file"]
 
 	if scriptInput == "" && scriptFile == "" {
-		return "", fmt.Errorf("缺少 script 或 script_file 参数")
+		return types.NewToolResult().WithError(fmt.Errorf("缺少 script 或 script_file 参数"))
 	}
 
 	var scriptContent string
 	if scriptFile != "" {
 		content, err := os.ReadFile(scriptFile)
 		if err != nil {
-			return "", fmt.Errorf("读取脚本文件失败: %w", err)
+			return types.NewToolResult().WithError(fmt.Errorf("读取脚本文件失败: %w", err))
 		}
 		scriptContent = string(content)
 	} else {
@@ -852,7 +924,7 @@ func (t *BrowserTool) runTask(params map[string]string) (string, error) {
 
 	var script TaskScript
 	if err := json.Unmarshal([]byte(scriptContent), &script); err != nil {
-		return "", fmt.Errorf("解析任务脚本失败: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("解析任务脚本失败: %w", err))
 	}
 
 	engine := NewTaskEngine(t)
@@ -872,17 +944,19 @@ func (t *BrowserTool) runTask(params map[string]string) (string, error) {
 	}
 
 	if !keepBrowserOpen {
-		if _, closeErr := t.close(); closeErr != nil {
+		if closeResult := t.close(); closeResult.Err != nil {
 			if result.Error == "" {
-				result.Error = "关闭浏览器失败: " + closeErr.Error()
+				result.Error = "关闭浏览器失败: " + closeResult.Err.Error()
 			}
 		}
 	}
 
 	resultJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("序列化结果失败: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("序列化结果失败: %w", err))
 	}
 
-	return string(resultJSON), nil
+	return types.NewToolResult().WithRaw(string(resultJSON)).WithStructured(map[string]any{
+		"data": result,
+	})
 }

@@ -1,4 +1,4 @@
-package tools
+package types
 
 import (
 	"github.com/yockii/wangshu/pkg/llm"

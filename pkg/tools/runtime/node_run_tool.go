@@ -12,6 +12,7 @@ import (
 
 	_ "embed"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -136,18 +137,30 @@ func (t *NodeRunTool) executeCode(ctx context.Context, code, workingDir string) 
 
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out"))
+		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out")).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
 	if err != nil {
-		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr))
+		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir string) *types.ToolResult {
@@ -174,17 +187,30 @@ func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir 
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
+
 	if ctx.Err() == context.DeadlineExceeded {
-		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out"))
+		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out")).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
 	if err != nil {
-		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) *types.ToolResult {
@@ -205,7 +231,9 @@ func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) 
 	}
 
 	if len(results) == 0 {
-		return types.NewToolResult().WithError(fmt.Errorf("no valid package names provided"))
+		return types.NewToolResult().WithError(fmt.Errorf("no valid package names provided")).WithStructured(
+			actiontypes.NewRunData("", 0),
+		)
 	}
 
 	tr := types.NewToolResult()
@@ -222,15 +250,17 @@ func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) 
 		}
 	}
 
-	return tr.WithRaw(strings.Join(outputs, "\n")).WithStructured(map[string]any{
-		"outputs": outputs,
-	})
+	return tr.WithRaw(strings.Join(outputs, "\n")).WithStructured(
+		actiontypes.NewRunData(strings.Join(outputs, "\n"), 0),
+	)
 }
 
 func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) *types.ToolResult {
 	npmCmd, err := t.findNpm()
 	if err != nil {
-		return types.NewToolResult().WithError(err)
+		return types.NewToolResult().WithError(err).WithStructured(
+			actiontypes.NewRunData("", -1),
+		)
 	}
 
 	cmd := exec.Command(npmCmd, "install", packageName)
@@ -242,11 +272,24 @@ func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) *
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	exitCode := 0
 	if err != nil {
-		return types.NewToolResult().WithError(fmt.Errorf("failed to install package %s: %w", packageName, err)).WithRaw(outputStr)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
 	}
 
-	return types.NewToolResult().WithRaw(fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr))
+	if err != nil {
+		return types.NewToolResult().WithError(fmt.Errorf("failed to install package %s: %w", packageName, err)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
+	}
+
+	return types.NewToolResult().WithRaw(fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr)).WithStructured(
+		actiontypes.NewRunData(fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr), exitCode),
+	)
 }
 
 func (t *NodeRunTool) findNode() (string, error) {

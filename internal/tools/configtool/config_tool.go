@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/yockii/wangshu/internal/config"
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
@@ -134,9 +135,8 @@ func (t *ConfigTool) get(params map[string]string) *types.ToolResult {
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal configuration: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg, nil))
 	}
 
 	if name == "" {
@@ -152,41 +152,36 @@ func (t *ConfigTool) getSection(cfg *config.Config, section string) *types.ToolR
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal agents: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg.Agents,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg.Agents, nil))
 	case "providers":
 		data, err := json.MarshalIndent(cfg.Providers, "", "  ")
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal providers: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg.Providers,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg.Providers, nil))
 	case "channels":
 		data, err := json.MarshalIndent(cfg.Channels, "", "  ")
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal channels: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg.Channels,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg.Channels, nil))
 	case "skill":
 		data, err := json.MarshalIndent(cfg.Skill, "", "  ")
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal skill: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg.Skill,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg.Skill, nil))
 	case "browser":
 		data, err := json.MarshalIndent(cfg.Browser, "", "  ")
 		if err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to marshal browser: %w", err))
 		}
-		return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-			"data": cfg.Browser,
-		})
+		return types.NewToolResult().WithRaw(string(data)).
+			WithStructured(actiontypes.NewActionOutput("success", "", cfg.Browser, nil))
 	default:
 		return types.NewToolResult().WithError(fmt.Errorf("unknown section: %s", section))
 	}
@@ -200,9 +195,8 @@ func (t *ConfigTool) getSectionItem(cfg *config.Config, section, name string) *t
 			if err != nil {
 				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal agent: %w", err))
 			}
-			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-				"data": agent,
-			})
+			return types.NewToolResult().WithRaw(string(data)).
+				WithStructured(actiontypes.NewActionOutput("success", "", agent, nil))
 		}
 		return types.NewToolResult().WithError(fmt.Errorf("agent '%s' not found", name))
 	case "providers":
@@ -211,9 +205,8 @@ func (t *ConfigTool) getSectionItem(cfg *config.Config, section, name string) *t
 			if err != nil {
 				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal provider: %w", err))
 			}
-			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-				"data": provider,
-			})
+			return types.NewToolResult().WithRaw(string(data)).
+				WithStructured(actiontypes.NewActionOutput("success", "", provider, nil))
 		}
 		return types.NewToolResult().WithError(fmt.Errorf("provider '%s' not found", name))
 	case "channels":
@@ -222,9 +215,8 @@ func (t *ConfigTool) getSectionItem(cfg *config.Config, section, name string) *t
 			if err != nil {
 				return types.NewToolResult().WithError(fmt.Errorf("failed to marshal channel: %w", err))
 			}
-			return types.NewToolResult().WithRaw(string(data)).WithStructured(map[string]any{
-				"data": channel,
-			})
+			return types.NewToolResult().WithRaw(string(data)).
+				WithStructured(actiontypes.NewActionOutput("success", "", channel, nil))
 		}
 		return types.NewToolResult().WithError(fmt.Errorf("channel '%s' not found", name))
 	default:

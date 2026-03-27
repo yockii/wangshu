@@ -266,9 +266,7 @@ func (t *TaskTool) create(params map[string]string) *tooltypes.ToolResult {
 		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write task relations file: %w", err))
 	}
 
-	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Created: %s", at.ID)).WithStructured(map[string]any{
-		"taskId": at.ID,
-	})
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Created: %s", at.ID))
 }
 
 func (t *TaskTool) list(params map[string]string) *tooltypes.ToolResult {
@@ -299,9 +297,7 @@ func (t *TaskTool) list(params map[string]string) *tooltypes.ToolResult {
 		}
 	}
 
-	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
-		"data": tasks,
-	})
+	return tooltypes.NewToolResult().WithRaw(result)
 }
 
 func (t *TaskTool) status(params map[string]string) *tooltypes.ToolResult {
@@ -323,11 +319,7 @@ func (t *TaskTool) status(params map[string]string) *tooltypes.ToolResult {
 	if err := json.Unmarshal(data, &at); err != nil {
 		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to unmarshal task: %w", err))
 	}
-	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Status: %s\nLast Result: %s", at.Status, at.LastResult)).WithStructured(map[string]any{
-		"taskId":     at.ID,
-		"status":     at.Status,
-		"lastResult": at.LastResult,
-	})
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("Task Status: %s\nLast Result: %s", at.Status, at.LastResult))
 
 }
 

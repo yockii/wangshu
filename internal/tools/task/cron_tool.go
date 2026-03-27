@@ -125,10 +125,7 @@ func (t *CronTool) addTask(params map[string]string) *tooltypes.ToolResult {
 		return tooltypes.NewToolResult().WithError(fmt.Errorf("failed to write job file: %w", err))
 	}
 
-	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务已创建\n任务ID: %s",
-		jobInfo.ID)).WithStructured(map[string]any{
-		"jobId": jobInfo.ID,
-	})
+	return tooltypes.NewToolResult().WithRaw(fmt.Sprintf("✅ 定时任务已创建\n任务ID: %s", jobInfo.ID))
 }
 
 func (t *CronTool) listTasks(params map[string]string) *tooltypes.ToolResult {
@@ -195,9 +192,7 @@ func (t *CronTool) listTasks(params map[string]string) *tooltypes.ToolResult {
 		result += "\n"
 	}
 
-	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
-		"jobs": jobs,
-	})
+	return tooltypes.NewToolResult().WithRaw(result)
 }
 
 func (t *CronTool) updateTask(params map[string]string) *tooltypes.ToolResult {
@@ -383,8 +378,5 @@ func (t *CronTool) getTaskStatus(params map[string]string) *tooltypes.ToolResult
 		result += fmt.Sprintf("未知状态: %s\n", job.Status)
 	}
 
-	return tooltypes.NewToolResult().WithRaw(result).WithStructured(map[string]any{
-		"id":     job.ID,
-		"status": job.Status,
-	})
+	return tooltypes.NewToolResult().WithRaw(result)
 }

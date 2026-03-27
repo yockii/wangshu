@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -17,7 +19,7 @@ type FindFileTool struct {
 
 func NewFindFileTool() *FindFileTool {
 	tool := new(FindFileTool)
-	tool.Name_ = "find_files"
+	tool.Name_ = constant.ToolNameFSSearch
 	tool.Desc_ = "Find files by name pattern (glob). Returns a list of absolute paths. Use this to locate specific files like '*.go', 'docker-compose.yml', or 'tests/**/*_test.go'."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -67,5 +69,5 @@ func (t *FindFileTool) Execute(ctx context.Context, params map[string]string) *t
 		raw.WriteString("- " + absPath + "\n")
 	}
 
-	return types.NewToolResult().WithRaw(raw.String()).WithStructured(map[string]any{"data": result})
+	return types.NewToolResult().WithRaw(raw.String()).WithStructured(actiontypes.NewFsSearchData(pattern, result))
 }

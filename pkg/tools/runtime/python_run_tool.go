@@ -12,6 +12,7 @@ import (
 
 	_ "embed"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -141,6 +142,15 @@ func (t *PythonRunTool) executeCode(ctx context.Context, code, workingDir string
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
+
 	if ctx.Err() == context.DeadlineExceeded {
 		return types.NewToolResult().WithError(fmt.Errorf("python execution timed out"))
 	}
@@ -149,9 +159,9 @@ func (t *PythonRunTool) executeCode(ctx context.Context, code, workingDir string
 		return types.NewToolResult().WithError(fmt.Errorf("python execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr)
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *PythonRunTool) executeScript(ctx context.Context, scriptPath, args, workingDir string) *types.ToolResult {
@@ -180,20 +190,33 @@ func (t *PythonRunTool) executeScript(ctx context.Context, scriptPath, args, wor
 		cmd.Env = append(cmd.Env, "PYTHON_ARGS="+strings.Join(osArgs, " "))
 	}
 
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return types.NewToolResult().WithError(fmt.Errorf("python execution timed out"))
+		return types.NewToolResult().WithError(fmt.Errorf("python execution timed out")).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
 	if err != nil {
-		return types.NewToolResult().WithError(fmt.Errorf("python execution failed: %w\nCommand: %s %s\nOutput:\n%s", err, pythonCmd, scriptPath, outputStr)).WithRaw(outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("python execution failed: %w\nCommand: %s %s\nOutput:\n%s", err, pythonCmd, scriptPath, outputStr)).
+			WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *PythonRunTool) installPackages(packagesStr string) *types.ToolResult {
@@ -214,7 +237,9 @@ func (t *PythonRunTool) installPackages(packagesStr string) *types.ToolResult {
 	}
 
 	if len(results) == 0 {
-		return types.NewToolResult().WithError(fmt.Errorf("no valid package names provided"))
+		return types.NewToolResult().WithError(fmt.Errorf("no valid package names provided")).WithStructured(
+			actiontypes.NewRunData("", 0),
+		)
 	}
 
 	tr := types.NewToolResult()
@@ -230,9 +255,9 @@ func (t *PythonRunTool) installPackages(packagesStr string) *types.ToolResult {
 		}
 	}
 
-	return tr.WithRaw(strings.Join(outputs, "\n")).WithStructured(map[string]any{
-		"outputs": outputs,
-	})
+	return tr.WithRaw(strings.Join(outputs, "\n")).WithStructured(
+		actiontypes.NewRunData(strings.Join(outputs, "\n"), 0),
+	)
 }
 
 func (t *PythonRunTool) installPackage(packageName string) *types.ToolResult {

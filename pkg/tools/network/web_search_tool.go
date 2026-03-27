@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -21,7 +23,7 @@ type WebSearchTool struct {
 
 func NewWebSearchTool() *WebSearchTool {
 	tool := new(WebSearchTool)
-	tool.Name_ = "web_search"
+	tool.Name_ = constant.ToolNameWebSearch
 	tool.Desc_ = "Search the web for information. Supports DuckDuckGo, Baidu (China-friendly), and can automatically choose based on timezone."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -143,9 +145,33 @@ func (t *WebSearchTool) searchDuckDuckGo(ctx context.Context, query string, numR
 		}
 	}
 
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{
-		"data": results,
-	})
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, searchResults2ActionResults(results)),
+	)
+}
+
+func searchResults2ActionResults(results []SearchResult) []struct {
+	Title   string `json:"title"`
+	URL     string `json:"url"`
+	Snippet string `json:"snippet"`
+} {
+	actionResults := make([]struct {
+		Title   string `json:"title"`
+		URL     string `json:"url"`
+		Snippet string `json:"snippet"`
+	}, 0, len(results))
+	for _, result := range results {
+		actionResults = append(actionResults, struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Snippet string `json:"snippet"`
+		}{
+			Title:   result.Title,
+			URL:     result.URL,
+			Snippet: result.Snippet,
+		})
+	}
+	return actionResults
 }
 
 // searchBaidu performs a search using Baidu (HTML parsing, China-friendly)
@@ -191,9 +217,9 @@ func (t *WebSearchTool) searchBaidu(ctx context.Context, query string, numResult
 		}
 	}
 
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{
-		"data": results,
-	})
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, searchResults2ActionResults(results)),
+	)
 }
 
 // SearchResult represents a single search result
@@ -374,7 +400,24 @@ func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResu
 		output += fmt.Sprintf("   %s\n\n", r.Snippet)
 	}
 
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{
-		"data": result.Organic,
-	})
+	actionResults := make([]struct {
+		Title   string `json:"title"`
+		URL     string `json:"url"`
+		Snippet string `json:"snippet"`
+	}, 0, len(result.Organic))
+	for _, r := range result.Organic {
+		actionResults = append(actionResults, struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Snippet string `json:"snippet"`
+		}{
+			Title:   r.Title,
+			URL:     r.Link,
+			Snippet: r.Snippet,
+		})
+	}
+
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, actionResults),
+	)
 }

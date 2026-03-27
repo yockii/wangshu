@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
@@ -63,5 +64,5 @@ func (t *MessageTool) execute(ctx context.Context, params map[string]string) *ty
 
 	bus.Default().PublishOutbound(om)
 
-	return types.NewToolResult()
+	return types.NewToolResult().WithStructured(actiontypes.NewMessageSendData(channel, chatID, content))
 }

@@ -12,10 +12,21 @@ const (
 )
 
 const (
-	ToolNameConfig   = "config"
-	ToolNameCron     = "cron"
-	ToolNameMessage  = "message"
-	ToolNameTask     = "task"
-	ToolNameVersion  = "version"
-	ToolNameVariable = "variable"
+	ToolNameCurrentTime = "time.now"
+	ToolNameSleep       = "sleep"
+	ToolNameFSRead      = "fs.read"
+	ToolNameFSWrite     = "fs.write"
+	ToolNameFSList      = "fs.list"
+	ToolNameFSSearch    = "fs.search"
+	ToolNameGrepFile    = "fs.grep"
+	ToolNameFSMove      = "fs.move"
+	ToolNameConfig      = "config"
+	ToolNameCron        = "cron"
+	ToolNameMessage     = "message"
+	ToolNameTask        = "task"
+	ToolNameVersion     = "version"
+	ToolNameVariable    = "variable"
+	ToolNameWebSearch   = "web.search"
+	ToolNameWebFetch    = "web.fetch"
+	ToolNameBrowser     = "browser"
 )

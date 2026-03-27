@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -19,7 +21,7 @@ type GrepTool struct {
 
 func NewGrepTool() *GrepTool {
 	tool := new(GrepTool)
-	tool.Name_ = "grep_search"
+	tool.Name_ = constant.ToolNameGrepFile
 	tool.Desc_ = "Search for a string or regex pattern in files. Returns matching lines with file names and line numbers. Faster and more powerful than reading files manually. Use this to find where a function is defined or used."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -63,10 +65,15 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) *types
 		return types.NewToolResult().WithError(fmt.Errorf("invalid regex pattern: %w", err))
 	}
 
-	var results []map[string]any
 	matchCount := 0
 	const maxMatches = 100 // 限制最大匹配行数，防止输出过长
 	const maxFiles = 500   // 限制最大扫描文件数，防止耗时过长
+
+	var results []struct {
+		Path string `json:"path"`
+		Line int    `json:"line"`
+		Text string `json:"text"`
+	}
 
 	// 2. 遍历目录
 	err = filepath.WalkDir(searchPath, func(path string, d os.DirEntry, err error) error {
@@ -122,10 +129,14 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) *types
 				// 格式化输出：文件路径:行号:内容
 				// Windows 路径分隔符统一为 / 方便 LLM 阅读，或者保持原样
 				// resultLine := fmt.Sprintf("%s:%d:%s", path, lineNum, line)
-				result := map[string]any{
-					"file": path,
-					"line": lineNum,
-					"text": line,
+				result := struct {
+					Path string `json:"path"`
+					Line int    `json:"line"`
+					Text string `json:"text"`
+				}{
+					Path: path,
+					Line: lineNum,
+					Text: line,
 				}
 				results = append(results, result)
 				matchCount++
@@ -151,11 +162,12 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) *types
 	var raw strings.Builder
 
 	for _, result := range results {
-		raw.WriteString(fmt.Sprintf("%s:%d:%s\n", result["file"].(string), result["line"].(int), result["text"].(string)))
+		raw.WriteString(fmt.Sprintf("%s:%d:%s\n", result.Path, result.Line, result.Text))
 	}
 	if matchCount >= maxMatches {
 		raw.WriteString("\n... (Results truncated. Refine your pattern or path to see more.)")
 	}
 
-	return types.NewToolResult().WithRaw(fmt.Sprintf("Found %d matches:\n%s", len(results), raw.String())).WithStructured(map[string]any{"data": results})
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Found %d matches:\n%s", len(results), raw.String())).
+		WithStructured(actiontypes.NewFsGrepData(pattern, results))
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
@@ -12,7 +14,7 @@ import (
 type SleepTool struct{}
 
 func (t *SleepTool) Name() string {
-	return "sleep"
+	return constant.ToolNameSleep
 }
 
 func (t *SleepTool) Description() string {
@@ -56,7 +58,7 @@ func (t *SleepTool) Execute(ctx context.Context, params map[string]string) *type
 type GetTimeTool struct{}
 
 func (t *GetTimeTool) Name() string {
-	return "get_time"
+	return constant.ToolNameCurrentTime
 }
 
 func (t *GetTimeTool) Description() string {
@@ -72,7 +74,5 @@ func (t *GetTimeTool) Parameters() map[string]any {
 
 func (t *GetTimeTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	now := time.Now()
-	return types.NewToolResult().WithRaw(now.Format(time.DateTime)).WithStructured(map[string]any{
-		"time": now.Format(time.DateTime),
-	})
+	return types.NewToolResult().WithRaw(now.Format(time.DateTime)).WithStructured(actiontypes.NewTimeNowData(now.Format(time.DateTime)))
 }

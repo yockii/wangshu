@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -90,12 +91,22 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) *typ
 	cmd.Env = os.Environ()
 
 	output, err := cmd.CombinedOutput()
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
+	outputStr := string(output)
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return types.NewToolResult().WithError(fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout))
+		return types.NewToolResult().WithError(fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout)).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	outputStr := string(output)
 	if err != nil {
 		exitCode := 0
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -103,12 +114,14 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) *typ
 				exitCode = status.ExitStatus()
 			}
 		}
-		return types.NewToolResult().WithError(fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *NpmRunTool) findNpm() (string, error) {

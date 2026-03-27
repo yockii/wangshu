@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -20,7 +22,7 @@ type WebFetchTool struct {
 
 func NewWebFetchTool() *WebFetchTool {
 	tool := new(WebFetchTool)
-	tool.Name_ = "web_fetch"
+	tool.Name_ = constant.ToolNameWebFetch
 	tool.Desc_ = "Fetch and extract readable content from a URL. Handles HTML, plain text, and JSON responses."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -97,38 +99,33 @@ func (t *WebFetchTool) execute(ctx context.Context, params map[string]string) *t
 		return types.NewToolResult().WithError(fmt.Errorf("failed to read response: %w", err))
 	}
 
+	headers := make(map[string]string)
+	for k, v := range resp.Header {
+		headers[k] = strings.Join(v, ", ")
+	}
+
 	contentType := resp.Header.Get("Content-Type")
 
 	bodyStr := string(body)
 
 	if raw {
-		return types.NewToolResult().WithRaw(bodyStr).WithStructured(map[string]any{
-			"data": bodyStr,
-		})
+		return types.NewToolResult().WithRaw(bodyStr).WithStructured(actiontypes.NewWebFetchData(targetURL, bodyStr, int(resp.StatusCode), headers))
 	}
 
 	// Extract readable content based on content type
 	if strings.Contains(contentType, "text/html") {
 		text := t.extractReadableText(bodyStr)
-		return types.NewToolResult().WithRaw(text).WithStructured(map[string]any{
-			"data": text,
-		})
+		return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 	} else if strings.Contains(contentType, "application/json") {
 		text := t.formatJSON(bodyStr)
-		return types.NewToolResult().WithRaw(text).WithStructured(map[string]any{
-			"data": text,
-		})
+		return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 	} else if strings.Contains(contentType, "text/") {
-		return types.NewToolResult().WithRaw(bodyStr).WithStructured(map[string]any{
-			"data": bodyStr,
-		})
+		return types.NewToolResult().WithRaw(bodyStr).WithStructured(actiontypes.NewWebFetchData(targetURL, bodyStr, int(resp.StatusCode), headers))
 	}
 
 	// Default: try to extract readable text
 	text := t.extractReadableText(bodyStr)
-	return types.NewToolResult().WithRaw(text).WithStructured(map[string]any{
-		"data": text,
-	})
+	return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 }
 
 // extractReadableText extracts main content from HTML

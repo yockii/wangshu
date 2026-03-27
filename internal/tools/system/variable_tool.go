@@ -82,7 +82,7 @@ func (t *VariableTool) execute(ctx context.Context, params map[string]string) *t
 		output += "\n\nErrors:\n" + strings.Join(errors, "\n")
 	}
 
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{"data": result, "errors": errors})
+	return types.NewToolResult().WithRaw(output)
 }
 
 func (t *VariableTool) getVariable(name, agentName string) (string, error) {

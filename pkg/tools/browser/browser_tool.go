@@ -15,6 +15,8 @@ import (
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/yockii/wangshu/internal/config"
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 	"github.com/yockii/wangshu/pkg/utils"
@@ -32,7 +34,7 @@ type BrowserTool struct {
 
 func NewBrowserTool() *BrowserTool {
 	tool := new(BrowserTool)
-	tool.Name_ = "browser"
+	tool.Name_ = constant.ToolNameBrowser
 	tool.Desc_ = `浏览器自动化工具，使用 Playwright 控制 Chromium 浏览器。
 
 支持的操作：
@@ -375,6 +377,41 @@ func (t *BrowserTool) init() error {
 	return nil
 }
 
+func element2ActionElement(element ElementInfo) actiontypes.ElementInfo {
+	return actiontypes.ElementInfo{
+		Tag:      element.Tag,
+		Visible:  element.Visible,
+		Enabled:  element.Enabled,
+		Editable: element.Editable,
+
+		IDSelector:    element.IDSelector,
+		NameSelector:  element.NameSelector,
+		ClassSelector: element.ClassSelector,
+		XPathSelector: element.XPathSelector,
+		DataSelectors: element.DataSelectors,
+
+		Type:        element.Type,
+		Name:        element.Name,
+		Placeholder: element.Placeholder,
+		Value:       element.Value,
+		Text:        element.Text,
+		Href:        element.Href,
+		ARIALabel:   element.ARIALabel,
+
+		ReadOnly: element.ReadOnly,
+		Required: element.Required,
+		Checked:  element.Checked,
+	}
+}
+
+func elements2ActionElements(elements []ElementInfo) []actiontypes.ElementInfo {
+	actionElements := make([]actiontypes.ElementInfo, 0, len(elements))
+	for _, element := range elements {
+		actionElements = append(actionElements, element2ActionElement(element))
+	}
+	return actionElements
+}
+
 func (t *BrowserTool) open(params map[string]string) *types.ToolResult {
 	url := params["url"]
 	if url == "" {
@@ -387,9 +424,8 @@ func (t *BrowserTool) open(params map[string]string) *types.ToolResult {
 
 	elements := t.collectElements()
 	result := "Opened: " + url
-	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
-		"elements": elements,
-	})
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
+		actiontypes.NewBrowserOpenData(url, elements2ActionElements(elements)))
 }
 
 func (t *BrowserTool) screenshot(params map[string]string) *types.ToolResult {
@@ -405,9 +441,8 @@ func (t *BrowserTool) screenshot(params map[string]string) *types.ToolResult {
 	}
 
 	result := "Screenshot saved: " + path
-	return types.NewToolResult().WithRaw(result).WithStructured(map[string]any{
-		"screenshotFile": path,
-	})
+	return types.NewToolResult().WithRaw(result).WithStructured(
+		actiontypes.NewBrowserScreenshotData(path))
 }
 
 func (t *BrowserTool) close() *types.ToolResult {
@@ -459,9 +494,8 @@ func (t *BrowserTool) click(params map[string]string) *types.ToolResult {
 
 	elements := t.collectElements()
 	// return t.appendElementInfo(result)
-	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
-		"elements": elements,
-	})
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
+		actiontypes.NewBrowserClickData(elements2ActionElements(elements)))
 }
 
 func (t *BrowserTool) fill(params map[string]string) *types.ToolResult {
@@ -478,9 +512,8 @@ func (t *BrowserTool) fill(params map[string]string) *types.ToolResult {
 	elements := t.collectElements()
 
 	result := fmt.Sprintf("Filled: %s with '%s'", selector, text)
-	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{
-		"elements": elements,
-	})
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
+		actiontypes.NewBrowserFillData(elements2ActionElements(elements)))
 }
 
 func (t *BrowserTool) getText(params map[string]string) *types.ToolResult {
@@ -492,9 +525,9 @@ func (t *BrowserTool) getText(params map[string]string) *types.ToolResult {
 	if err != nil {
 		return types.NewToolResult().WithError(err)
 	}
-	return types.NewToolResult().WithRaw(text).WithStructured(map[string]any{
-		"data": text,
-	})
+	elements := t.collectElements()
+	return types.NewToolResult().WithRaw(text).WithStructured(
+		actiontypes.NewBrowserTextData(elements2ActionElements(elements)))
 }
 
 func (t *BrowserTool) getHTML(params map[string]string) *types.ToolResult {
@@ -600,7 +633,6 @@ func (t *BrowserTool) getHTML(params map[string]string) *types.ToolResult {
 	}
 
 	tr := types.NewToolResult()
-	trStruct := map[string]any{}
 	// 如果是HTML格式，添加元素信息摘要（只在第一次获取时）
 	if format != "text" && start == 0 {
 		result.WriteString("\n\n--- 元素摘要 ---\n")
@@ -613,12 +645,11 @@ func (t *BrowserTool) getHTML(params map[string]string) *types.ToolResult {
 			result.WriteString(string(elStr))
 			result.WriteString("\n")
 		}
-		trStruct["elements"] = elements
 	}
 	c := result.String()
-	trStruct["data"] = c
 	tr.WithRaw(c)
-	tr.WithStructured(trStruct)
+	nextStart := end
+	tr.WithStructured(actiontypes.NewBrowserHTMLData(format, start, maxLength, content, nextStart))
 
 	return tr
 }
@@ -636,11 +667,15 @@ func (t *BrowserTool) wait(params map[string]string) *types.ToolResult {
 	result := "Waited for: " + selector
 
 	elements := t.collectElements()
-	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(map[string]any{"elements": elements})
+	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
+		actiontypes.NewBrowserClickData(elements2ActionElements(elements)))
 }
 
 func (t *BrowserTool) listTabs() *types.ToolResult {
-	var tabs []map[string]string
+	var tabs []struct {
+		Title string `json:"title"`
+		URL   string `json:"url"`
+	}
 	var result strings.Builder
 	result.WriteString("当前打开的标签页:\n\n")
 
@@ -652,7 +687,10 @@ func (t *BrowserTool) listTabs() *types.ToolResult {
 			if err != nil {
 				continue
 			}
-			tabs = append(tabs, map[string]string{"title": title, "url": page.URL()})
+			tabs = append(tabs, struct {
+				Title string `json:"title"`
+				URL   string `json:"url"`
+			}{Title: title, URL: page.URL()})
 			result.WriteString(fmt.Sprintf("- Title: %s, URL: %s\n", title, page.URL()))
 		}
 	} else if t.browser != nil {
@@ -664,12 +702,16 @@ func (t *BrowserTool) listTabs() *types.ToolResult {
 				if err != nil {
 					continue
 				}
-				tabs = append(tabs, map[string]string{"title": title, "url": page.URL()})
+				tabs = append(tabs, struct {
+					Title string `json:"title"`
+					URL   string `json:"url"`
+				}{Title: title, URL: page.URL()})
 				result.WriteString(fmt.Sprintf("- Title: %s, URL: %s\n", title, page.URL()))
 			}
 		}
 	}
-	return types.NewToolResult().WithRaw(result.String()).WithStructured(map[string]any{"data": tabs})
+	return types.NewToolResult().WithRaw(result.String()).WithStructured(
+		actiontypes.NewBrowserListTabsData(tabs))
 }
 
 // ElementInfo 包含元素的所有选择器和属性信息
@@ -956,7 +998,6 @@ func (t *BrowserTool) runTask(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(fmt.Errorf("序列化结果失败: %w", err))
 	}
 
-	return types.NewToolResult().WithRaw(string(resultJSON)).WithStructured(map[string]any{
-		"data": result,
-	})
+	return types.NewToolResult().WithRaw(string(resultJSON)).WithStructured(
+		actiontypes.NewBrowserRunTaskData(result.Data))
 }

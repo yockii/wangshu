@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -17,7 +19,7 @@ type ListDirectoryTool struct {
 
 func NewListDirectoryTool() *ListDirectoryTool {
 	tool := new(ListDirectoryTool)
-	tool.Name_ = "list_directory"
+	tool.Name_ = constant.ToolNameFSList
 	tool.Desc_ = "List files and directories in a directory. Returns a list of file names."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -50,20 +52,33 @@ func (t *ListDirectoryTool) Execute(ctx context.Context, params map[string]strin
 		return types.NewToolResult().WithError(fmt.Errorf("failed to read directory: %w", err))
 	}
 
-	result := make([]map[string]string, 0)
+	var result []struct {
+		Name  string `json:"name"`
+		IsDir bool   `json:"is_dir"`
+		Size  int64  `json:"size"`
+	}
 
 	for _, entry := range entries {
 		info, _ := entry.Info()
 		if info.IsDir() {
-			result = append(result, map[string]string{
-				"name": entry.Name(),
-				"type": "DIR",
+			result = append(result, struct {
+				Name  string `json:"name"`
+				IsDir bool   `json:"is_dir"`
+				Size  int64  `json:"size"`
+			}{
+				Name:  entry.Name(),
+				IsDir: true,
+				Size:  0,
 			})
 		} else {
-			result = append(result, map[string]string{
-				"name": entry.Name(),
-				"type": "FILE",
-				"size": fmt.Sprintf("%d", info.Size()),
+			result = append(result, struct {
+				Name  string `json:"name"`
+				IsDir bool   `json:"is_dir"`
+				Size  int64  `json:"size"`
+			}{
+				Name:  entry.Name(),
+				IsDir: false,
+				Size:  info.Size(),
 			})
 		}
 	}
@@ -71,12 +86,12 @@ func (t *ListDirectoryTool) Execute(ctx context.Context, params map[string]strin
 	var raw strings.Builder
 	fmt.Fprintf(&raw, "Contents of %s:\n", path)
 	for _, item := range result {
-		fmt.Fprintf(&raw, "[%s] %s", item["type"], item["name"])
-		if item["type"] == "FILE" {
-			fmt.Fprintf(&raw, " (%s bytes)", item["size"])
+		fmt.Fprintf(&raw, "[%s] %s", item.Name, item.Name)
+		if item.IsDir {
+			fmt.Fprintf(&raw, " (DIR)")
 		}
 		fmt.Fprintf(&raw, "\n")
 	}
 
-	return types.NewToolResult().WithRaw(raw.String()).WithStructured(map[string]any{"data": result})
+	return types.NewToolResult().WithRaw(raw.String()).WithStructured(actiontypes.NewFsListData(path, result))
 }

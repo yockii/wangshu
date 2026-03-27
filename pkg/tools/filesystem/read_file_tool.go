@@ -10,6 +10,8 @@ import (
 	"github.com/ledongthuc/pdf"
 	"github.com/nguyenthenguyen/docx"
 	"github.com/xuri/excelize/v2"
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -20,7 +22,7 @@ type ReadFileTool struct {
 
 func NewReadFileTool() *ReadFileTool {
 	tool := new(ReadFileTool)
-	tool.Name_ = "read_file"
+	tool.Name_ = constant.ToolNameFSRead
 	tool.Desc_ = "Read the content of a file. Supports plain text, PDF, DOCX, and XLSX formats. Returns file content as string."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -65,9 +67,7 @@ func (t *ReadFileTool) Execute(ctx context.Context, params map[string]string) *t
 			return types.NewToolResult().WithError(fmt.Errorf("failed to read file: %w", err))
 		}
 		r := string(content)
-		return types.NewToolResult().WithRaw(r).WithStructured(map[string]any{
-			"content": r,
-		})
+		return types.NewToolResult().WithRaw(r).WithStructured(actiontypes.NewFsReadData(path, r, "text"))
 	}
 }
 
@@ -103,9 +103,7 @@ func (t *ReadFileTool) readPDF(path string) *types.ToolResult {
 	if result == "" {
 		return types.NewToolResult().WithError(fmt.Errorf("no text content found in PDF"))
 	}
-	return types.NewToolResult().WithRaw(result).WithStructured(map[string]any{
-		"content": result,
-	})
+	return types.NewToolResult().WithRaw(result).WithStructured(actiontypes.NewFsReadData(path, result, "pdf"))
 }
 
 func (t *ReadFileTool) readDOCX(path string) *types.ToolResult {
@@ -121,9 +119,7 @@ func (t *ReadFileTool) readDOCX(path string) *types.ToolResult {
 	if content == "" {
 		return types.NewToolResult().WithError(fmt.Errorf("no text content found in DOCX"))
 	}
-	return types.NewToolResult().WithRaw(content).WithStructured(map[string]any{
-		"content": content,
-	})
+	return types.NewToolResult().WithRaw(content).WithStructured(actiontypes.NewFsReadData(path, content, "docx"))
 }
 
 func (t *ReadFileTool) readXLSX(path string) *types.ToolResult {
@@ -182,5 +178,5 @@ func (t *ReadFileTool) readXLSX(path string) *types.ToolResult {
 	if strings.TrimSpace(result) == "" {
 		return types.NewToolResult().WithError(fmt.Errorf("no content found in XLSX"))
 	}
-	return types.NewToolResult().WithRaw(result).WithStructured(sheetStruct)
+	return types.NewToolResult().WithRaw(result).WithStructured(actiontypes.NewFsReadData(path, result, "xlsx"))
 }

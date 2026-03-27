@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewRenameFileTool(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 
 	if tool == nil {
 		t.Fatal("NewRenameFileTool should not return nil")
@@ -67,7 +67,7 @@ func TestNewRenameFileTool(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_RenameFile(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	oldPath := filepath.Join(tmpDir, "old_name.txt")
@@ -109,7 +109,7 @@ func TestRenameFileTool_Execute_RenameFile(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_RenameDirectory(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	oldPath := filepath.Join(tmpDir, "old_dir")
@@ -155,7 +155,7 @@ func TestRenameFileTool_Execute_RenameDirectory(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_MoveToDifferentDirectory(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	// 创建源目录
@@ -203,7 +203,7 @@ func TestRenameFileTool_Execute_MoveToDifferentDirectory(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_EmptyOldPath(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	result := tool.Execute(context.Background(), map[string]string{
@@ -217,7 +217,7 @@ func TestRenameFileTool_Execute_EmptyOldPath(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_EmptyNewPath(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	oldPath := filepath.Join(tmpDir, "old.txt")
@@ -234,7 +234,7 @@ func TestRenameFileTool_Execute_EmptyNewPath(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_BothPathsEmpty(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 
 	result := tool.Execute(context.Background(), map[string]string{
 		"old_path": "",
@@ -254,7 +254,7 @@ func TestRenameFileTool_Execute_BothPathsEmpty(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_SourceNotExist(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	result := tool.Execute(context.Background(), map[string]string{
@@ -268,7 +268,7 @@ func TestRenameFileTool_Execute_SourceNotExist(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_TargetDirectoryNotExist(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	oldPath := filepath.Join(tmpDir, "file.txt")
@@ -287,7 +287,7 @@ func TestRenameFileTool_Execute_TargetDirectoryNotExist(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_OverwriteExisting(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	oldPath := filepath.Join(tmpDir, "old.txt")
@@ -324,7 +324,7 @@ func TestRenameFileTool_Execute_OverwriteExisting(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_TildeExpansion(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -372,7 +372,7 @@ func TestRenameFileTool_Execute_TildeExpansion(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_RelativePath(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 
 	// 切换到临时目录
 	tmpDir := t.TempDir()
@@ -421,7 +421,7 @@ func TestRenameFileTool_Execute_RelativePath(t *testing.T) {
 }
 
 func TestRenameFileTool_Execute_RenameToSameName(t *testing.T) {
-	tool := NewRenameFileTool()
+	tool := NewMoveFileTool()
 	tmpDir := t.TempDir()
 
 	filePath := filepath.Join(tmpDir, "file.txt")

@@ -143,9 +143,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) *types.ToolResult {
 
 	output := fmt.Sprintf("Found %d memories matching '%s':\n\n", len(results), query)
 	output += strings.Join(results, "\n")
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{
-		"data": results,
-	})
+	return types.NewToolResult().WithRaw(output)
 }
 
 func (t *MemoryTool) getMemory(params map[string]string) *types.ToolResult {
@@ -175,9 +173,7 @@ func (t *MemoryTool) getMemory(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(fmt.Errorf("failed to read memory file: %w", err))
 	}
 
-	return types.NewToolResult().WithRaw(string(content)).WithStructured(map[string]any{
-		"data": content,
-	})
+	return types.NewToolResult().WithRaw(string(content))
 }
 
 func (t *MemoryTool) listMemories(params map[string]string) *types.ToolResult {
@@ -255,9 +251,7 @@ func (t *MemoryTool) listMemories(params map[string]string) *types.ToolResult {
 
 	output := fmt.Sprintf("Memories from the past %d days (%d total):\n\n", daysBack, len(memories))
 	output += strings.Join(memories, "\n")
-	return types.NewToolResult().WithRaw(output).WithStructured(map[string]any{
-		"data": memories,
-	})
+	return types.NewToolResult().WithRaw(output)
 }
 
 // containsQuery checks if the content contains the search query

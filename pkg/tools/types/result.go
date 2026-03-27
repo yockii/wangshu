@@ -1,11 +1,13 @@
 package types
 
+import "github.com/yockii/wangshu/pkg/action/types"
+
 type ToolResult struct {
-	Structured map[string]any `json:"structured"`
-	Raw        string         `json:"raw"`
-	Silent     bool           `json:"silent"`
-	Async      bool           `json:"async"`
-	Err        error          `json:"-"`
+	Structured *types.ActionOutput `json:"structured"`
+	Raw        string              `json:"raw"`
+	Silent     bool                `json:"silent"`
+	Async      bool                `json:"async"`
+	Err        error               `json:"-"`
 }
 
 func NewToolResult() *ToolResult {
@@ -17,7 +19,7 @@ func (tr *ToolResult) WithRaw(raw string) *ToolResult {
 	return tr
 }
 
-func (tr *ToolResult) WithStructured(structured map[string]any) *ToolResult {
+func (tr *ToolResult) WithStructured(structured *types.ActionOutput) *ToolResult {
 	tr.Structured = structured
 	return tr
 }

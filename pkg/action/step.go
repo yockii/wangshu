@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
+
+	"github.com/yockii/wangshu/pkg/action/types"
 )
 
 type Step struct {
@@ -44,7 +46,7 @@ func (s *Step) Do() error {
 			maxLoop = 10
 		}
 
-		var results []Output
+		var results []*types.ActionOutput
 		for i, item := range list {
 			if i >= maxLoop {
 				break
@@ -57,10 +59,7 @@ func (s *Step) Do() error {
 			results = append(results, out)
 		}
 
-		finalOutput := Output{
-			Structured: results,
-			Raw:        "", // 可根据需要拼接 raw
-		}
+		finalOutput := types.NewActionOutput("success", "", results, nil)
 		s.ctx.SetStepOutput(s.ID, finalOutput)
 		if s.AssignTo != "" {
 			s.ctx.SetVariable(s.AssignTo, finalOutput)
@@ -83,10 +82,10 @@ func (s *Step) Do() error {
 	return nil
 }
 
-func (s *Step) callTool(item any) (Output, error) {
+func (s *Step) callTool(item any) (*types.ActionOutput, error) {
 	tool, ok := toolMapper[s.Use]
 	if !ok {
-		return Output{}, errors.New("use is not a valid tool")
+		return nil, errors.New("use is not a valid tool")
 	}
 	// 模板替换
 	stepWith := make(map[string]any, len(s.With))
@@ -98,10 +97,10 @@ func (s *Step) callTool(item any) (Output, error) {
 	} else {
 		stepWith = s.substituteItem(stepWith, nil)
 	}
-	var output Output
+	var output *types.ActionOutput
 	var err error
 	for attempt := 0; attempt <= s.Retry; attempt++ {
-		output, err = tool(stepWith)
+		output, err = tool(s.ctx, stepWith)
 		if err == nil {
 			break
 		}

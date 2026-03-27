@@ -64,9 +64,7 @@ func (t *VersionTool) execute(ctx context.Context, params map[string]string) *ty
 }
 
 func (t *VersionTool) getCurrentVersion() *types.ToolResult {
-	return types.NewToolResult().WithRaw(fmt.Sprintf("Current version: %s", constant.Version)).WithStructured(map[string]any{
-		"currentVersion": constant.Version,
-	})
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Current version: %s", constant.Version))
 }
 
 func (t *VersionTool) getLatestVersion(ctx context.Context) *types.ToolResult {
@@ -75,9 +73,7 @@ func (t *VersionTool) getLatestVersion(ctx context.Context) *types.ToolResult {
 		return types.NewToolResult().WithError(err)
 	}
 
-	return types.NewToolResult().WithRaw(fmt.Sprintf("Latest version: %s", latest.Version())).WithStructured(map[string]any{
-		"latestVersion": latest.Version(),
-	})
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Latest version: %s", latest.Version()))
 }
 
 func (t *VersionTool) checkVersion(ctx context.Context) *types.ToolResult {
@@ -94,17 +90,9 @@ func (t *VersionTool) checkVersion(ctx context.Context) *types.ToolResult {
 	latestVersion := latest.Version()
 
 	if latest.LessOrEqual(current) {
-		return types.NewToolResult().WithRaw(fmt.Sprintf("You are running the latest version: %s", current)).WithStructured(map[string]any{
-			"currentVersion":  current,
-			"latestVersion":   latestVersion,
-			"updateAvailable": false,
-		})
+		return types.NewToolResult().WithRaw(fmt.Sprintf("You are running the latest version: %s", current))
 	}
-	return types.NewToolResult().WithRaw(fmt.Sprintf("Update available: %s -> %s", current, latestVersion)).WithStructured(map[string]any{
-		"currentVersion":  current,
-		"latestVersion":   latestVersion,
-		"updateAvailable": true,
-	})
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Update available: %s -> %s", current, latestVersion))
 }
 
 func (t *VersionTool) update(ctx context.Context) *types.ToolResult {
@@ -119,11 +107,7 @@ func (t *VersionTool) update(ctx context.Context) *types.ToolResult {
 	}
 
 	if latest.LessOrEqual(current) {
-		return types.NewToolResult().WithRaw(fmt.Sprintf("Already running the latest version: %s", current)).WithStructured(map[string]any{
-			"currentVersion": current,
-			"latestVersion":  latest.Version(),
-			"updated":        false,
-		})
+		return types.NewToolResult().WithRaw(fmt.Sprintf("Already running the latest version: %s", current))
 	}
 
 	updatedRelease, err := updater.UpdateSelf(ctx, current, selfupdate.NewRepositorySlug(repoOwner, repoName))
@@ -132,12 +116,7 @@ func (t *VersionTool) update(ctx context.Context) *types.ToolResult {
 	}
 
 	return types.NewToolResult().
-		WithRaw(fmt.Sprintf("Successfully updated to version %s. Use 'restart' action to restart the application and load the new version.", updatedRelease.Version())).
-		WithStructured(map[string]any{
-			"currentVersion": current,
-			"latestVersion":  updatedRelease.Version(),
-			"updated":        true,
-		})
+		WithRaw(fmt.Sprintf("Successfully updated to version %s. Use 'restart' action to restart the application and load the new version.", updatedRelease.Version()))
 }
 
 func (t *VersionTool) restart(params map[string]string) *types.ToolResult {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -83,21 +84,24 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) *typ
 		return types.NewToolResult().WithError(fmt.Errorf("git command timed out after %v", timeout))
 	}
 
+	exitCode := 0
 	outputStr := string(output)
 	if err != nil {
-		exitCode := 0
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
 				exitCode = status.ExitStatus()
 			}
 		}
-		return types.NewToolResult().WithError(fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr).
+			WithStructured(
+				actiontypes.NewRunData(outputStr, exitCode),
+			)
 
 	}
 
-	return types.NewToolResult().WithRaw(outputStr).WithStructured(map[string]any{
-		"output": outputStr,
-	})
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *GitRunTool) findGit() (string, error) {

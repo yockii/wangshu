@@ -99,7 +99,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(filesystem.NewReadFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewWriteFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewListDirectoryTool())
-	tools.GetDefaultToolRegistry().Register(filesystem.NewRenameFileTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewMoveFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewCopyFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewEditFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewFindFileTool())

@@ -104,6 +104,605 @@ knowledge.store    # 知识存储
 
 ---
 
+## Capability 响应数据规范
+
+每个 Capability 执行后返回统一的 `ActionOutput` 结构：
+
+```json
+{
+  "status": "success | failed",
+  "message": "执行结果描述",
+  "data": { ... },
+  "trace": { ... }
+}
+```
+
+其中 `data` 字段根据不同 Capability 有不同的结构，详见下文。
+
+---
+
+### time.now
+
+获取当前时间。
+
+**输入参数**：无
+
+**输出数据**：
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| timestamp | string | ISO 8601 格式的时间戳 |
+
+---
+
+### fs.read
+
+读取文件内容。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| path | string | 是 | 文件路径（支持 `~` 扩展） |
+
+**输出数据**：
+
+```json
+{
+  "file": "/path/to/file.txt",
+  "content": "文件内容...",
+  "type": "text"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| file | string | 文件路径 |
+| content | string | 文件内容 |
+| type | string | 文件类型（text, pdf, docx, xlsx 等） |
+
+---
+
+### fs.write
+
+写入文件。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| path | string | 是 | 文件路径（支持 `~` 扩展） |
+| content | string | 是 | 要写入的内容 |
+| append | boolean | 否 | 是否追加模式，默认 false |
+
+**输出数据**：
+
+```json
+{
+  "file": "/path/to/file.txt",
+  "content_written": "写入的内容...",
+  "created": true
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| file | string | 文件路径 |
+| content_written | string | 已写入的内容 |
+| created | bool | 是否新建文件 |
+
+---
+
+### fs.list
+
+列出目录内容。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| path | string | 是 | 目录路径（支持 `~` 扩展） |
+
+**输出数据**：
+
+```json
+{
+  "path": "/path/to/dir",
+  "items": [
+    { "name": "file1.txt", "is_dir": false },
+    { "name": "subdir", "is_dir": true }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| path | string | 目录路径 |
+| items | array | 目录项列表 |
+| items[].name | string | 文件/目录名 |
+| items[].is_dir | bool | 是否为目录 |
+
+---
+
+### fs.copy
+
+复制文件。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| src | string | 是 | 源文件路径 |
+| dest | string | 是 | 目标文件路径 |
+| overwrite | boolean | 否 | 是否覆盖已存在文件，默认 false |
+
+**输出数据**：
+
+```json
+{
+  "src": "/path/to/source.txt",
+  "dest": "/path/to/dest.txt",
+  "success": true
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| src | string | 源文件路径 |
+| dest | string | 目标文件路径 |
+| success | bool | 是否成功 |
+
+---
+
+### fs.move
+
+移动/重命名文件。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| old_path | string | 是 | 原文件路径 |
+| new_path | string | 是 | 新文件路径 |
+
+**输出数据**：
+
+```json
+{
+  "old_path": "/path/to/old.txt",
+  "new_path": "/path/to/new.txt",
+  "success": true
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| old_path | string | 原路径 |
+| new_path | string | 新路径 |
+| success | bool | 是否成功 |
+
+---
+
+### fs.search (find_files)
+
+搜索文件。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| pattern | string | 是 | Glob 匹配模式（如 `*.go`, `**/main.go`） |
+
+**输出数据**：
+
+```json
+{
+  "pattern": "*.go",
+  "matches": [
+    "/path/to/main.go",
+    "/path/to/utils.go"
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| pattern | string | 搜索模式 |
+| matches | array | 匹配的文件路径列表 |
+
+---
+
+### text.search
+
+文件内容搜索。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| pattern | string | 是 | 正则表达式模式 |
+| path | string | 否 | 搜索目录，默认当前目录 |
+| include | string | 否 | 文件过滤模式（如 `*.go`） |
+
+**输出数据**：
+
+```json
+{
+  "pattern": "func main",
+  "matches": [
+    { "path": "/path/to/main.go", "line": 10, "text": "func main() {" },
+    { "path": "/path/to/other.go", "line": 5, "text": "func mainHelper() {" }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| pattern | string | 搜索模式 |
+| matches | array | 匹配结果列表 |
+| matches[].path | string | 文件路径 |
+| matches[].line | int | 行号 |
+| matches[].text | string | 匹配的文本行 |
+
+---
+
+### web.search
+
+网络搜索。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| query | string | 是 | 搜索关键词 |
+| num_results | int | 否 | 返回结果数量，默认 10 |
+| engine | string | 否 | 搜索引擎：`baidu`, `duckduckgo`, `auto` |
+
+**输出数据**：
+
+```json
+{
+  "query": "golang tutorial",
+  "results": [
+    {
+      "title": "Go 语言教程",
+      "url": "https://example.com/go-tutorial",
+      "snippet": "Go 是一门开源编程语言..."
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| query | string | 搜索关键词 |
+| results | array | 搜索结果列表 |
+| results[].title | string | 页面标题 |
+| results[].url | string | 页面 URL |
+| results[].snippet | string | 内容摘要 |
+
+---
+
+### web.fetch
+
+获取网页内容。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| url | string | 是 | 目标 URL |
+| timeout | int | 否 | 超时时间（秒），默认 10 |
+| raw | boolean | 否 | 是否返回原始内容，默认 false |
+
+**输出数据**：
+
+```json
+{
+  "url": "https://example.com",
+  "content": "<html>...",
+  "status_code": 200,
+  "headers": {
+    "content-type": "text/html; charset=utf-8"
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| url | string | 请求的 URL |
+| content | string | 响应内容 |
+| status_code | int | HTTP 状态码 |
+| headers | object | 响应头 |
+
+---
+
+### browser.open
+
+打开浏览器页面。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| url | string | 是 | 要打开的 URL |
+| timeout | int | 否 | 超时时间（毫秒） |
+
+**输出数据**：
+
+```json
+{
+  "url": "https://example.com",
+  "elements": [
+    {
+      "tag": "input",
+      "visible": true,
+      "enabled": true,
+      "editable": true,
+      "id_selector": "username",
+      "type": "text",
+      "placeholder": "请输入用户名"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| url | string | 页面 URL |
+| elements | array | 页面元素列表（见 ElementInfo 结构） |
+
+---
+
+### browser.click
+
+点击元素。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| selector | string | 是 | CSS 选择器 |
+| timeout | int | 否 | 超时时间（毫秒） |
+
+**输出数据**：
+
+```json
+{
+  "elements": [
+    {
+      "tag": "button",
+      "visible": true,
+      "enabled": true,
+      "text": "提交",
+      "xpath_selector": "//button[@type='submit']"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| elements | array | 操作后的元素列表（见 ElementInfo 结构） |
+
+---
+
+### browser.fill
+
+填充表单。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| selector | string | 是 | CSS 选择器 |
+| text | string | 是 | 要填充的文本 |
+| timeout | int | 否 | 超时时间（毫秒） |
+
+**输出数据**：
+
+```json
+{
+  "elements": [
+    {
+      "tag": "input",
+      "visible": true,
+      "enabled": true,
+      "value": "填充的内容"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| elements | array | 操作后的元素列表（见 ElementInfo 结构） |
+
+---
+
+### browser.html
+
+获取页面 HTML。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| format | string | 否 | 格式：`full`, `body`, `inner`, `text`，默认 `body` |
+| start | int | 否 | 起始位置（字符偏移），用于分页，默认 0 |
+| max_length | int | 否 | 最大获取长度，默认 50000 |
+
+**输出数据**：
+
+```json
+{
+  "format": "html",
+  "start": 0,
+  "max_length": 10000,
+  "content": "<html><body>...",
+  "next_start": 10000
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| format | string | 内容格式 |
+| start | int | 起始位置 |
+| max_length | int | 最大长度 |
+| content | string | HTML 内容 |
+| next_start | int | 下一页起始位置（用于分页） |
+
+---
+
+### browser.screenshot
+
+截图。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| screenshot_path | string | 是 | 截图保存路径 |
+
+**输出数据**：
+
+```json
+{
+  "path": "/path/to/screenshot.png"
+}
+```
+
+---
+
+### browser.wait
+
+等待元素。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| selector | string | 是 | CSS 选择器 |
+| timeout | int | 否 | 超时时间（毫秒） |
+
+**输出数据**：
+
+```json
+{
+  "elements": [...]
+}
+```
+
+---
+
+### browser.close
+
+关闭浏览器。
+
+**输入参数**：
+
+无
+
+**输出数据**：
+
+```json
+{
+  "status": "closed"
+}
+```
+
+---
+
+### message.send
+
+发送消息。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| content | string | 是 | 消息内容 |
+| fileType | string | 否 | 文件类型：`image`, `file` |
+| filePath | string | 否 | 文件路径（当 fileType 有值时必填） |
+
+**输出数据**：
+
+```json
+{
+  "channel": "feishu",
+  "message_id": "msg_123456",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| channel | string | 渠道名称 |
+| message_id | string | 消息 ID |
+| timestamp | string | 发送时间戳 |
+
+---
+
+### ElementInfo 结构
+
+浏览器相关 Capability 返回的元素信息结构：
+
+```json
+{
+  "tag": "input",
+  "visible": true,
+  "enabled": true,
+  "editable": true,
+  "id_selector": "username",
+  "name_selector": "user",
+  "class_selector": "form-input",
+  "xpath_selector": "//input[@id='username']",
+  "data_selectors": {
+    "testid": "login-username"
+  },
+  "type": "text",
+  "name": "username",
+  "placeholder": "请输入用户名",
+  "value": "",
+  "text": "",
+  "href": "",
+  "aria_label": "用户名输入框",
+  "readonly": false,
+  "required": true,
+  "checked": false
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| tag | string | HTML 标签名 |
+| visible | bool | 是否可见 |
+| enabled | bool | 是否可用 |
+| editable | bool | 是否可编辑 |
+| id_selector | string | ID 选择器 |
+| name_selector | string | name 选择器 |
+| class_selector | string | class 选择器 |
+| xpath_selector | string | XPath 选择器 |
+| data_selectors | object | data-* 属性选择器 |
+| type | string | input 类型 |
+| name | string | 元素 name 属性 |
+| placeholder | string | 占位符文本 |
+| value | string | 当前值 |
+| text | string | 元素文本内容 |
+| href | string | 链接地址（a 标签） |
+| aria_label | string | ARIA 标签 |
+| readonly | bool | 是否只读 |
+| required | bool | 是否必填 |
+| checked | bool | 是否选中（checkbox/radio） |
+
+---
+
 ## Action DSL V1 规范
 
 Action 使用 Markdown 格式定义，包含两个区域：

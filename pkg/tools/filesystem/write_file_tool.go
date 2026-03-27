@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
 )
@@ -17,7 +18,7 @@ type WriteFileTool struct {
 
 func NewWriteFileTool() *WriteFileTool {
 	tool := new(WriteFileTool)
-	tool.Name_ = "write_file"
+	tool.Name_ = constant.ToolNameFSWrite
 	tool.Desc_ = "Write content to a file. Creates file if it doesn't exist, overwrites if it does."
 	tool.Params_ = map[string]any{
 		"type": "object",

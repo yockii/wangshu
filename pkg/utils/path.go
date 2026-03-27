@@ -18,5 +18,6 @@ func ExpandPath(path string) string {
 		}
 		return home
 	}
+	path, _ = filepath.Abs(path)
 	return path
 }

@@ -1,5 +1,13 @@
+.vscode
 config.json
 docs
 /workspace
 *.exe
 bin
+.claude/
+node_modules
+.task
+bin
+frontend/dist
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe

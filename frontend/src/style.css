@@ -119,6 +119,10 @@
   }
 }
 
+html,body,#app {
+  @apply w-screen h-screen;
+}
+
 .wails-draggable {
   --wails-draggable: drag;
 }

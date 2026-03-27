@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full bg-background">
+  <div class="w-full h-full bg-background flex flex-col">
     <div class="wails-draggable flex items-center justify-between h-8 border-b border-border/50 pl-2">
       <div class="font-bold">望舒</div>
       <div class="wails-nodraggable h-full flex items-center">
@@ -8,8 +8,8 @@
         <div class="w-12 h-full bg-transparent text-foreground cursor-default flex items-center justify-center hover:bg-red-500" @click="Window.Close()"><X :size="18" /></div>
       </div>
     </div>
-    <div>
-      <router-view />
+    <div class="flex-1 overflow-auto">
+        <router-view />
     </div>
   </div>
 </template>

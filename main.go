@@ -60,17 +60,22 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "望舒 - 个人AI助理",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
+		Windows: application.WindowsWindow{
+			DisableFramelessWindowDecorations: true,
+		},
+		Frameless:        true,
 		BackgroundColour: application.NewRGBA(0, 0, 0, 0),
 		BackgroundType:   application.BackgroundTypeTranslucent,
 		URL:              "/",
 	})
+	win.SnapAssist()
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.

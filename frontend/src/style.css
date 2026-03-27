@@ -118,3 +118,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+.wails-draggable {
+  --wails-draggable: drag;
+}
+
+.wails-nodraggable {
+  --wails-draggable: no-drag;
+}

@@ -104,6 +104,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(filesystem.NewEditFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewFindFileTool())
 	tools.GetDefaultToolRegistry().Register(filesystem.NewGrepTool())
+	tools.GetDefaultToolRegistry().Register(filesystem.NewDeleteFileTool())
 
 	tools.GetDefaultToolRegistry().Register(network.NewWebSearchTool())
 	tools.GetDefaultToolRegistry().Register(network.NewWebFetchTool())

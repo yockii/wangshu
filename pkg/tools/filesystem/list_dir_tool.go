@@ -7,7 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type ListDirectoryTool struct {
@@ -16,7 +19,7 @@ type ListDirectoryTool struct {
 
 func NewListDirectoryTool() *ListDirectoryTool {
 	tool := new(ListDirectoryTool)
-	tool.Name_ = "list_directory"
+	tool.Name_ = constant.ToolNameFSList
 	tool.Desc_ = "List files and directories in a directory. Returns a list of file names."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -31,10 +34,10 @@ func NewListDirectoryTool() *ListDirectoryTool {
 	return tool
 }
 
-func (t *ListDirectoryTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *ListDirectoryTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	path := params["path"]
 	if path == "" {
-		return "", fmt.Errorf("path is required")
+		return types.NewToolResult().WithError(fmt.Errorf("path is required"))
 	}
 
 	// Expand ~ to home directory
@@ -46,19 +49,49 @@ func (t *ListDirectoryTool) Execute(ctx context.Context, params map[string]strin
 	// Read directory
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to read directory: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read directory: %w", err))
 	}
 
-	var result strings.Builder
-	fmt.Fprintf(&result, "Contents of %s:\n", path)
+	var result []struct {
+		Name  string `json:"name"`
+		IsDir bool   `json:"is_dir"`
+		Size  int64  `json:"size"`
+	}
+
 	for _, entry := range entries {
 		info, _ := entry.Info()
 		if info.IsDir() {
-			fmt.Fprintf(&result, "[DIR]  %s\n", entry.Name())
+			result = append(result, struct {
+				Name  string `json:"name"`
+				IsDir bool   `json:"is_dir"`
+				Size  int64  `json:"size"`
+			}{
+				Name:  entry.Name(),
+				IsDir: true,
+				Size:  0,
+			})
 		} else {
-			fmt.Fprintf(&result, "[FILE] %s (%d bytes)\n", entry.Name(), info.Size())
+			result = append(result, struct {
+				Name  string `json:"name"`
+				IsDir bool   `json:"is_dir"`
+				Size  int64  `json:"size"`
+			}{
+				Name:  entry.Name(),
+				IsDir: false,
+				Size:  info.Size(),
+			})
 		}
 	}
 
-	return result.String(), nil
+	var raw strings.Builder
+	fmt.Fprintf(&raw, "Contents of %s:\n", path)
+	for _, item := range result {
+		fmt.Fprintf(&raw, "[%s] %s", item.Name, item.Name)
+		if item.IsDir {
+			fmt.Fprintf(&raw, " (DIR)")
+		}
+		fmt.Fprintf(&raw, "\n")
+	}
+
+	return types.NewToolResult().WithRaw(raw.String()).WithStructured(actiontypes.NewFsListData(path, result))
 }

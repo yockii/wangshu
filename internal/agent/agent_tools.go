@@ -11,6 +11,7 @@ import (
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/tools"
+	tooltypes "github.com/yockii/wangshu/pkg/tools/types"
 )
 
 // executeToolCall 执行工具调用
@@ -35,7 +36,7 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 	args[constant.ToolCallParamChatType] = chatType
 
 	// Create ToolContext with agent information
-	toolCtx := tools.NewToolContext(
+	toolCtx := tooltypes.NewToolContext(
 		a.agentName,
 		"", // agent owner - can be added later
 		a.workspaceDir,
@@ -47,10 +48,10 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, c
 	)
 
 	result := tools.GetDefaultToolRegistry().ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
-	if result.IsError {
-		return result.ForLLM, fmt.Errorf("Tool execution failed: %q", result.Err)
+	if result.Err != nil {
+		return result.Raw, fmt.Errorf("Tool execution failed: %q", result.Err)
 	}
-	return result.ForLLM, nil
+	return result.Raw, nil
 }
 
 // addToolResultMessage 添加工具结果消息到会话

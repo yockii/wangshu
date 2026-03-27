@@ -1,4 +1,4 @@
-package tools
+package types
 
 import "context"
 
@@ -7,7 +7,7 @@ type Tool interface {
 	Name() string
 	Description() string
 	Parameters() map[string]any
-	Execute(ctx context.Context, params map[string]string) (string, error)
+	Execute(ctx context.Context, params map[string]string) *ToolResult
 }
 
 // AsyncCallback is called when an async tool completes

@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,8 +40,6 @@ func (l *Loader) LoadSkills() ([]*types.Skill, error) {
 	return skills, nil
 }
 
-var frontmatterReg = regexp.MustCompile(`---\s*\n([\s\S]*?)\n---\s*|\n`)
-
 func (l *Loader) loadSkillsFromDir(dir string) []*types.Skill {
 	skills := []*types.Skill{}
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -61,7 +59,7 @@ func (l *Loader) loadSkillsFromDir(dir string) []*types.Skill {
 			return err
 		}
 		// 解析frontmatter
-		matches := frontmatterReg.FindStringSubmatch(string(data))
+		matches := constant.MdFrontmatterReg.FindStringSubmatch(string(data))
 		if len(matches) < 2 {
 			return nil
 		}

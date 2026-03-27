@@ -49,49 +49,49 @@ func TestNewWebFetchTool(t *testing.T) {
 func TestWebFetchTool_Execute_EmptyURL(t *testing.T) {
 	tool := NewWebFetchTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty URL")
 	}
 
-	if !strings.Contains(err.Error(), "url is required") {
-		t.Errorf("Error should mention 'url is required', got: %v", err)
+	if !strings.Contains(result.Err.Error(), "url is required") {
+		t.Errorf("Error should mention 'url is required', got: %v", result.Err)
 	}
 }
 
 func TestWebFetchTool_Execute_InvalidURL(t *testing.T) {
 	tool := NewWebFetchTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": "not-a-valid-url",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with invalid URL")
 	}
 
 	// URL parser might return different errors, just check it fails
-	if !strings.Contains(err.Error(), "invalid URL") && !strings.Contains(err.Error(), "scheme") {
-		t.Logf("Got error (should fail): %v", err)
+	if !strings.Contains(result.Err.Error(), "invalid URL") && !strings.Contains(result.Err.Error(), "scheme") {
+		t.Logf("Got error (should fail): %v", result.Err)
 	}
 }
 
 func TestWebFetchTool_Execute_InvalidScheme(t *testing.T) {
 	tool := NewWebFetchTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": "ftp://example.com",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with non-http scheme")
 	}
 
-	if !strings.Contains(err.Error(), "must use http or https") {
-		t.Errorf("Error should mention scheme requirement, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "must use http or https") {
+		t.Errorf("Error should mention scheme requirement, got: %v", result.Err)
 	}
 }
 
@@ -105,16 +105,16 @@ func TestWebFetchTool_Execute_ValidRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Hello, World!") {
-		t.Errorf("Result should contain 'Hello, World!', got: %s", result)
+	if !strings.Contains(result.Raw, "Hello, World!") {
+		t.Errorf("Result should contain 'Hello, World!', got: %s", result.Raw)
 	}
 }
 
@@ -138,25 +138,25 @@ func TestWebFetchTool_Execute_HTMLContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// Check that script and style are removed
-	if strings.Contains(result, "<script>") || strings.Contains(result, "console.log") {
+	if strings.Contains(result.Raw, "<script>") || strings.Contains(result.Raw, "console.log") {
 		t.Error("Script tags should be removed from result")
 	}
 
-	if strings.Contains(result, "<style>") || strings.Contains(result, "color: red") {
+	if strings.Contains(result.Raw, "<style>") || strings.Contains(result.Raw, "color: red") {
 		t.Error("Style tags should be removed from result")
 	}
 
 	// Check that content is preserved
-	if !strings.Contains(result, "Hello") || !strings.Contains(result, "test paragraph") {
+	if !strings.Contains(result.Raw, "Hello") || !strings.Contains(result.Raw, "test paragraph") {
 		t.Error("Main content should be preserved")
 	}
 }
@@ -173,18 +173,18 @@ func TestWebFetchTool_Execute_RawMode(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 		"raw": "true",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// In raw mode, HTML should not be processed
-	if !strings.Contains(result, "<html>") || !strings.Contains(result, "<h1>") {
-		t.Errorf("Raw mode should preserve HTML, got: %s", result)
+	if !strings.Contains(result.Raw, "<html>") || !strings.Contains(result.Raw, "<h1>") {
+		t.Errorf("Raw mode should preserve HTML, got: %s", result.Raw)
 	}
 }
 
@@ -200,16 +200,16 @@ func TestWebFetchTool_Execute_JSONContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "name") || !strings.Contains(result, "test") {
-		t.Errorf("Result should contain JSON content, got: %s", result)
+	if !strings.Contains(result.Raw, "name") || !strings.Contains(result.Raw, "test") {
+		t.Errorf("Result should contain JSON content, got: %s", result.Raw)
 	}
 }
 
@@ -222,16 +222,16 @@ func TestWebFetchTool_Execute_HTTPError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with HTTP error")
 	}
 
-	if !strings.Contains(err.Error(), "404") {
-		t.Errorf("Error should mention HTTP status code, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "404") {
+		t.Errorf("Error should mention HTTP status code, got: %v", result.Err)
 	}
 }
 
@@ -245,17 +245,17 @@ func TestWebFetchTool_Execute_Timeout(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url":     server.URL,
 		"timeout": "0.001", // 1ms timeout
 	})
 
 	// The test might succeed or fail depending on timing
 	_ = result
-	if err != nil {
+	if result.Err != nil {
 		// Expected to timeout
-		if !strings.Contains(err.Error(), "timeout") && !strings.Contains(err.Error(), "deadline") {
-			t.Logf("Got error (possibly timeout): %v", err)
+		if !strings.Contains(result.Err.Error(), "timeout") && !strings.Contains(result.Err.Error(), "deadline") {
+			t.Logf("Got error (possibly timeout): %v", result.Err)
 		}
 	}
 	server.Close()
@@ -273,16 +273,16 @@ func TestWebFetchTool_Execute_TextContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
-	if !strings.Contains(result, "Plain text content") {
-		t.Errorf("Result should contain text content, got: %s", result)
+	if !strings.Contains(result.Raw, "Plain text content") {
+		t.Errorf("Result should contain text content, got: %s", result.Raw)
 	}
 }
 
@@ -354,12 +354,12 @@ func TestWebFetchTool_UserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"url": server.URL,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	if receivedUserAgent == "" {

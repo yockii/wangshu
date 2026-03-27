@@ -3,6 +3,7 @@ package config
 import (
 	"sync"
 
+	"github.com/jinzhu/copier"
 	"github.com/yockii/wangshu/pkg/constant"
 )
 
@@ -94,4 +95,11 @@ func defaultConfig() *Config {
 			DataDir: "~/.wangshu/browser_profile",
 		},
 	}
+}
+
+func (cfg *Config) Copy() *Config {
+	// 复制一份自身配置信息
+	cfgCopy := &Config{}
+	copier.Copy(cfgCopy, cfg)
+	return cfgCopy
 }

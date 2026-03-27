@@ -64,27 +64,27 @@ func TestGrepTool_Execute_SimpleSearch(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 搜索"World"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "World",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了匹配
-	if !strings.Contains(result, "Found 2 matches") {
-		t.Errorf("Should find 2 matches, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 2 matches") {
+		t.Errorf("Should find 2 matches, got: %s", result.Raw)
 	}
 
 	// 验证包含行号
-	if !strings.Contains(result, ":1:") || !strings.Contains(result, ":3:") {
-		t.Errorf("Result should contain line numbers, got: %s", result)
+	if !strings.Contains(result.Raw, ":1:") || !strings.Contains(result.Raw, ":3:") {
+		t.Errorf("Result should contain line numbers, got: %s", result.Raw)
 	}
 
 	// 验证包含文件内容
-	if !strings.Contains(result, "Hello World") || !strings.Contains(result, "Goodbye World") {
+	if !strings.Contains(result.Raw, "Hello World") || !strings.Contains(result.Raw, "Goodbye World") {
 		t.Error("Result should contain matching lines")
 	}
 }
@@ -99,18 +99,18 @@ func TestGrepTool_Execute_RegexPattern(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 使用正则表达式搜索数字
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "\\d+",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了包含数字的行
-	if !strings.Contains(result, "Found") {
-		t.Errorf("Should find matches, got: %s", result)
+	if !strings.Contains(result.Raw, "Found") {
+		t.Errorf("Should find matches, got: %s", result.Raw)
 	}
 }
 
@@ -124,22 +124,22 @@ func TestGrepTool_Execute_WithFileFilter(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "test.md"), []byte("# Test"), 0644)
 
 	// 只在.go文件中搜索"package"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "package",
 		"path":    tmpDir,
 		"include": "*.go",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证只搜索了.go文件
-	if !strings.Contains(result, "test.go") {
-		t.Errorf("Result should contain test.go, got: %s", result)
+	if !strings.Contains(result.Raw, "test.go") {
+		t.Errorf("Result should contain test.go, got: %s", result.Raw)
 	}
 
-	if strings.Contains(result, "test.txt") || strings.Contains(result, "test.md") {
+	if strings.Contains(result.Raw, "test.txt") || strings.Contains(result.Raw, "test.md") {
 		t.Error("Result should not contain non-.go files")
 	}
 }
@@ -147,11 +147,11 @@ func TestGrepTool_Execute_WithFileFilter(t *testing.T) {
 func TestGrepTool_Execute_EmptyPattern(t *testing.T) {
 	tool := NewGrepTool()
 
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty pattern")
 	}
 }
@@ -161,17 +161,17 @@ func TestGrepTool_Execute_InvalidPattern(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// 使用无效的正则表达式
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "[invalid",
 		"path":    tmpDir,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with invalid regex pattern")
 	}
 
-	if !strings.Contains(err.Error(), "invalid regex") {
-		t.Errorf("Error should mention invalid regex, got: %v", err)
+	if !strings.Contains(result.Err.Error(), "invalid regex") {
+		t.Errorf("Error should mention invalid regex, got: %v", result.Err)
 	}
 }
 
@@ -184,18 +184,18 @@ func TestGrepTool_Execute_NoMatches(t *testing.T) {
 	os.WriteFile(testFile, []byte("Hello World"), 0644)
 
 	// 搜索不存在的内容
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "NonExistent",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with no matches: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with no matches: %v", result.Err)
 	}
 
 	// 验证返回"未找到"消息
-	if !strings.Contains(result, "No matches found") {
-		t.Errorf("Result should indicate no matches, got: %s", result)
+	if !strings.Contains(result.Raw, "No matches found") {
+		t.Errorf("Result should indicate no matches, got: %s", result.Raw)
 	}
 }
 
@@ -213,17 +213,17 @@ func TestGrepTool_Execute_DefaultPath(t *testing.T) {
 	os.WriteFile("test.txt", []byte("Hello World"), 0644)
 
 	// 不指定路径，应该搜索当前目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "Hello",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with default path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with default path: %v", result.Err)
 	}
 
 	// 验证找到了匹配
-	if !strings.Contains(result, "Found") {
-		t.Errorf("Should find matches with default path, got: %s", result)
+	if !strings.Contains(result.Raw, "Found") {
+		t.Errorf("Should find matches with default path, got: %s", result.Raw)
 	}
 }
 
@@ -237,25 +237,25 @@ func TestGrepTool_Execute_CaseSensitive(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 搜索"Hello"（大小写敏感）
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "Hello",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证只匹配大小写完全相同的
-	if !strings.Contains(result, "Found 1 matches") {
-		t.Errorf("Should find exactly 1 match (case sensitive), got: %s", result)
+	if !strings.Contains(result.Raw, "Found 1 matches") {
+		t.Errorf("Should find exactly 1 match (case sensitive), got: %s", result.Raw)
 	}
 
-	if !strings.Contains(result, "Hello World") {
+	if !strings.Contains(result.Raw, "Hello World") {
 		t.Error("Result should contain 'Hello World'")
 	}
 
-	if strings.Contains(result, "HELLO WORLD") || strings.Contains(result, "hello world") {
+	if strings.Contains(result.Raw, "HELLO WORLD") || strings.Contains(result.Raw, "hello world") {
 		t.Error("Result should not contain case-insensitive matches")
 	}
 }
@@ -270,22 +270,22 @@ func TestGrepTool_Execute_MultipleFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file3.txt"), []byte("Goodbye World"), 0644)
 
 	// 搜索"World"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "World",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了多个文件中的匹配
-	if !strings.Contains(result, "Found 2 matches") {
-		t.Errorf("Should find 2 matches in different files, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 2 matches") {
+		t.Errorf("Should find 2 matches in different files, got: %s", result.Raw)
 	}
 
 	// 验证结果包含不同的文件
-	if !strings.Contains(result, "file1.txt") && !strings.Contains(result, "file3.txt") {
+	if !strings.Contains(result.Raw, "file1.txt") && !strings.Contains(result.Raw, "file3.txt") {
 		t.Error("Result should contain matching files")
 	}
 }
@@ -300,18 +300,18 @@ func TestGrepTool_Execute_SpecialCharacters(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 搜索包含特殊字符的内容
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "\\$100",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证能够匹配特殊字符
-	if !strings.Contains(result, "Price: $100") {
-		t.Errorf("Should match special characters, got: %s", result)
+	if !strings.Contains(result.Raw, "Price: $100") {
+		t.Errorf("Should match special characters, got: %s", result.Raw)
 	}
 }
 
@@ -324,18 +324,18 @@ func TestGrepTool_Execute_EmptyFile(t *testing.T) {
 	os.WriteFile(testFile, []byte(""), 0644)
 
 	// 搜索任何内容
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "anything",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with empty file: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with empty file: %v", result.Err)
 	}
 
 	// 验证返回"未找到"消息
-	if !strings.Contains(result, "No matches found") {
-		t.Errorf("Result should indicate no matches in empty file, got: %s", result)
+	if !strings.Contains(result.Raw, "No matches found") {
+		t.Errorf("Result should indicate no matches in empty file, got: %s", result.Raw)
 	}
 }
 
@@ -352,21 +352,21 @@ func TestGrepTool_Execute_SkipsHiddenDirectories(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("Hello World"), 0644)
 
 	// 搜索"Hello"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "Hello",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证只搜索了普通文件，没有搜索.git目录
-	if strings.Contains(result, ".git") {
+	if strings.Contains(result.Raw, ".git") {
 		t.Error("Result should not contain files from .git directory")
 	}
 
-	if !strings.Contains(result, "test.txt") {
+	if !strings.Contains(result.Raw, "test.txt") {
 		t.Error("Result should contain test.txt")
 	}
 }
@@ -381,17 +381,17 @@ func TestGrepTool_Execute_LineNumbers(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 搜索"line"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "line",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证每行都有行号
-	lines := strings.Split(result, "\n")
+	lines := strings.Split(result.Raw, "\n")
 	for i, line := range lines {
 		if strings.HasPrefix(line, "test.txt:") {
 			// 提取行号
@@ -406,8 +406,8 @@ func TestGrepTool_Execute_LineNumbers(t *testing.T) {
 	}
 
 	// 验证找到了5个匹配
-	if !strings.Contains(result, "Found 5 matches") {
-		t.Errorf("Should find 5 matches, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 5 matches") {
+		t.Errorf("Should find 5 matches, got: %s", result.Raw)
 	}
 }
 
@@ -421,21 +421,21 @@ func TestGrepTool_Execute_MultilinePattern(t *testing.T) {
 	os.WriteFile(testFile, []byte(content), 0644)
 
 	// 搜索"start"
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"pattern": "start",
 		"path":    tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证找到了匹配
-	if !strings.Contains(result, "Found 1 matches") {
-		t.Errorf("Should find 1 match, got: %s", result)
+	if !strings.Contains(result.Raw, "Found 1 matches") {
+		t.Errorf("Should find 1 match, got: %s", result.Raw)
 	}
 
-	if !strings.Contains(result, "start") {
+	if !strings.Contains(result.Raw, "start") {
 		t.Error("Result should contain 'start'")
 	}
 }

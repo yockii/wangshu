@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +12,9 @@ import (
 
 	_ "embed"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 //go:embed sandbox_wrapper.js
@@ -55,7 +58,7 @@ func NewNodeRunTool() *NodeRunTool {
 	return tool
 }
 
-func (t *NodeRunTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *NodeRunTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	code := params["code"]
 	scriptPath := params["script_path"]
 	installPackages := params["install_npm_packages"]
@@ -64,11 +67,11 @@ func (t *NodeRunTool) execute(ctx context.Context, params map[string]string) (st
 		if installPackages != "" {
 			return t.installNpmPackages(installPackages, "")
 		}
-		return "", fmt.Errorf("either 'code' or 'script_path' must be provided")
+		return types.NewToolResult().WithError(fmt.Errorf("either 'code' or 'script_path' must be provided"))
 	}
 
 	if code != "" && scriptPath != "" {
-		return "", fmt.Errorf("cannot specify both 'code' and 'script_path'")
+		return types.NewToolResult().WithError(fmt.Errorf("cannot specify both 'code' and 'script_path'"))
 	}
 
 	timeout := 30 * time.Second
@@ -89,9 +92,9 @@ func (t *NodeRunTool) execute(ctx context.Context, params map[string]string) (st
 	}
 
 	if installPackages != "" {
-		result, err := t.installNpmPackages(installPackages, workingDir)
-		if err != nil {
-			return result, err
+		result := t.installNpmPackages(installPackages, workingDir)
+		if result.Err != nil {
+			return result
 		}
 	}
 
@@ -120,10 +123,10 @@ func (t *NodeRunTool) buildSandboxScript(userCode string, scriptPath string) str
 	return sb.String()
 }
 
-func (t *NodeRunTool) executeCode(ctx context.Context, code, workingDir string) (string, error) {
+func (t *NodeRunTool) executeCode(ctx context.Context, code, workingDir string) *types.ToolResult {
 	nodeCmd, err := t.findNode()
 	if err != nil {
-		return "", fmt.Errorf("failed to find Node.js: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to find Node.js: %w", err))
 	}
 
 	fullScript := t.buildSandboxScript(code, "")
@@ -134,31 +137,45 @@ func (t *NodeRunTool) executeCode(ctx context.Context, code, workingDir string) 
 
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("node execution timed out")
+		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out")).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
 	if err != nil {
-		return outputStr, fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
-func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir string) (string, error) {
+func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir string) *types.ToolResult {
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("script file not found: %s", scriptPath)
+		return types.NewToolResult().WithError(fmt.Errorf("script file not found: %s", scriptPath))
 	}
 
 	scriptContent, err := os.ReadFile(scriptPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read script file: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read script file: %w", err))
 	}
 
 	nodeCmd, err := t.findNode()
 	if err != nil {
-		return "", fmt.Errorf("failed to find Node.js: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to find Node.js: %w", err))
 	}
 
 	fullScript := t.buildSandboxScript(string(scriptContent), scriptPath)
@@ -170,20 +187,35 @@ func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir 
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
+
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("node execution timed out")
+		return types.NewToolResult().WithError(fmt.Errorf("node execution timed out")).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
 	if err != nil {
-		return outputStr, fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("node execution failed: %w\nOutput:\n%s", err, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
-func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) (string, error) {
+func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) *types.ToolResult {
 	packages := strings.Split(packagesStr, ",")
-	var results []string
+	var results []*types.ToolResult
 
 	for _, pkg := range packages {
 		pkg = strings.TrimSpace(pkg)
@@ -191,24 +223,44 @@ func (t *NodeRunTool) installNpmPackages(packagesStr string, workingDir string) 
 			continue
 		}
 
-		result, err := t.installNpmPackage(pkg, workingDir)
-		if err != nil {
-			return strings.Join(results, "\n"), fmt.Errorf("failed to install package %s: %w", pkg, err)
+		result := t.installNpmPackage(pkg, workingDir)
+		if result.Err != nil {
+			return result
 		}
 		results = append(results, result)
 	}
 
 	if len(results) == 0 {
-		return "", fmt.Errorf("no valid package names provided")
+		return types.NewToolResult().WithError(fmt.Errorf("no valid package names provided")).WithStructured(
+			actiontypes.NewRunData("", 0),
+		)
 	}
 
-	return strings.Join(results, "\n"), nil
+	tr := types.NewToolResult()
+
+	outputs := make([]string, 0, len(results))
+	for _, result := range results {
+		outputs = append(outputs, result.Raw)
+		if result.Err != nil {
+			if tr.Err != nil {
+				tr.Err = errors.Join(tr.Err, result.Err)
+			} else {
+				tr.Err = result.Err
+			}
+		}
+	}
+
+	return tr.WithRaw(strings.Join(outputs, "\n")).WithStructured(
+		actiontypes.NewRunData(strings.Join(outputs, "\n"), 0),
+	)
 }
 
-func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) (string, error) {
+func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) *types.ToolResult {
 	npmCmd, err := t.findNpm()
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err).WithStructured(
+			actiontypes.NewRunData("", -1),
+		)
 	}
 
 	cmd := exec.Command(npmCmd, "install", packageName)
@@ -220,11 +272,24 @@ func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) (
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	exitCode := 0
 	if err != nil {
-		return outputStr, fmt.Errorf("failed to install package %s: %w", packageName, err)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
 	}
 
-	return fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr), nil
+	if err != nil {
+		return types.NewToolResult().WithError(fmt.Errorf("failed to install package %s: %w", packageName, err)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
+	}
+
+	return types.NewToolResult().WithRaw(fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr)).WithStructured(
+		actiontypes.NewRunData(fmt.Sprintf("✅ Successfully installed %s\n%s", packageName, outputStr), exitCode),
+	)
 }
 
 func (t *NodeRunTool) findNode() (string, error) {

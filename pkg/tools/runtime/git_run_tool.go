@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type GitRunTool struct {
@@ -42,10 +44,10 @@ func NewGitRunTool() *GitRunTool {
 	return tool
 }
 
-func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *GitRunTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	command := params["command"]
 	if command == "" {
-		return "", fmt.Errorf("command is required")
+		return types.NewToolResult().WithError(fmt.Errorf("command is required"))
 	}
 
 	workingDir := params["working_dir"]
@@ -63,7 +65,7 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (str
 
 	gitCmd, err := t.findGit()
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	cmdArgs := strings.Fields(command)
@@ -79,21 +81,27 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) (str
 	output, err := cmd.CombinedOutput()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("git command timed out after %v", timeout)
+		return types.NewToolResult().WithError(fmt.Errorf("git command timed out after %v", timeout))
 	}
 
+	exitCode := 0
 	outputStr := string(output)
 	if err != nil {
-		exitCode := 0
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
 				exitCode = status.ExitStatus()
 			}
 		}
-		return outputStr, fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("git command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr).
+			WithStructured(
+				actiontypes.NewRunData(outputStr, exitCode),
+			)
+
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *GitRunTool) findGit() (string, error) {

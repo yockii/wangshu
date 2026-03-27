@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 // mockTool 是一个用于测试的简单工具实现
@@ -12,7 +14,7 @@ type mockTool struct {
 	name        string
 	description string
 	parameters  map[string]any
-	executeFunc func(ctx context.Context, params map[string]string) (string, error)
+	executeFunc func(ctx context.Context, params map[string]string) *types.ToolResult
 }
 
 func (m *mockTool) Name() string {
@@ -27,11 +29,11 @@ func (m *mockTool) Parameters() map[string]any {
 	return m.parameters
 }
 
-func (m *mockTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (m *mockTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	if m.executeFunc != nil {
 		return m.executeFunc(ctx, params)
 	}
-	return "mock result", nil
+	return types.NewToolResult().WithRaw("mock result")
 }
 
 // newMockTool 创建一个新的mock工具
@@ -122,24 +124,24 @@ func TestRegistry_Execute(t *testing.T) {
 		name:        "test_tool",
 		description: "Test tool",
 		parameters:  map[string]any{},
-		executeFunc: func(ctx context.Context, params map[string]string) (string, error) {
-			return expectedResult, nil
+		executeFunc: func(ctx context.Context, params map[string]string) *types.ToolResult {
+			return types.NewToolResult().WithRaw(expectedResult)
 		},
 	}
 	reg.Register(tool)
 
 	// 测试执行存在的工具
-	result, err := reg.Execute(context.Background(), "test_tool", map[string]string{"key": "value"})
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	result := reg.Execute(context.Background(), "test_tool", map[string]string{"key": "value"})
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
-	if result != expectedResult {
-		t.Errorf("Execute should return expected result, got: %s", result)
+	if result.Raw != expectedResult {
+		t.Errorf("Execute should return expected result, got: %s", result.Raw)
 	}
 
 	// 测试执行不存在的工具
-	_, err = reg.Execute(context.Background(), "non_existent", nil)
-	if err == nil {
+	result = reg.Execute(context.Background(), "non_existent", nil)
+	if result.Err == nil {
 		t.Error("Execute should fail for non-existent tool")
 	}
 }
@@ -297,17 +299,17 @@ func TestRegistry_ExecuteWithContext(t *testing.T) {
 		context.Background(),
 		"ctx_tool",
 		map[string]any{"param1": "value1"},
-		&ToolContext{},
+		&types.ToolContext{},
 		"test_channel",
 		"test_chat_id",
 	)
 
-	if result.IsError {
+	if result.Err != nil {
 		t.Errorf("ExecuteWithContext should succeed: %v", result.Err)
 	}
 
-	if result.ForLLM != "contextual result: value1" {
-		t.Errorf("ExecuteWithContext should return correct result, got: %s", result.ForLLM)
+	if result.Raw != "contextual result: value1" {
+		t.Errorf("ExecuteWithContext should return correct result, got: %s", result.Raw)
 	}
 
 	// 测试不存在的工具
@@ -320,7 +322,7 @@ func TestRegistry_ExecuteWithContext(t *testing.T) {
 		"",
 	)
 
-	if !result.IsError {
+	if result.Err == nil {
 		t.Error("ExecuteWithContext should fail for non-existent tool")
 	}
 }
@@ -350,11 +352,11 @@ func TestArgsToStringMap(t *testing.T) {
 		{
 			name: "mixed types",
 			input: map[string]interface{}{
-				"string":  "value",
-				"int":     123,
-				"float":   45.67,
-				"bool":    true,
-				"null":    nil,
+				"string": "value",
+				"int":    123,
+				"float":  45.67,
+				"bool":   true,
+				"null":   nil,
 			},
 			expected: map[string]string{
 				"string": "value",
@@ -440,11 +442,11 @@ func (m *mockContextualTool) Parameters() map[string]any {
 	return m.parameters
 }
 
-func (m *mockContextualTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (m *mockContextualTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	// 基本Tool接口实现
-	return "basic execute", nil
+	return types.NewToolResult().WithRaw("basic execute")
 }
 
-func (m *mockContextualTool) ExecuteWithContext(ctx context.Context, params map[string]string, toolCtx *ToolContext) *ToolResult {
-	return NewToolResult(fmt.Sprintf("contextual result: %s", params["param1"]))
+func (m *mockContextualTool) ExecuteWithContext(ctx context.Context, params map[string]string, toolCtx *types.ToolContext) *types.ToolResult {
+	return types.NewToolResult().WithRaw(fmt.Sprintf("contextual result: %s", params["param1"]))
 }

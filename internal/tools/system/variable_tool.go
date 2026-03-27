@@ -12,6 +12,7 @@ import (
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
@@ -39,10 +40,10 @@ func NewVariableTool() *VariableTool {
 	return tool
 }
 
-func (t *VariableTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *VariableTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	namesStr := params["names"]
 	if namesStr == "" {
-		return "", fmt.Errorf("names parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("names parameter is required"))
 	}
 
 	names := strings.Split(namesStr, ",")
@@ -68,12 +69,12 @@ func (t *VariableTool) execute(ctx context.Context, params map[string]string) (s
 	}
 
 	if len(result) == 0 && len(errors) > 0 {
-		return "", fmt.Errorf("failed to get variables: %s", strings.Join(errors, "; "))
+		return types.NewToolResult().WithError(fmt.Errorf("failed to get variables: %s", strings.Join(errors, "; ")))
 	}
 
 	jsonData, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal result: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to marshal result: %w", err))
 	}
 
 	output := string(jsonData)
@@ -81,7 +82,7 @@ func (t *VariableTool) execute(ctx context.Context, params map[string]string) (s
 		output += "\n\nErrors:\n" + strings.Join(errors, "\n")
 	}
 
-	return output, nil
+	return types.NewToolResult().WithRaw(output)
 }
 
 func (t *VariableTool) getVariable(name, agentName string) (string, error) {

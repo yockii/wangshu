@@ -7,7 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type FindFileTool struct {
@@ -16,7 +19,7 @@ type FindFileTool struct {
 
 func NewFindFileTool() *FindFileTool {
 	tool := new(FindFileTool)
-	tool.Name_ = "find_files"
+	tool.Name_ = constant.ToolNameFSSearch
 	tool.Desc_ = "Find files by name pattern (glob). Returns a list of absolute paths. Use this to locate specific files like '*.go', 'docker-compose.yml', or 'tests/**/*_test.go'."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -30,17 +33,17 @@ func NewFindFileTool() *FindFileTool {
 	}
 	return tool
 }
-func (t *FindFileTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *FindFileTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	pattern := params["pattern"]
 	if pattern == "" {
-		return "", fmt.Errorf("pattern is required")
+		return types.NewToolResult().WithError(fmt.Errorf("pattern is required"))
 	}
 
 	// 处理 ~ 路径
 	if strings.HasPrefix(pattern, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 		pattern = filepath.Join(home, pattern[2:])
 	}
@@ -48,21 +51,23 @@ func (t *FindFileTool) Execute(ctx context.Context, params map[string]string) (s
 	// 执行 Glob 搜索
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return "", fmt.Errorf("invalid glob pattern: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid glob pattern: %w", err))
 	}
 
 	if len(matches) == 0 {
-		return "No files found matching the pattern.", nil
+		return types.NewToolResult().WithRaw("No files found matching the pattern.")
 	}
 
 	// 格式化输出，每行一个路径
-	var result strings.Builder
-	result.WriteString(fmt.Sprintf("Found %d file(s):\n", len(matches)))
+	var result []string
+	var raw strings.Builder
+	raw.WriteString(fmt.Sprintf("Found %d file(s):\n", len(matches)))
 	for _, match := range matches {
 		// 转为绝对路径，方便后续操作
 		absPath, _ := filepath.Abs(match)
-		result.WriteString("- " + absPath + "\n")
+		result = append(result, absPath)
+		raw.WriteString("- " + absPath + "\n")
 	}
 
-	return result.String(), nil
+	return types.NewToolResult().WithRaw(raw.String()).WithStructured(actiontypes.NewFsSearchData(pattern, result))
 }

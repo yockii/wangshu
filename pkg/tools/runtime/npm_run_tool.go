@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type NpmRunTool struct {
@@ -46,10 +48,10 @@ func NewNpmRunTool() *NpmRunTool {
 	return tool
 }
 
-func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	command := params["command"]
 	if command == "" {
-		return "", fmt.Errorf("command is required")
+		return types.NewToolResult().WithError(fmt.Errorf("command is required"))
 	}
 
 	workingDir := params["working_dir"]
@@ -72,7 +74,7 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 
 	npmCmd, err := t.findNpm()
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(fmt.Errorf("failed to find npm: %w", err))
 	}
 
 	cmdArgs := strings.Fields(command)
@@ -89,12 +91,22 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 	cmd.Env = os.Environ()
 
 	output, err := cmd.CombinedOutput()
+	exitCode := 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if status, ok := exitError.Sys().(interface{ ExitStatus() int }); ok {
+				exitCode = status.ExitStatus()
+			}
+		}
+	}
+	outputStr := string(output)
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout)
+		return types.NewToolResult().WithError(fmt.Errorf("npm command timed out after %v. Try increasing timeout or using background mode", timeout)).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	outputStr := string(output)
 	if err != nil {
 		exitCode := 0
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -102,10 +114,14 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) (str
 				exitCode = status.ExitStatus()
 			}
 		}
-		return outputStr, fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)
+		return types.NewToolResult().WithError(fmt.Errorf("npm command failed with exit code %d\n%s", exitCode, outputStr)).WithRaw(outputStr).WithStructured(
+			actiontypes.NewRunData(outputStr, exitCode),
+		)
 	}
 
-	return outputStr, nil
+	return types.NewToolResult().WithRaw(outputStr).WithStructured(
+		actiontypes.NewRunData(outputStr, exitCode),
+	)
 }
 
 func (t *NpmRunTool) findNpm() (string, error) {

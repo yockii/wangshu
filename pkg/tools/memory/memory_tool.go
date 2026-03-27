@@ -11,6 +11,7 @@ import (
 
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type MemoryTool struct {
@@ -52,10 +53,10 @@ func NewMemoryTool() *MemoryTool {
 	return tool
 }
 
-func (t *MemoryTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *MemoryTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	action := params["action"]
 	if action == "" {
-		return "", fmt.Errorf("action is required")
+		return types.NewToolResult().WithError(fmt.Errorf("action is required"))
 	}
 
 	switch action {
@@ -66,14 +67,14 @@ func (t *MemoryTool) execute(ctx context.Context, params map[string]string) (str
 	case "list":
 		return t.listMemories(params)
 	default:
-		return "", fmt.Errorf("unknown action: %s", action)
+		return types.NewToolResult().WithError(fmt.Errorf("unknown action: %s", action))
 	}
 }
 
-func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
+func (t *MemoryTool) searchMemory(params map[string]string) *types.ToolResult {
 	query := params["query"]
 	if query == "" {
-		return "", fmt.Errorf("query is required for search action")
+		return types.NewToolResult().WithError(fmt.Errorf("query is required for search action"))
 	}
 
 	daysBack := 7
@@ -95,12 +96,12 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
-		return "", fmt.Errorf("workspace directory not set")
+		return types.NewToolResult().WithError(fmt.Errorf("workspace directory not set"))
 	}
 
 	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
-		return "No memories found (memory directory does not exist)", nil
+		return types.NewToolResult().WithRaw("No memories found (memory directory does not exist)")
 	}
 
 	// Search through recent memory files
@@ -115,7 +116,7 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 		content, err := os.ReadFile(memoryFile)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				return "", fmt.Errorf("failed to read memory file %s: %w", memoryFile, err)
+				return types.NewToolResult().WithError(fmt.Errorf("failed to read memory file %s: %w", memoryFile, err))
 			}
 			continue
 		}
@@ -137,15 +138,15 @@ func (t *MemoryTool) searchMemory(params map[string]string) (string, error) {
 	}
 
 	if len(results) == 0 {
-		return fmt.Sprintf("No memories found matching '%s' in the past %d days", query, daysBack), nil
+		return types.NewToolResult().WithRaw(fmt.Sprintf("No memories found matching '%s' in the past %d days", query, daysBack))
 	}
 
 	output := fmt.Sprintf("Found %d memories matching '%s':\n\n", len(results), query)
 	output += strings.Join(results, "\n")
-	return output, nil
+	return types.NewToolResult().WithRaw(output)
 }
 
-func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
+func (t *MemoryTool) getMemory(params map[string]string) *types.ToolResult {
 	dateStr := params["date"]
 	if dateStr == "" {
 		dateStr = time.Now().Format("2006-01-02")
@@ -153,13 +154,13 @@ func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
 
 	// Validate date format
 	if _, err := time.Parse("2006-01-02", dateStr); err != nil {
-		return "", fmt.Errorf("invalid date format: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid date format: %w", err))
 	}
 
 	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
-		return "", fmt.Errorf("workspace directory not set")
+		return types.NewToolResult().WithError(fmt.Errorf("workspace directory not set"))
 	}
 
 	memoryFile := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory, dateStr+constant.ExtMD)
@@ -167,15 +168,15 @@ func (t *MemoryTool) getMemory(params map[string]string) (string, error) {
 	content, err := os.ReadFile(memoryFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Sprintf("No memory found for %s", dateStr), nil
+			return types.NewToolResult().WithRaw(fmt.Sprintf("No memory found for %s", dateStr))
 		}
-		return "", fmt.Errorf("failed to read memory file: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read memory file: %w", err))
 	}
 
-	return string(content), nil
+	return types.NewToolResult().WithRaw(string(content))
 }
 
-func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
+func (t *MemoryTool) listMemories(params map[string]string) *types.ToolResult {
 	daysBack := 30
 	if daysStr := params["days_back"]; daysStr != "" {
 		var n int
@@ -187,18 +188,18 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 	workspaceDir := params[constant.ToolCallParamWorkspace]
 
 	if workspaceDir == "" {
-		return "", fmt.Errorf("workspace directory not set")
+		return types.NewToolResult().WithError(fmt.Errorf("workspace directory not set"))
 	}
 
 	memoryDir := filepath.Join(workspaceDir, constant.DirProfile, constant.DirMemory)
 	if _, err := os.Stat(memoryDir); os.IsNotExist(err) {
-		return "No memories found (memory directory does not exist)", nil
+		return types.NewToolResult().WithRaw("No memories found (memory directory does not exist)")
 	}
 
 	// List memory files
 	entries, err := os.ReadDir(memoryDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read memory directory: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read memory directory: %w", err))
 	}
 
 	// Filter and sort memory files
@@ -236,7 +237,7 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 	}
 
 	if len(memories) == 0 {
-		return fmt.Sprintf("No memories found in the past %d days", daysBack), nil
+		return types.NewToolResult().WithRaw(fmt.Sprintf("No memories found in the past %d days", daysBack))
 	}
 
 	// Sort by date (reverse)
@@ -250,7 +251,7 @@ func (t *MemoryTool) listMemories(params map[string]string) (string, error) {
 
 	output := fmt.Sprintf("Memories from the past %d days (%d total):\n\n", daysBack, len(memories))
 	output += strings.Join(memories, "\n")
-	return output, nil
+	return types.NewToolResult().WithRaw(output)
 }
 
 // containsQuery checks if the content contains the search query

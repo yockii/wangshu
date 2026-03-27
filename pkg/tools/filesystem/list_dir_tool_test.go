@@ -52,22 +52,22 @@ func TestListDirectoryTool_Execute_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// 列出空目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证结果包含目录路径
-	if !strings.Contains(result, tmpDir) {
-		t.Errorf("Result should contain directory path, got: %s", result)
+	if !strings.Contains(result.Raw, tmpDir) {
+		t.Errorf("Result should contain directory path, got: %s", result.Raw)
 	}
 
 	// 验证结果包含标题
-	if !strings.Contains(result, "Contents of") {
-		t.Errorf("Result should contain 'Contents of', got: %s", result)
+	if !strings.Contains(result.Raw, "Contents of") {
+		t.Errorf("Result should contain 'Contents of', got: %s", result.Raw)
 	}
 }
 
@@ -86,29 +86,29 @@ func TestListDirectoryTool_Execute_WithFiles(t *testing.T) {
 	}
 
 	// 列出目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证所有文件都被列出
 	for _, filename := range testFiles {
-		if !strings.Contains(result, filename) {
-			t.Errorf("Result should contain file '%s', got: %s", filename, result)
+		if !strings.Contains(result.Raw, filename) {
+			t.Errorf("Result should contain file '%s', got: %s", filename, result.Raw)
 		}
 	}
 
 	// 验证文件标记
-	if !strings.Contains(result, "[FILE]") {
-		t.Errorf("Result should contain [FILE] marker, got: %s", result)
+	if !strings.Contains(result.Raw, "[FILE]") {
+		t.Errorf("Result should contain [FILE] marker, got: %s", result.Raw)
 	}
 
 	// 验证大小信息
-	if !strings.Contains(result, "bytes") {
-		t.Errorf("Result should contain file size, got: %s", result)
+	if !strings.Contains(result.Raw, "bytes") {
+		t.Errorf("Result should contain file size, got: %s", result.Raw)
 	}
 }
 
@@ -127,24 +127,24 @@ func TestListDirectoryTool_Execute_WithSubdirectories(t *testing.T) {
 	}
 
 	// 列出目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证所有子目录都被列出
 	for _, dirname := range subdirs {
-		if !strings.Contains(result, dirname) {
-			t.Errorf("Result should contain directory '%s', got: %s", dirname, result)
+		if !strings.Contains(result.Raw, dirname) {
+			t.Errorf("Result should contain directory '%s', got: %s", dirname, result.Raw)
 		}
 	}
 
 	// 验证目录标记
-	if !strings.Contains(result, "[DIR]") {
-		t.Errorf("Result should contain [DIR] marker, got: %s", result)
+	if !strings.Contains(result.Raw, "[DIR]") {
+		t.Errorf("Result should contain [DIR] marker, got: %s", result.Raw)
 	}
 }
 
@@ -159,28 +159,28 @@ func TestListDirectoryTool_Execute_MixedContents(t *testing.T) {
 	os.Mkdir(filepath.Join(tmpDir, "subdir"), 0755)
 
 	// 列出目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证同时包含文件和目录标记
-	if !strings.Contains(result, "[FILE]") {
+	if !strings.Contains(result.Raw, "[FILE]") {
 		t.Error("Result should contain [FILE] marker")
 	}
 
-	if !strings.Contains(result, "[DIR]") {
+	if !strings.Contains(result.Raw, "[DIR]") {
 		t.Error("Result should contain [DIR] marker")
 	}
 
-	if !strings.Contains(result, "file.txt") {
+	if !strings.Contains(result.Raw, "file.txt") {
 		t.Error("Result should contain file.txt")
 	}
 
-	if !strings.Contains(result, "subdir") {
+	if !strings.Contains(result.Raw, "subdir") {
 		t.Error("Result should contain subdir")
 	}
 }
@@ -189,11 +189,11 @@ func TestListDirectoryTool_Execute_NotExist(t *testing.T) {
 	tool := NewListDirectoryTool()
 
 	// 列出不存在的目录
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "/non/existent/directory",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail for non-existent directory")
 	}
 }
@@ -202,18 +202,18 @@ func TestListDirectoryTool_Execute_EmptyPath(t *testing.T) {
 	tool := NewListDirectoryTool()
 
 	// 测试空路径
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "",
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail with empty path")
 	}
 
 	// 测试缺少path参数
-	_, err = tool.Execute(context.Background(), map[string]string{})
+	result = tool.Execute(context.Background(), map[string]string{})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when path parameter is missing")
 	}
 }
@@ -227,11 +227,11 @@ func TestListDirectoryTool_Execute_FileInsteadOfDirectory(t *testing.T) {
 	os.WriteFile(testFile, []byte("test"), 0644)
 
 	// 尝试列出文件
-	_, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": testFile,
 	})
 
-	if err == nil {
+	if result.Err == nil {
 		t.Error("Execute should fail when path is a file, not a directory")
 	}
 }
@@ -251,21 +251,21 @@ func TestListDirectoryTool_Execute_TildeExpansion(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	// 使用波浪号路径列出子目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": "~/.wangshu_test_list_dir",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with tilde path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with tilde path: %v", result.Err)
 	}
 
 	// 验证结果包含目录列表
-	if !strings.Contains(result, "Contents of") {
-		t.Errorf("Result should contain directory listing, got: %s", result)
+	if !strings.Contains(result.Raw, "Contents of") {
+		t.Errorf("Result should contain directory listing, got: %s", result.Raw)
 	}
 
 	// 验证路径被正确扩展
-	if strings.Contains(result, "~") {
+	if strings.Contains(result.Raw, "~") {
 		t.Error("Tilde should be expanded in result path")
 	}
 }
@@ -274,17 +274,17 @@ func TestListDirectoryTool_Execute_RelativePath(t *testing.T) {
 	tool := NewListDirectoryTool()
 
 	// 使用当前目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": ".",
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed with relative path: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed with relative path: %v", result.Err)
 	}
 
 	// 验证结果包含内容
-	if !strings.Contains(result, "Contents of") {
-		t.Errorf("Result should contain directory listing, got: %s", result)
+	if !strings.Contains(result.Raw, "Contents of") {
+		t.Errorf("Result should contain directory listing, got: %s", result.Raw)
 	}
 }
 
@@ -304,17 +304,17 @@ func TestListDirectoryTool_Execute_NestedDirectory(t *testing.T) {
 	os.WriteFile(testFile, []byte("deep content"), 0644)
 
 	// 列出深层目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": nestedDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for nested directory: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for nested directory: %v", result.Err)
 	}
 
 	// 验证包含文件
-	if !strings.Contains(result, "deepfile.txt") {
-		t.Errorf("Result should contain deepfile.txt, got: %s", result)
+	if !strings.Contains(result.Raw, "deepfile.txt") {
+		t.Errorf("Result should contain deepfile.txt, got: %s", result.Raw)
 	}
 }
 
@@ -331,20 +331,20 @@ func TestListDirectoryTool_Execute_HiddenFiles(t *testing.T) {
 	os.WriteFile(normalFile, []byte("normal content"), 0644)
 
 	// 列出目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed: %v", result.Err)
 	}
 
 	// 验证两个文件都被列出
-	if !strings.Contains(result, ".hidden") {
+	if !strings.Contains(result.Raw, ".hidden") {
 		t.Error("Result should contain hidden file .hidden")
 	}
 
-	if !strings.Contains(result, "normal.txt") {
+	if !strings.Contains(result.Raw, "normal.txt") {
 		t.Error("Result should contain normal.txt")
 	}
 }
@@ -364,20 +364,20 @@ func TestListDirectoryTool_Execute_LargeDirectory(t *testing.T) {
 	}
 
 	// 列出目录
-	result, err := tool.Execute(context.Background(), map[string]string{
+	result := tool.Execute(context.Background(), map[string]string{
 		"path": tmpDir,
 	})
 
-	if err != nil {
-		t.Errorf("Execute should succeed for large directory: %v", err)
+	if result.Err != nil {
+		t.Errorf("Execute should succeed for large directory: %v", result.Err)
 	}
 
 	// 验证至少包含一些文件
-	if !strings.Contains(result, "file000.txt") {
+	if !strings.Contains(result.Raw, "file000.txt") {
 		t.Error("Result should contain file000.txt")
 	}
 
-	if !strings.Contains(result, "file099.txt") {
+	if !strings.Contains(result.Raw, "file099.txt") {
 		t.Error("Result should contain file099.txt")
 	}
 }

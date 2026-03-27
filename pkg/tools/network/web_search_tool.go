@@ -11,7 +11,10 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type WebSearchTool struct {
@@ -20,7 +23,7 @@ type WebSearchTool struct {
 
 func NewWebSearchTool() *WebSearchTool {
 	tool := new(WebSearchTool)
-	tool.Name_ = "web_search"
+	tool.Name_ = constant.ToolNameWebSearch
 	tool.Desc_ = "Search the web for information. Supports DuckDuckGo, Baidu (China-friendly), and can automatically choose based on timezone."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -45,10 +48,10 @@ func NewWebSearchTool() *WebSearchTool {
 	return tool
 }
 
-func (t *WebSearchTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *WebSearchTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	query := params["query"]
 	if query == "" {
-		return "", fmt.Errorf("query is required")
+		return types.NewToolResult().WithError(fmt.Errorf("query is required"))
 	}
 
 	engine := params["engine"]
@@ -75,7 +78,7 @@ func (t *WebSearchTool) execute(ctx context.Context, params map[string]string) (
 	case "baidu":
 		return t.searchBaidu(ctx, query, numResults)
 	default:
-		return "", fmt.Errorf("unsupported search engine: %s", engine)
+		return types.NewToolResult().WithError(fmt.Errorf("unsupported search engine: %s", engine))
 	}
 }
 
@@ -100,13 +103,13 @@ func (t *WebSearchTool) detectBestEngine() string {
 }
 
 // searchDuckDuckGo performs a search using DuckDuckGo (HTML parsing, no API)
-func (t *WebSearchTool) searchDuckDuckGo(ctx context.Context, query string, numResults int) (string, error) {
+func (t *WebSearchTool) searchDuckDuckGo(ctx context.Context, query string, numResults int) *types.ToolResult {
 	searchURL := fmt.Sprintf("https://html.duckduckgo.com/html/?q=%s", url.QueryEscape(query))
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", searchURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create request: %w", err))
 	}
 
 	// Set headers to mimic a browser
@@ -116,19 +119,19 @@ func (t *WebSearchTool) searchDuckDuckGo(ctx context.Context, query string, numR
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("search request failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("search request failed: %w", err))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read response: %w", err))
 	}
 
 	results := t.parseDuckDuckGoResults(string(body), numResults)
 
 	if len(results) == 0 {
-		return "No results found", nil
+		return types.NewToolResult().WithRaw("No results found")
 	}
 
 	output := fmt.Sprintf("Found %d results for '%s':\n\n", len(results), query)
@@ -142,17 +145,43 @@ func (t *WebSearchTool) searchDuckDuckGo(ctx context.Context, query string, numR
 		}
 	}
 
-	return output, nil
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, searchResults2ActionResults(results)),
+	)
+}
+
+func searchResults2ActionResults(results []SearchResult) []struct {
+	Title   string `json:"title"`
+	URL     string `json:"url"`
+	Snippet string `json:"snippet"`
+} {
+	actionResults := make([]struct {
+		Title   string `json:"title"`
+		URL     string `json:"url"`
+		Snippet string `json:"snippet"`
+	}, 0, len(results))
+	for _, result := range results {
+		actionResults = append(actionResults, struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Snippet string `json:"snippet"`
+		}{
+			Title:   result.Title,
+			URL:     result.URL,
+			Snippet: result.Snippet,
+		})
+	}
+	return actionResults
 }
 
 // searchBaidu performs a search using Baidu (HTML parsing, China-friendly)
-func (t *WebSearchTool) searchBaidu(ctx context.Context, query string, numResults int) (string, error) {
+func (t *WebSearchTool) searchBaidu(ctx context.Context, query string, numResults int) *types.ToolResult {
 	searchURL := fmt.Sprintf("https://www.baidu.com/s?wd=%s&rn=%d", url.QueryEscape(query), numResults)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", searchURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create request: %w", err))
 	}
 
 	// Set headers to mimic a browser
@@ -162,19 +191,19 @@ func (t *WebSearchTool) searchBaidu(ctx context.Context, query string, numResult
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("search request failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("search request failed: %w", err))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read response: %w", err))
 	}
 
 	results := t.parseBaiduResults(string(body), numResults)
 
 	if len(results) == 0 {
-		return "No results found", nil
+		return types.NewToolResult().WithRaw("No results found")
 	}
 
 	output := fmt.Sprintf("找到 %d 个关于 '%s' 的结果:\n\n", len(results), query)
@@ -188,7 +217,9 @@ func (t *WebSearchTool) searchBaidu(ctx context.Context, query string, numResult
 		}
 	}
 
-	return output, nil
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, searchResults2ActionResults(results)),
+	)
 }
 
 // SearchResult represents a single search result
@@ -315,20 +346,20 @@ func decodeUnicodeEscape(s string) string {
 }
 
 // searchWithAPI performs search using a search API (for future use with API keys)
-func (t *WebSearchTool) searchWithAPI(ctx context.Context, engine, query string, numResults int) (string, error) {
+func (t *WebSearchTool) searchWithAPI(ctx context.Context, engine, query string, numResults int) *types.ToolResult {
 	// Placeholder for API-based search
 	// This can be extended to support:
 	// - SerpAPI
 	// - Bing Search API
 	// - DuckDuckGo Instant Answer API
 
-	return "API-based search not yet implemented", nil
+	return types.NewToolResult().WithRaw("API-based search not yet implemented")
 }
 
 // searchSerpAPI performs search using SerpAPI (requires API key)
-func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResults int, apiKey string) (string, error) {
+func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResults int, apiKey string) *types.ToolResult {
 	if apiKey == "" {
-		return "", fmt.Errorf("SerpAPI key is required")
+		return types.NewToolResult().WithError(fmt.Errorf("SerpAPI key is required"))
 	}
 
 	searchURL := fmt.Sprintf("https://serpapi.com/search?engine=baidu&q=%s&num=%d&api_key=%s",
@@ -337,12 +368,12 @@ func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResu
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", searchURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create request: %w", err))
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("search request failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("search request failed: %w", err))
 	}
 	defer resp.Body.Close()
 
@@ -355,11 +386,11 @@ func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResu
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to decode response: %w", err))
 	}
 
 	if len(result.Organic) == 0 {
-		return "No results found", nil
+		return types.NewToolResult().WithRaw("No results found")
 	}
 
 	output := fmt.Sprintf("Found %d results for '%s':\n\n", len(result.Organic), query)
@@ -369,5 +400,24 @@ func (t *WebSearchTool) searchSerpAPI(ctx context.Context, query string, numResu
 		output += fmt.Sprintf("   %s\n\n", r.Snippet)
 	}
 
-	return output, nil
+	actionResults := make([]struct {
+		Title   string `json:"title"`
+		URL     string `json:"url"`
+		Snippet string `json:"snippet"`
+	}, 0, len(result.Organic))
+	for _, r := range result.Organic {
+		actionResults = append(actionResults, struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Snippet string `json:"snippet"`
+		}{
+			Title:   r.Title,
+			URL:     r.Link,
+			Snippet: r.Snippet,
+		})
+	}
+
+	return types.NewToolResult().WithRaw(output).WithStructured(
+		actiontypes.NewWebSearchData(query, actionResults),
+	)
 }

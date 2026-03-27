@@ -7,23 +7,25 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
-type RenameFileTool struct {
+type MoveFileTool struct {
 	basic.SimpleTool
 }
 
-func NewRenameFileTool() *RenameFileTool {
-	tool := new(RenameFileTool)
-	tool.Name_ = "rename_file"
-	tool.Desc_ = "Rename a file or directory. Returns success message. It can also used for MOVE file or directory. Note: If the new_path already exists, it will be overwritten."
+func NewMoveFileTool() *MoveFileTool {
+	tool := new(MoveFileTool)
+	tool.Name_ = constant.ToolNameFSMove
+	tool.Desc_ = "MOVE a file or directory. Returns success message. It can also used for RENAME file or directory. Note: If the new_path already exists, it will be overwritten."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"old_path": map[string]any{
 				"type":        "string",
-				"description": "The absolute or relative path to the file or directory to rename",
+				"description": "The absolute or relative path to the file or directory to move",
 			},
 			"new_path": map[string]any{
 				"type":        "string",
@@ -34,11 +36,11 @@ func NewRenameFileTool() *RenameFileTool {
 	}
 	return tool
 }
-func (t *RenameFileTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *MoveFileTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	oldPath := params["old_path"]
 	newPath := params["new_path"]
 	if oldPath == "" || newPath == "" {
-		return "", fmt.Errorf("old_path and new_path are required")
+		return types.NewToolResult().WithError(fmt.Errorf("old_path and new_path are required"))
 	}
 	// Expand ~ to home directory
 	if strings.HasPrefix(oldPath, "~/") {
@@ -56,10 +58,10 @@ func (t *RenameFileTool) Execute(ctx context.Context, params map[string]string) 
 	// 	return "", fmt.Errorf("new_path %s already exists", newPath)
 	// }
 
-	// Rename file or directory
+	// Move file or directory
 	if err := os.Rename(oldPath, newPath); err != nil {
-		return "", fmt.Errorf("failed to rename: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to move: %w", err))
 	}
 
-	return fmt.Sprintf("Successfully renamed %s to %s", oldPath, newPath), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Successfully moved %s to %s", oldPath, newPath))
 }

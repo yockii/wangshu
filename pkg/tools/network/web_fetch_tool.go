@@ -10,7 +10,10 @@ import (
 	"strings"
 	"time"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type WebFetchTool struct {
@@ -19,7 +22,7 @@ type WebFetchTool struct {
 
 func NewWebFetchTool() *WebFetchTool {
 	tool := new(WebFetchTool)
-	tool.Name_ = "web_fetch"
+	tool.Name_ = constant.ToolNameWebFetch
 	tool.Desc_ = "Fetch and extract readable content from a URL. Handles HTML, plain text, and JSON responses."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -43,20 +46,20 @@ func NewWebFetchTool() *WebFetchTool {
 	return tool
 }
 
-func (t *WebFetchTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *WebFetchTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	targetURL := params["url"]
 	if targetURL == "" {
-		return "", fmt.Errorf("url is required")
+		return types.NewToolResult().WithError(fmt.Errorf("url is required"))
 	}
 
 	// Validate URL
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
-		return "", fmt.Errorf("invalid URL: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid URL: %w", err))
 	}
 
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", fmt.Errorf("URL must use http or https scheme")
+		return types.NewToolResult().WithError(fmt.Errorf("URL must use http or https scheme"))
 	}
 
 	timeout := 15 * time.Second
@@ -73,7 +76,7 @@ func (t *WebFetchTool) execute(ctx context.Context, params map[string]string) (s
 
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create request: %w", err))
 	}
 
 	// Set headers to mimic a browser
@@ -83,39 +86,46 @@ func (t *WebFetchTool) execute(ctx context.Context, params map[string]string) (s
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("request failed: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("request failed: %w", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+		return types.NewToolResult().WithError(fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to read response: %w", err))
+	}
+
+	headers := make(map[string]string)
+	for k, v := range resp.Header {
+		headers[k] = strings.Join(v, ", ")
 	}
 
 	contentType := resp.Header.Get("Content-Type")
 
+	bodyStr := string(body)
+
 	if raw {
-		return string(body), nil
+		return types.NewToolResult().WithRaw(bodyStr).WithStructured(actiontypes.NewWebFetchData(targetURL, bodyStr, int(resp.StatusCode), headers))
 	}
 
 	// Extract readable content based on content type
 	if strings.Contains(contentType, "text/html") {
-		text := t.extractReadableText(string(body))
-		return text, nil
+		text := t.extractReadableText(bodyStr)
+		return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 	} else if strings.Contains(contentType, "application/json") {
-		text := t.formatJSON(string(body))
-		return text, nil
+		text := t.formatJSON(bodyStr)
+		return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 	} else if strings.Contains(contentType, "text/") {
-		return string(body), nil
+		return types.NewToolResult().WithRaw(bodyStr).WithStructured(actiontypes.NewWebFetchData(targetURL, bodyStr, int(resp.StatusCode), headers))
 	}
 
 	// Default: try to extract readable text
-	text := t.extractReadableText(string(body))
-	return text, nil
+	text := t.extractReadableText(bodyStr)
+	return types.NewToolResult().WithRaw(text).WithStructured(actiontypes.NewWebFetchData(targetURL, text, int(resp.StatusCode), headers))
 }
 
 // extractReadableText extracts main content from HTML

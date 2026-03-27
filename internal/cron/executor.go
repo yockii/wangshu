@@ -11,6 +11,7 @@ import (
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/tools"
+	tooltypes "github.com/yockii/wangshu/pkg/tools/types"
 )
 
 // CronJobExecutionResult 定时任务执行结果（JSON Schema）
@@ -167,7 +168,7 @@ func (mgr *CronManager) executeTool(ctx context.Context, channel, chatID, toolNa
 	args[constant.ToolCallParamChatID] = chatID
 
 	// 创建ToolContext
-	toolCtx := tools.NewToolContext(
+	toolCtx := tooltypes.NewToolContext(
 		"cron", // agentName - 使用cron表示是定时任务触发
 		"",     // agent owner
 		mgr.workspace,
@@ -180,7 +181,7 @@ func (mgr *CronManager) executeTool(ctx context.Context, channel, chatID, toolNa
 
 	// 执行工具
 	result := tools.GetDefaultToolRegistry().ExecuteWithContext(ctx, toolName, args, toolCtx, channel, chatID)
-	if result.IsError {
+	if result.Err != nil {
 		return fmt.Errorf("工具执行失败: %v", result.Err)
 	}
 

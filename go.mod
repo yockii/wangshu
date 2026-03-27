@@ -77,6 +77,7 @@ require (
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
+	github.com/jinzhu/copier v0.4.0
 	github.com/larksuite/oapi-sdk-go/v3 v3.5.3
 	github.com/netresearch/go-cron v0.13.0
 	github.com/ollama/ollama v0.18.2

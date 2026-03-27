@@ -147,6 +147,7 @@ func (a *Agent) buildMessages(sess *session.Session) ([]llm.Message, error) {
 	systemContet := fmt.Sprintf(
 		constant.SystemPrompt,
 		string(skillsXML),
+		time.Now().Format(time.DateTime),
 		a.workspaceDir,
 		agentContextInfo,
 		runtimeInfo,

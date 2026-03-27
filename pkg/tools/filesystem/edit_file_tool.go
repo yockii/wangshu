@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type EditFileTool struct {
@@ -29,20 +30,20 @@ func NewEditFileTool() *EditFileTool {
 	}
 	return tool
 }
-func (t *EditFileTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *EditFileTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	fPath := params["file_path"]
 	oldStr := params["old_str"]
 	newStr := params["new_str"]
 
 	if fPath == "" || oldStr == "" {
-		return "", fmt.Errorf("missing required parameters")
+		return types.NewToolResult().WithError(fmt.Errorf("missing required parameters"))
 	}
 
 	// 路径处理
 	if strings.HasPrefix(fPath, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", err
+			return types.NewToolResult().WithError(err)
 		}
 		fPath = filepath.Join(home, fPath[2:])
 	}
@@ -50,7 +51,7 @@ func (t *EditFileTool) Execute(ctx context.Context, params map[string]string) (s
 	// 读取文件
 	content, err := os.ReadFile(fPath)
 	if err != nil {
-		return "", fmt.Errorf("read failed: %w", err)
+		return types.NewToolResult().WithError(err)
 	}
 	contentStr := string(content)
 
@@ -61,19 +62,19 @@ func (t *EditFileTool) Execute(ctx context.Context, params map[string]string) (s
 		// 没找到，返回前几行帮它调试
 		lines := strings.Split(contentStr, "\n")
 		preview := strings.Join(lines[:min(len(lines), 30)], "\n")
-		return "", fmt.Errorf("not found. Ensure exact match (indentation/spaces). File preview:\n%s", preview)
+		return types.NewToolResult().WithError(fmt.Errorf("not found. Ensure exact match (indentation/spaces). File preview:\n%s", preview))
 	}
 
 	if count > 1 {
-		return "", fmt.Errorf("ambiguous: found %d occurrences. Please add more surrounding context to 'old_str' to make it unique.", count)
+		return types.NewToolResult().WithError(fmt.Errorf("ambiguous: found %d occurrences. Please add more surrounding context to 'old_str' to make it unique.", count))
 	}
 
 	// 唯一，执行替换
 	newContent := strings.Replace(contentStr, oldStr, newStr, 1)
 
 	if err := os.WriteFile(fPath, []byte(newContent), 0644); err != nil {
-		return "", fmt.Errorf("write failed: %w", err)
+		return types.NewToolResult().WithError(err)
 	}
 
-	return "Success", nil
+	return types.NewToolResult().WithRaw("Success")
 }

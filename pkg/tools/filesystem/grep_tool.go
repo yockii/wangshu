@@ -9,7 +9,10 @@ import (
 	"regexp"
 	"strings"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type GrepTool struct {
@@ -18,7 +21,7 @@ type GrepTool struct {
 
 func NewGrepTool() *GrepTool {
 	tool := new(GrepTool)
-	tool.Name_ = "grep_search"
+	tool.Name_ = constant.ToolNameGrepFile
 	tool.Desc_ = "Search for a string or regex pattern in files. Returns matching lines with file names and line numbers. Faster and more powerful than reading files manually. Use this to find where a function is defined or used."
 	tool.Params_ = map[string]any{
 		"type": "object",
@@ -41,13 +44,13 @@ func NewGrepTool() *GrepTool {
 	return tool
 }
 
-func (t *GrepTool) Execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *GrepTool) Execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	pattern := params["pattern"]
 	searchPath := params["path"]
 	includePattern := params["include"]
 
 	if pattern == "" {
-		return "", fmt.Errorf("pattern is required")
+		return types.NewToolResult().WithError(fmt.Errorf("pattern is required"))
 	}
 
 	// 默认搜索当前目录
@@ -59,13 +62,18 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) (strin
 	// 如果用户只是搜普通字符串，regexp.Compile 也能处理，除非有特殊字符
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		return "", fmt.Errorf("invalid regex pattern: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid regex pattern: %w", err))
 	}
 
-	var results []string
 	matchCount := 0
 	const maxMatches = 100 // 限制最大匹配行数，防止输出过长
 	const maxFiles = 500   // 限制最大扫描文件数，防止耗时过长
+
+	var results []struct {
+		Path string `json:"path"`
+		Line int    `json:"line"`
+		Text string `json:"text"`
+	}
 
 	// 2. 遍历目录
 	err = filepath.WalkDir(searchPath, func(path string, d os.DirEntry, err error) error {
@@ -120,8 +128,17 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) (strin
 			if re.MatchString(line) {
 				// 格式化输出：文件路径:行号:内容
 				// Windows 路径分隔符统一为 / 方便 LLM 阅读，或者保持原样
-				resultLine := fmt.Sprintf("%s:%d:%s", path, lineNum, line)
-				results = append(results, resultLine)
+				// resultLine := fmt.Sprintf("%s:%d:%s", path, lineNum, line)
+				result := struct {
+					Path string `json:"path"`
+					Line int    `json:"line"`
+					Text string `json:"text"`
+				}{
+					Path: path,
+					Line: lineNum,
+					Text: line,
+				}
+				results = append(results, result)
 				matchCount++
 
 				if matchCount >= maxMatches {
@@ -135,17 +152,22 @@ func (t *GrepTool) Execute(ctx context.Context, params map[string]string) (strin
 	})
 
 	if err != nil && err != filepath.SkipAll {
-		return "", fmt.Errorf("search error: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("search error: %w", err))
 	}
 
 	if len(results) == 0 {
-		return "No matches found.", nil
+		return types.NewToolResult().WithRaw("No matches found.")
 	}
 
-	output := strings.Join(results, "\n")
+	var raw strings.Builder
+
+	for _, result := range results {
+		raw.WriteString(fmt.Sprintf("%s:%d:%s\n", result.Path, result.Line, result.Text))
+	}
 	if matchCount >= maxMatches {
-		output += "\n... (Results truncated. Refine your pattern or path to see more.)"
+		raw.WriteString("\n... (Results truncated. Refine your pattern or path to see more.)")
 	}
 
-	return fmt.Sprintf("Found %d matches:\n%s", len(results), output), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Found %d matches:\n%s", len(results), raw.String())).
+		WithStructured(actiontypes.NewFsGrepData(pattern, results))
 }

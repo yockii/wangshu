@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 type MessageTool struct {
@@ -40,10 +42,10 @@ func NewMessageTool() *MessageTool {
 	return tool
 }
 
-func (t *MessageTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *MessageTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	content, ok := params["content"]
 	if !ok || content == "" {
-		return "", fmt.Errorf("content parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("content parameter is required"))
 	}
 	channel := params[constant.ToolCallParamChannel]
 	chatID := params[constant.ToolCallParamChatID]
@@ -62,5 +64,5 @@ func (t *MessageTool) execute(ctx context.Context, params map[string]string) (st
 
 	bus.Default().PublishOutbound(om)
 
-	return "", nil
+	return types.NewToolResult().WithStructured(actiontypes.NewMessageSendData(channel, chatID, content))
 }

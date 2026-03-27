@@ -13,6 +13,7 @@ import (
 	"github.com/creativeprojects/go-selfupdate"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
+	"github.com/yockii/wangshu/pkg/tools/types"
 )
 
 const (
@@ -43,7 +44,7 @@ func NewVersionTool() *VersionTool {
 	return tool
 }
 
-func (t *VersionTool) execute(ctx context.Context, params map[string]string) (string, error) {
+func (t *VersionTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
 	action := params["action"]
 
 	switch action {
@@ -58,105 +59,106 @@ func (t *VersionTool) execute(ctx context.Context, params map[string]string) (st
 	case "restart":
 		return t.restart(params)
 	default:
-		return "", fmt.Errorf("invalid action: %s", action)
+		return types.NewToolResult().WithError(fmt.Errorf("invalid action: %s", action))
 	}
 }
 
-func (t *VersionTool) getCurrentVersion() (string, error) {
-	return fmt.Sprintf("Current version: %s", constant.Version), nil
+func (t *VersionTool) getCurrentVersion() *types.ToolResult {
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Current version: %s", constant.Version))
 }
 
-func (t *VersionTool) getLatestVersion(ctx context.Context) (string, error) {
+func (t *VersionTool) getLatestVersion(ctx context.Context) *types.ToolResult {
 	latest, _, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
-	return fmt.Sprintf("Latest version: %s", latest.Version()), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Latest version: %s", latest.Version()))
 }
 
-func (t *VersionTool) checkVersion(ctx context.Context) (string, error) {
+func (t *VersionTool) checkVersion(ctx context.Context) *types.ToolResult {
 	current := constant.Version
 	if current == "dev" {
-		return "Development version detected. Cannot compare with latest release.", nil
+		return types.NewToolResult().WithRaw("Development version detected. Cannot compare with latest release.")
 	}
 
 	latest, _, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	latestVersion := latest.Version()
 
 	if latest.LessOrEqual(current) {
-		return fmt.Sprintf("You are running the latest version: %s", current), nil
+		return types.NewToolResult().WithRaw(fmt.Sprintf("You are running the latest version: %s", current))
 	}
-	return fmt.Sprintf("Update available: %s -> %s", current, latestVersion), nil
+	return types.NewToolResult().WithRaw(fmt.Sprintf("Update available: %s -> %s", current, latestVersion))
 }
 
-func (t *VersionTool) update(ctx context.Context) (string, error) {
+func (t *VersionTool) update(ctx context.Context) *types.ToolResult {
 	current := constant.Version
 	if current == "dev" {
-		return "Cannot update development version. Please use a release build.", nil
+		return types.NewToolResult().WithRaw("Cannot update development version. Please use a release build.")
 	}
 
 	latest, updater, err := t.checkLatestWithMultiUpdater(ctx)
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
 	if latest.LessOrEqual(current) {
-		return fmt.Sprintf("Already running the latest version: %s", current), nil
+		return types.NewToolResult().WithRaw(fmt.Sprintf("Already running the latest version: %s", current))
 	}
 
 	updatedRelease, err := updater.UpdateSelf(ctx, current, selfupdate.NewRepositorySlug(repoOwner, repoName))
 	if err != nil {
-		return "", err
+		return types.NewToolResult().WithError(err)
 	}
 
-	return fmt.Sprintf("Successfully updated to version %s. Use 'restart' action to restart the application and load the new version.", updatedRelease.Version()), nil
+	return types.NewToolResult().
+		WithRaw(fmt.Sprintf("Successfully updated to version %s. Use 'restart' action to restart the application and load the new version.", updatedRelease.Version()))
 }
 
-func (t *VersionTool) restart(params map[string]string) (string, error) {
+func (t *VersionTool) restart(params map[string]string) *types.ToolResult {
 	agentName := params[constant.ToolCallParamAgentName]
 	if agentName == "" {
-		return "", fmt.Errorf("agent_name parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("agent_name parameter is required"))
 	}
 	channel := params[constant.ToolCallParamChannel]
 	if channel == "" {
-		return "", fmt.Errorf("channel parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("channel parameter is required"))
 	}
 	chatID := params[constant.ToolCallParamChatID]
 	if chatID == "" {
-		return "", fmt.Errorf("chat_id parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("chat_id parameter is required"))
 	}
 	senderID := params[constant.ToolCallParamSenderID]
 	if senderID == "" {
-		return "", fmt.Errorf("sender_id parameter is required")
+		return types.NewToolResult().WithError(fmt.Errorf("sender_id parameter is required"))
 	}
 
 	exePath, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("failed to get executable path: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to get executable path: %w", err))
 	}
 
 	exePath, err = filepath.EvalSymlinks(exePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve symlinks: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to resolve symlinks: %w", err))
 	}
 
 	// 重启标记文件
 	restartFlagPath := filepath.Join(filepath.Dir(exePath), ".restart_flag")
 	flagData := fmt.Sprintf("%s|%s|%s|%s", agentName, channel, chatID, senderID)
 	if err := os.WriteFile(restartFlagPath, []byte(flagData), 0644); err != nil {
-		return "", fmt.Errorf("failed to create restart flag: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to create restart flag: %w", err))
 	}
 
 	if err := t.restartSelf(exePath); err != nil {
-		return "", fmt.Errorf("failed to restart: %w", err)
+		return types.NewToolResult().WithError(fmt.Errorf("failed to restart: %w", err))
 	}
 
-	return "Restarting application...", nil
+	return types.NewToolResult().WithRaw("Restarting application...")
 }
 
 // restartSelf 处理跨平台重启

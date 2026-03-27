@@ -20,6 +20,8 @@ const (
 	ToolNameFSSearch    = "fs.search"
 	ToolNameGrepFile    = "fs.grep"
 	ToolNameFSMove      = "fs.move"
+	ToolNameFSDelete    = "fs.delete"
+	ToolNameFsEdit      = "fs.edit"
 	ToolNameConfig      = "config"
 	ToolNameCron        = "cron"
 	ToolNameMessage     = "message"

@@ -48,6 +48,18 @@ func init() {
 		}
 		return tr.Structured, nil
 	}
+	toolMapper["time.sleep"] = func(ctx context.Context, params map[string]any) (*types.ActionOutput, error) {
+		pr := commonParamsExtract(params)
+		if _, ok := params["seconds"]; !ok {
+			return nil, fmt.Errorf("seconds is required")
+		}
+		pr["seconds"] = params["seconds"].(string)
+		tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameSleep, pr)
+		if tr.Err != nil {
+			return tr.Structured, tr.Err
+		}
+		return tr.Structured, nil
+	}
 	// 文件系统相关
 	{
 		toolMapper["fs.read"] = func(ctx context.Context, params map[string]any) (*types.ActionOutput, error) {
@@ -123,6 +135,38 @@ func init() {
 			}
 			pr["new_path"] = params["new_path"].(string)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameFSMove, pr)
+			if tr.Err != nil {
+				return tr.Structured, tr.Err
+			}
+			return tr.Structured, nil
+		}
+		toolMapper["fs.delete"] = func(ctx context.Context, params map[string]any) (*types.ActionOutput, error) {
+			pr := commonParamsExtract(params)
+			if _, ok := params["path"]; !ok {
+				return nil, fmt.Errorf("path is required")
+			}
+			pr["path"] = params["path"].(string)
+			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameFSDelete, pr)
+			if tr.Err != nil {
+				return tr.Structured, tr.Err
+			}
+			return tr.Structured, nil
+		}
+		toolMapper["fs.edit"] = func(ctx context.Context, params map[string]any) (*types.ActionOutput, error) {
+			pr := commonParamsExtract(params)
+			if _, ok := params["file_path"]; !ok {
+				return nil, fmt.Errorf("file_path is required")
+			}
+			pr["file_path"] = params["file_path"].(string)
+			if _, ok := params["old_str"]; !ok {
+				return nil, fmt.Errorf("old_str is required")
+			}
+			pr["old_str"] = params["old_str"].(string)
+			if _, ok := params["new_str"]; !ok {
+				return nil, fmt.Errorf("new_str is required")
+			}
+			pr["new_str"] = params["new_str"].(string)
+			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameFsEdit, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err
 			}

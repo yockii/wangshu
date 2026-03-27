@@ -80,7 +80,13 @@ web.fetch     # 获取网页内容
 
 #### browser（浏览器自动化）
 ```yaml
-browser.open       # 打开浏览器
+browser.open       # 打开浏览器页面
+browser.click      # 点击元素
+browser.fill       # 填充表单
+browser.html       # 获取页面HTML
+browser.screenshot # 截图
+browser.wait       # 等待元素
+browser.close      # 关闭浏览器
 browser.run_script # 执行浏览器脚本
 ```
 
@@ -100,6 +106,11 @@ llm.rerank    # 重排序
 ```yaml
 knowledge.search   # 知识检索
 knowledge.store    # 知识存储
+```
+
+#### message（消息通知）
+```yaml
+message.send       # 发送消息
 ```
 
 ---
@@ -138,6 +149,27 @@ knowledge.store    # 知识存储
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | timestamp | string | ISO 8601 格式的时间戳 |
+
+---
+
+### time.sleep
+
+延时执行。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| duration | string | 是 | 延时时长（如 `1s`, `500ms`, `1m`） |
+
+**输出数据**：
+
+```json
+{
+  "status": "completed",
+  "duration": "1s"
+}
+```
 
 ---
 
@@ -215,8 +247,8 @@ knowledge.store    # 知识存储
 {
   "path": "/path/to/dir",
   "items": [
-    { "name": "file1.txt", "is_dir": false },
-    { "name": "subdir", "is_dir": true }
+    { "name": "file1.txt", "is_dir": false, "size": 1024 },
+    { "name": "subdir", "is_dir": true, "size": 0 }
   ]
 }
 ```
@@ -227,6 +259,7 @@ knowledge.store    # 知识存储
 | items | array | 目录项列表 |
 | items[].name | string | 文件/目录名 |
 | items[].is_dir | bool | 是否为目录 |
+| items[].size | int | 文件大小（字节） |
 
 ---
 
@@ -289,7 +322,61 @@ knowledge.store    # 知识存储
 
 ---
 
-### fs.search (find_files)
+### fs.delete
+
+删除文件或目录。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| path | string | 是 | 要删除的文件或目录路径 |
+
+**输出数据**：
+
+```json
+{
+  "path": "/path/to/file.txt",
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| path | string | 删除的路径 |
+
+---
+
+### fs.edit
+
+编辑文件内容（替换文本块）。
+
+**输入参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file_path | string | 是 | 文件路径 |
+| old_str | string | 是 | 要替换的文本（必须唯一匹配） |
+| new_str | string | 是 | 替换后的文本 |
+
+**输出数据**：
+
+```json
+{
+  "file": "/path/to/file.txt",
+  "replaced_text": "被替换的文本...",
+  "success": true
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| file | string | 文件路径 |
+| replaced_text | string | 被替换的文本 |
+| success | bool | 是否成功 |
+
+---
+
+### fs.search
 
 搜索文件。
 

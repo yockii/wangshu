@@ -69,7 +69,7 @@ jobs:
                 --retry 5 \
                 --retry-delay 15 \
                 --retry-connrefused \
-                --speed-limit 1000 \
+                --speed-limit 5120 \
                 --speed-time 60 \
                 -X POST \
                 "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \

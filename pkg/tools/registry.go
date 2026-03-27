@@ -67,13 +67,35 @@ func (r *Registry) GetSummaries() map[string]string {
 	return summaries
 }
 
+func (r *Registry) GetProviderDefsWithExcluedTools(excluedToolNames ...string) []llm.ToolDefinition {
+	excluedNameMap := map[string]struct{}{}
+	for _, name := range excluedToolNames {
+		excluedNameMap[name] = struct{}{}
+	}
+	defs := []llm.ToolDefinition{}
+	for _, tool := range r.tools {
+		if _, ok := excluedNameMap[tool.Name()]; ok {
+			continue
+		}
+		defs = append(defs, llm.ToolDefinition{
+			Type: "function",
+			Function: llm.ToolFunctionDefinition{
+				Name:        tool.Name(),
+				Description: tool.Description(),
+				Parameters:  tool.Parameters(),
+			},
+		})
+	}
+	return defs
+}
+
 func (r *Registry) GetSelectedToolsInProviderDefs(selectedToolNames ...string) []llm.ToolDefinition {
 	selectedNameMap := map[string]struct{}{}
 	for _, name := range selectedToolNames {
 		selectedNameMap[name] = struct{}{}
 	}
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	// r.mu.RLock()
+	// defer r.mu.RUnlock()
 	defs := []llm.ToolDefinition{}
 	for _, tool := range r.tools {
 		if _, ok := selectedNameMap[tool.Name()]; ok {

@@ -27,7 +27,8 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 		}
 	}
 
-	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
+	// availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
+	availableTools := tools.GetDefaultToolRegistry().GetProviderDefsWithExcluedTools(constant.ToolNameMessage)
 	for i := 0; i < a.maxIter; i++ {
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 		if err != nil {

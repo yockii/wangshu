@@ -11,7 +11,7 @@
 
     <div class="mt-2">
       <InputGroup>
-        <InputGroupTextarea placeholder="Ask, Search or Chat..." />
+        <InputGroupTextarea placeholder="Ask, Search or Chat..." v-model="msgContent" :disabled="inputDisabled" />
         <InputGroupAddon align="block-end">
           <InputGroupButton variant="outline" class="rounded-full" size="icon-xs">
             <PlusIcon class="size-4" />
@@ -20,7 +20,7 @@
             52% used
           </InputGroupText>
           <Separator orientation="vertical" class="!h-4" />
-          <InputGroupButton variant="default" class="rounded-full" size="icon-xs" @click="startChat">
+          <InputGroupButton variant="default" class="rounded-full" size="icon-xs" :disabled="inputDisabled" @click="sendMessage">
             <ArrowUpIcon class="size-4" />
             <span class="sr-only">Send</span>
           </InputGroupButton>
@@ -34,12 +34,27 @@
 import { ArrowUpIcon,PlusIcon } from '@lucide/vue'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea } from '@/components/ui/input-group'
 import { Separator } from '@/components/ui/separator'
-import { ref, shallowRef } from 'vue';
+import { onMounted, ref, shallowRef } from 'vue';
 import type { Message } from '@/types/message'
 import MessageItem from '@/components/MessageItem.vue'
+import { ChatBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
+import {Events} from "@wailsio/runtime";
+import type { Message as BusMessage } from '../../bindings/github.com/yockii/wangshu/pkg/bus';
 
 // 使用 shallowRef 优化性能，避免深度监听整个消息数组
 const messages = shallowRef<Message[]>([])
+
+const msgContent = ref('')
+const inputDisabled = ref(false)
+const sendMessage = async () => {
+  if (!msgContent.value) {
+    return
+  }
+  await ChatBundle.HandleMessage(msgContent.value)
+  messages.value = [...messages.value,  {id: Date.now(), content: msgContent.value, isUser: true }]
+  msgContent.value = ''
+  inputDisabled.value = true
+}
 
 
 
@@ -81,4 +96,11 @@ async function startChat() {
     await new Promise(r => setTimeout(r, 100)) // 模拟网络延迟
   }
 }
+
+onMounted(() => {
+  Events.On('chat-message', (msg: {data: BusMessage}) => {
+    messages.value = [...messages.value, {id:Date.now(), content:msg.data.content, isUser:false}]
+    inputDisabled.value = false
+  });
+})
 </script>

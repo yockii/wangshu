@@ -11,6 +11,10 @@ import (
 var app *application.App
 var once sync.Once
 
+func GetApp() *application.App {
+	return app
+}
+
 func Run() error {
 	if app == nil {
 		return fmt.Errorf("app not initialized")

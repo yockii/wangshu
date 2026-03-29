@@ -130,16 +130,13 @@ func Initialize() (*agent.Agent, error) {
 	return defaultAgent, nil
 }
 
-func InitializeChannels(defaultAgent *agent.Agent) bool {
-	noChannelFound := true
+func InitializeChannels(defaultAgent *agent.Agent) {
 	for name, ch := range config.DefaultCfg.Channels {
 		if ch.Enabled {
 			switch ch.Type {
 			case "web":
 				if ch.HostAddress != "" && ch.Token != "" {
-					noChannelFound = false
 					webChannel := web.NewWebChannel(name, ch.HostAddress, ch.Token)
-					channel.RegisterChannel(name, webChannel)
 					var webAgent *agent.Agent
 					if ch.Agent != "" {
 						a, has := agent.GetAgent(ch.Agent)
@@ -150,6 +147,7 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 					if webAgent == nil {
 						webAgent = defaultAgent
 					}
+					channel.RegisterChannel(name, webChannel)
 					bus.Default().RegisterInboundHandler(name, webAgent.SubscribeInbound)
 					bus.Default().RegisterOutboundHandler(webChannel.SubscribeOutbound)
 				} else {
@@ -157,7 +155,6 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 				}
 			case "feishu":
 				if ch.AppID != "" && ch.AppSecret != "" {
-					noChannelFound = false
 					feishuChannel := feishu.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
 
 					var feishuAgent *agent.Agent
@@ -180,7 +177,6 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 			}
 		}
 	}
-	return noChannelFound
 }
 
 // Declared
@@ -191,13 +187,9 @@ func Run() {
 		return
 	}
 
-	noChannelFound := InitializeChannels(defaultAgent)
-	if noChannelFound {
-		slog.Error("No channel configured")
-		return
-	}
+	InitializeChannels(defaultAgent)
 
-	flagFileCheck()
+	FlagFileCheck()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -209,7 +201,7 @@ func Run() {
 	slog.Info("All agents stopped")
 }
 
-func flagFileCheck() {
+func FlagFileCheck() {
 	exePath, err := os.Executable()
 	if err != nil {
 		slog.Error("Failed to get executable path", "error", err)
@@ -307,10 +299,7 @@ func Reload() error {
 
 	defaultAgent = agent.InitializeAgentManager()
 
-	noChannelFound := InitializeChannels(defaultAgent)
-	if noChannelFound && !isBuiltinMode {
-		slog.Warn("No channel configured after reload")
-	}
+	InitializeChannels(defaultAgent)
 
 	slog.Info("Configuration reloaded successfully")
 	return nil

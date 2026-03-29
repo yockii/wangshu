@@ -11,6 +11,8 @@ import (
 	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/bundle"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/runner"
+	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/utils"
 )
@@ -20,6 +22,7 @@ var assets embed.FS
 
 func init() {
 	// application.RegisterEvent[string]("time")
+	application.RegisterEvent[bus.Message](app.EventMessage)
 }
 
 func initConfig() {
@@ -42,16 +45,27 @@ func main() {
 	}
 	initConfig()
 
+	defaultAgent, err := runner.Initialize()
+	if err != nil {
+		slog.Error("Initialization failed", "error", err)
+		return
+	}
+
+	runner.InitializeChannels(defaultAgent)
+
+	runner.FlagFileCheck()
+
 	app.InitializeApp(
 		assets,
 		application.NewService(&bundle.WindowBundle{}),
 		application.NewService(&bundle.ConfigBundle{}),
+		application.NewService(bundle.NewChatBundle(defaultAgent)),
 	)
 
 	app.ShowChatWindow()
 
 	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
+	err = app.Run()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

@@ -1,11 +1,11 @@
 <template>
   <div :class="['flex w-full', isUser ? 'justify-end' : 'justify-start']">
-    <div :class="['max-w-[80%] rounded-lg p-4', isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900']">
+    <div :class="['max-w-[80%] rounded-lg p-2', isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900']">
       <!-- 用户消息直接显示文本 -->
-      <p v-if="isUser">{{ content }}</p>
+      <p class="text-sm" v-if="isUser">{{ content }}</p>
       
       <!-- AI消息使用 markdown-it 渲染 -->
-      <div v-else class="markdown-body" v-html="renderedContent"></div>
+      <div v-else class="text-sm" v-html="renderedContent"></div>
     </div>
   </div>
 </template>

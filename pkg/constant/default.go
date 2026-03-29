@@ -4,7 +4,7 @@ const Default = "default"
 
 const HEARTBEAT_OK = "HEARTBEAT_OK"
 
-const TUIChannelName = "_builtin_"
+const BuiltinChannelName = "_builtin_"
 
 const (
 	ReachCompressHistory = 200    // 触发历史压缩的message数量阈值

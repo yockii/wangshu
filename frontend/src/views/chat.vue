@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowUpIcon,PlusIcon } from 'lucide-vue-next'
+import { ArrowUpIcon,PlusIcon } from '@lucide/vue'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea } from '@/components/ui/input-group'
 import { Separator } from '@/components/ui/separator'
 import { ref, shallowRef } from 'vue';
@@ -75,7 +75,7 @@ async function startChat() {
   contentBuffer = ''
 
   // 模拟接收流式数据
-  const mockStream = ['你好', '，我是', 'AI', '助手。']
+  const mockStream = ['你好', '，我是', '**', 'AI', '**', '助手。']
   for (const chunk of mockStream) {
     handleStreamChunk(chunk)
     await new Promise(r => setTimeout(r, 100)) // 模拟网络延迟

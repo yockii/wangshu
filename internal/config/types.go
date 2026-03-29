@@ -13,6 +13,7 @@ type Config struct {
 	Channels  map[string]*ChannelConfig  `json:"channels"`
 	Skill     SkillConfig                `json:"skill"`
 	Browser   BrowserConfig              `json:"browser"`
+	Live2D    Live2DConfig               `json:"live2d"`
 	mu        sync.RWMutex
 }
 
@@ -22,6 +23,15 @@ type SkillConfig struct {
 
 type BrowserConfig struct {
 	DataDir string `json:"data_dir"` // 浏览器用户数据目录，用于持久化cookies、登录状态等
+}
+
+type Live2DConfig struct {
+	Enabled   bool   `json:"enabled"`
+	ModelDir  string `json:"model_dir"`
+	ModelName string `json:"model_name"`
+	Scale     int    `json:"scale"`
+	X         int    `json:"x"`
+	Y         int    `json:"y"`
 }
 
 type AgentConfig struct {
@@ -93,6 +103,14 @@ func defaultConfig() *Config {
 		},
 		Browser: BrowserConfig{
 			DataDir: "~/.wangshu/browser_profile",
+		},
+		Live2D: Live2DConfig{
+			Enabled:   false,
+			ModelDir:  "~/.wangshu/live2d_models",
+			ModelName: "",
+			Scale:     100,
+			X:         0,
+			Y:         0,
 		},
 	}
 }

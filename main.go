@@ -6,9 +6,10 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/yockii/wangshu/internal/app"
+	"github.com/yockii/wangshu/internal/bundle"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/utils"
@@ -18,7 +19,7 @@ import (
 var assets embed.FS
 
 func init() {
-	application.RegisterEvent[string]("time")
+	// application.RegisterEvent[string]("time")
 }
 
 func initConfig() {
@@ -41,51 +42,13 @@ func main() {
 	}
 	initConfig()
 
-	app := application.New(application.Options{
-		Name:        "wangshu-desktop",
-		Description: "A personal AI assistant",
-		Services:    []application.Service{
-			// application.NewService(&GreetService{}),
-		},
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
-	})
+	app.InitializeApp(
+		assets,
+		application.NewService(&bundle.WindowBundle{}),
+		application.NewService(&bundle.ConfigBundle{}),
+	)
 
-	// Create a new window with the necessary options.
-	// 'Title' is the title of the window.
-	// 'Mac' options tailor the window when running on macOS.
-	// 'BackgroundColour' is the background colour of the window.
-	// 'URL' is the URL that will be loaded into the webview.
-	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "望舒 - 个人AI助理",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Windows: application.WindowsWindow{
-			DisableFramelessWindowDecorations: true,
-		},
-		Frameless:        true,
-		BackgroundColour: application.NewRGBA(0, 0, 0, 0),
-		BackgroundType:   application.BackgroundTypeTranslucent,
-		URL:              "/",
-	})
-	win.SnapAssist()
-
-	// Create a goroutine that emits an event containing the current time every second.
-	// The frontend can listen to this event and update the UI accordingly.
-	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
-		}
-	}()
+	app.ShowChatWindow()
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()

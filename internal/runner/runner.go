@@ -33,13 +33,12 @@ import (
 	"github.com/yockii/wangshu/pkg/tools/memory"
 	"github.com/yockii/wangshu/pkg/tools/network"
 	"github.com/yockii/wangshu/pkg/tools/runtime"
-	"github.com/yockii/wangshu/pkg/utils"
 )
 
 var defaultAgent *agent.Agent
 
-func Initialize(isTUIMode bool) (*agent.Agent, error) {
-	if err := config.DefaultCfg.ValidateWithMode(isTUIMode); err != nil {
+func Initialize() (*agent.Agent, error) {
+	if err := config.DefaultCfg.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +125,7 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 
 	skills.InitializeSkillLoader()
 
-	defaultAgent = agent.InitializeAgentManager(isTUIMode)
+	defaultAgent = agent.InitializeAgentManager()
 
 	return defaultAgent, nil
 }
@@ -184,8 +183,9 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 	return noChannelFound
 }
 
+// Declared
 func Run() {
-	defaultAgent, err := Initialize(false)
+	defaultAgent, err := Initialize()
 	if err != nil {
 		slog.Error("Initialization failed", "error", err)
 		return
@@ -277,13 +277,7 @@ func GetDefaultAgent() *agent.Agent {
 }
 
 func Reload() error {
-	cfgPath := "~/.wangshu/config.json"
-	if len(os.Args) > 1 {
-		cfgPath = os.Args[1]
-	}
-	cfgPath = utils.ExpandPath(cfgPath)
-
-	newCfg, err := config.LoadConfig(cfgPath)
+	newCfg, err := config.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load new configuration: %w", err)
 	}
@@ -292,11 +286,11 @@ func Reload() error {
 		return fmt.Errorf("new configuration is invalid: %w", err)
 	}
 
-	_, isTUIMode := channel.GetChannel(constant.TUIChannelName)
+	_, isBuiltinMode := channel.GetChannel(constant.BuiltinChannelName)
 
-	if isTUIMode {
-		channel.ClearChannelsExcept([]string{constant.TUIChannelName})
-		bus.Default().ClearHandlersExcept([]string{constant.TUIChannelName})
+	if isBuiltinMode {
+		channel.ClearChannelsExcept([]string{constant.BuiltinChannelName})
+		bus.Default().ClearHandlersExcept([]string{constant.BuiltinChannelName})
 	} else {
 		channel.ClearChannels()
 		bus.Default().ClearHandlers()
@@ -311,10 +305,10 @@ func Reload() error {
 		return fmt.Errorf("failed to initialize providers: %w", err)
 	}
 
-	defaultAgent = agent.InitializeAgentManager(isTUIMode)
+	defaultAgent = agent.InitializeAgentManager()
 
 	noChannelFound := InitializeChannels(defaultAgent)
-	if noChannelFound && !isTUIMode {
+	if noChannelFound && !isBuiltinMode {
 		slog.Warn("No channel configured after reload")
 	}
 

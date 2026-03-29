@@ -13,10 +13,12 @@ import (
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
+var configFile string
 var DefaultCfg *Config
 
 func Initialize(cfgFilePath string) error {
-	cfg, err := LoadConfig(cfgFilePath)
+	configFile = cfgFilePath
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
@@ -25,16 +27,16 @@ func Initialize(cfgFilePath string) error {
 	return nil
 }
 
-func LoadConfig(cfgFilePath string) (*Config, error) {
-	cfg := defaultConfig()
-
-	data, err := os.ReadFile(cfgFilePath)
+func LoadConfig() (*Config, error) {
+	cfg := &Config{}
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
+			cfg = defaultConfig()
 			// // 引导用户在控制台上填写内容
 			// leadUserToFillConfig(cfg)
 			// 写入文件
-			err = os.MkdirAll(filepath.Dir(cfgFilePath), 0755)
+			err = os.MkdirAll(filepath.Dir(configFile), 0755)
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +44,7 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err := os.WriteFile(cfgFilePath, cfgJson, 0644); err != nil {
+			if err := os.WriteFile(configFile, cfgJson, 0644); err != nil {
 				return nil, err
 			}
 
@@ -80,10 +82,6 @@ func dealCfgPath(cfg *Config) {
 }
 
 func (c *Config) Validate() error {
-	return c.ValidateWithMode(false)
-}
-
-func (c *Config) ValidateWithMode(isTUIMode bool) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -97,7 +95,7 @@ func (c *Config) ValidateWithMode(isTUIMode bool) error {
 		errors = append(errors, errs...)
 	}
 
-	if errs := c.validateChannels(isTUIMode); len(errs) > 0 {
+	if errs := c.validateChannels(); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 
@@ -180,16 +178,13 @@ func (c *Config) validateProviders() []string {
 }
 
 // validateChannels 验证Channel配置，返回所有错误
-func (c *Config) validateChannels(isTUIMode bool) []string {
+func (c *Config) validateChannels() []string {
 	var errors []string
-
-	hasChannel := false
 
 	for name, ch := range c.Channels {
 		if !ch.Enabled {
 			continue
 		}
-		hasChannel = true
 
 		if ch.Type == "" {
 			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 缺少类型配置（请添加 \"type\": \"feishu/web\"）", name))
@@ -219,10 +214,6 @@ func (c *Config) validateChannels(isTUIMode bool) []string {
 		}
 	}
 
-	if !hasChannel && !isTUIMode {
-		errors = append(errors, "  - 未配置任何启用的渠道（请在channels中添加至少一个渠道配置）")
-	}
-
 	return errors
 }
 
@@ -249,19 +240,19 @@ func (c *Config) validateReferences() []string {
 }
 
 // SaveConfig saves configuration to file
-func SaveConfig(path string, cfg *Config) error {
+func SaveConfig(cfg *Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	// Create config directory if needed
-	dir := filepath.Dir(path)
+	dir := filepath.Dir(configFile)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(configFile, data, 0644)
 }
 
 // UpdateAgents updates agents configuration with lock protection

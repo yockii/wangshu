@@ -137,6 +137,9 @@ type MessageMetadata struct {
 	Views         int                 `json:"views,omitempty"`          // 查看次数
 	Forwards      int                 `json:"forwards,omitempty"`       // 转发次数
 	Channel       string              `json:"channel"`                  // 渠道标识
+
+	// 会话进度
+	SessionPercent float64 `json:"session_percent,omitempty"` // 会话进度（0-1）
 }
 
 // Message 统一的消息结构

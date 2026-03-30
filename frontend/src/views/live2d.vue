@@ -2,7 +2,7 @@
 import { Application, Ticker } from 'pixi.js';
 import { Live2DSprite, Config } from 'easy-live2d';
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
-import { Live2dBundle } from '../../../bindings/github.com/yockii/wangshu/internal/bundle';
+import { Live2dBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
 import { Events } from '@wailsio/runtime';
 
 const canvasRef = ref<HTMLCanvasElement>()

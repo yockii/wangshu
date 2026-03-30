@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col justify-between px-4 py-2">
+  <div class="w-full h-full flex flex-col justify-between px-4 py-2 wails-draggable">
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <MessageItem
         v-for="msg in messages"
@@ -11,16 +11,16 @@
 
     <div class="mt-2">
       <InputGroup>
-        <InputGroupTextarea placeholder="Ask, Search or Chat..." v-model="msgContent" :disabled="inputDisabled" @keydown="handleInputKeydown" />
+        <InputGroupTextarea placeholder="和我聊聊吧" v-model="msgContent" :disabled="inputDisabled" @keydown="handleInputKeydown" />
         <InputGroupAddon align="block-end">
-          <InputGroupButton variant="outline" class="rounded-full" size="icon-xs">
+          <!-- <InputGroupButton variant="outline" class="rounded-full" size="icon-xs">
             <PlusIcon class="size-4" />
-          </InputGroupButton>
+          </InputGroupButton> -->
           <InputGroupText class="ml-auto">
-            52% used
+            {{sessionPercent}}% used
           </InputGroupText>
           <Separator orientation="vertical" class="!h-4" />
-          <InputGroupButton variant="default" class="rounded-full" size="icon-xs" :disabled="inputDisabled" @click="sendMessage">
+          <InputGroupButton variant="default" class="rounded-full cursor-pointer" size="icon-xs" :disabled="inputDisabled" @click="sendMessage">
             <ArrowUpIcon class="size-4" />
             <span class="sr-only">Send</span>
           </InputGroupButton>
@@ -43,6 +43,7 @@ import type { Message as BusMessage } from '../../bindings/github.com/yockii/wan
 
 // 使用 shallowRef 优化性能，避免深度监听整个消息数组
 const messages = shallowRef<Message[]>([])
+const sessionPercent = ref(0)
 
 const msgContent = ref('')
 const inputDisabled = ref(false)
@@ -77,11 +78,6 @@ const handleInputKeydown = (e: KeyboardEvent) => {
     return
   }
 }
-
-
-
-
-
 
 let streamingMessage: Message | null = null
 let contentBuffer = ''
@@ -126,6 +122,7 @@ onMounted(() => {
   Events.On('chat-message', (msg: {data: BusMessage}) => {
     messages.value = [...messages.value, {id:Date.now(), content:msg.data.content, isUser:false}]
     inputDisabled.value = false
+    sessionPercent.value = (msg.data.metadata.session_percent || 0) * 100
   });
 })
 </script>

@@ -88,6 +88,12 @@ func HideConfigWindow() {
 }
 
 func ShowLive2DWindow() {
+	if config.DefaultCfg.ValidateLive2D() != nil {
+		slog.Error("Live2D configuration validation failed")
+		app.Dialog.Warning().SetTitle("警告").SetMessage("Live2D 配置无效，请检查配置文件").Show()
+		return
+	}
+
 	windowLocker.Lock()
 	defer windowLocker.Unlock()
 	if live2dWindow == nil {
@@ -112,7 +118,7 @@ func ShowLive2DWindow() {
 			Frameless:         true,
 			BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
 			BackgroundType:    application.BackgroundTypeTranslucent,
-			URL:               "/live2d",
+			URL:               "#/live2d",
 			Width:             width,
 			Height:            height,
 			DisableResize:     true,
@@ -124,6 +130,8 @@ func ShowLive2DWindow() {
 
 	}
 	live2dWindow.Show()
+	Live2DVisible = true
+	rebuildTrayMenu()
 }
 
 func HideLive2DWindow() {
@@ -131,6 +139,8 @@ func HideLive2DWindow() {
 	defer windowLocker.Unlock()
 	if live2dWindow != nil {
 		live2dWindow.Hide()
+		Live2DVisible = false
+		rebuildTrayMenu()
 	}
 }
 
@@ -151,6 +161,10 @@ func SetLive2DIgnoresMouseEvents(ignore bool) {
 }
 
 func EnterLive2DEditMode() {
+	if config.DefaultCfg.ValidateLive2D() != nil {
+		return
+	}
+
 	Live2DEditMode = true
 	SetLive2DIgnoresMouseEvents(false)
 	live2dWindow.SetResizable(true)

@@ -579,6 +579,12 @@ export class MessageMetadata {
      */
     "channel": string;
 
+    /**
+     * 会话进度
+     * 会话进度（0-1）
+     */
+    "session_percent"?: number;
+
     /** Creates a new MessageMetadata instance. */
     constructor($$source: Partial<MessageMetadata> = {}) {
         if (!("message_id" in $$source)) {

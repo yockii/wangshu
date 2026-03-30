@@ -63,10 +63,13 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 			ToolCalls: resp.Message.ToolCalls,
 		})
 
+		percentage := a.CalculateSessionPercent(sess)
+
 		if resp.Message.Content != "" && len(resp.Message.ToolCalls) > 0 {
 			// 有内容，且调用工具，则说明还需要循环，但内容可以先直接发送给用户
 			msg := bus.NewOutboundMessage(sess.ChatID, resp.Message.Content)
 			msg.Metadata.Channel = sess.Channel
+			msg.Metadata.SessionPercent = percentage
 			bus.Default().PublishOutbound(msg)
 		}
 
@@ -86,11 +89,21 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 			})
 		}
 
+		if percentage >= 1 {
+			// 需要进行压缩
+			msg := bus.NewOutboundMessage(sess.ChatID, "历史消息有点多，我需要先处理一下，请稍等...")
+			msg.Metadata.Channel = sess.Channel
+			msg.Metadata.SessionPercent = percentage
+			bus.Default().PublishOutbound(msg)
+			a.checkAndCompressIfNeeded(sess, false)
+		}
 	}
 
 	if finalContent != "" {
 		sess.AddMessage(constant.RoleAssistant, finalContent)
 	}
+
+	a.checkAndCompressIfNeeded(sess, true)
 
 	return finalContent, nil
 }

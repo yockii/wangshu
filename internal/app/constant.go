@@ -7,4 +7,5 @@ const (
 
 var (
 	Live2DEditMode bool = false
+	Live2DVisible  bool = false
 )

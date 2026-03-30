@@ -79,6 +79,10 @@ func dealCfgPath(cfg *Config) {
 	if cfg.Browser.DataDir != "" {
 		cfg.Browser.DataDir = utils.ExpandPath(cfg.Browser.DataDir)
 	}
+
+	if cfg.Live2D.ModelDir != "" {
+		cfg.Live2D.ModelDir = utils.ExpandPath(cfg.Live2D.ModelDir)
+	}
 }
 
 func (c *Config) Validate() error {
@@ -129,7 +133,7 @@ func (c *Config) ValidateLive2D() error {
 		}
 		return fmt.Errorf("模型目录 %s 中不存在 model.json 或 model3.json 文件", modelPath)
 	}
-	return nil
+	return fmt.Errorf("Live2D 未配置")
 }
 
 // validateAgents 验证Agent配置，返回所有错误

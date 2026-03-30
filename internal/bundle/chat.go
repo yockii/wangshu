@@ -16,10 +16,12 @@ var DefaultChatBundle = &ChatBundle{
 }
 
 type ChatBundle struct {
+	agent   *agent.Agent
 	channel *BuiltinChannel
 }
 
 func (b *ChatBundle) SetAgent(agent *agent.Agent) {
+	b.agent = agent
 	channel.RegisterChannel(constant.BuiltinChannelName, b.channel)
 	bus.Default().RegisterInboundHandler(constant.BuiltinChannelName, agent.SubscribeInbound)
 	bus.Default().RegisterOutboundHandler(b.channel.SubscribeOutbound)

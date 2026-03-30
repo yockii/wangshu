@@ -8,8 +8,13 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-var app *application.App
-var once sync.Once
+var (
+	app     *application.App
+	once    sync.Once
+	systray *application.SystemTray
+
+	iconBytes []byte
+)
 
 func GetApp() *application.App {
 	return app
@@ -37,15 +42,20 @@ func InitializeApp(assets embed.FS, services ...application.Service) {
 			},
 		})
 
-		iconBytes, _ := assets.ReadFile("frontend/dist/tray_icon.png")
-		buildSystemTray(iconBytes)
+		iconBytes, _ = assets.ReadFile("frontend/dist/tray_icon.png")
+		buildSystemTray()
 	})
 }
 
-func buildSystemTray(iconBytes []byte) {
-	systray := app.SystemTray.New()
-	systray.SetLabel("望舒 - 个人AI助理")
-	systray.SetIcon(iconBytes).SetTooltip("望舒")
+func buildSystemTray() {
+	if systray == nil {
+		systray = app.SystemTray.New()
+		systray.SetLabel("望舒 - 个人AI助理")
+		systray.SetIcon(iconBytes).SetTooltip("望舒")
+		systray.OnClick(func() {
+			ShowChatWindow()
+		})
+	}
 
 	trayMenu := app.NewMenu()
 	trayMenu.Add("打开聊天窗口").OnClick(func(ctx *application.Context) {
@@ -54,21 +64,36 @@ func buildSystemTray(iconBytes []byte) {
 	trayMenu.Add("配置").OnClick(func(ctx *application.Context) {
 		ShowConfigWindow()
 	})
-	trayMenu.Add("桌宠").OnClick(func(ctx *application.Context) {
-		ShowLive2DWindow()
-	})
-	trayMenu.Add("编辑桌宠").OnClick(func(ctx *application.Context) {
-		ShowLive2DWindow()
-		EnterLive2DEditMode()
-	})
+
+	if Live2DVisible {
+		if Live2DEditMode {
+			trayMenu.Add("退出编辑").OnClick(func(ctx *application.Context) {
+				ExitLive2DEditMode()
+				rebuildTrayMenu()
+			})
+		} else {
+			trayMenu.Add("隐藏桌宠").OnClick(func(ctx *application.Context) {
+				HideLive2DWindow()
+			})
+			trayMenu.Add("编辑桌宠").OnClick(func(ctx *application.Context) {
+				EnterLive2DEditMode()
+				rebuildTrayMenu()
+			})
+		}
+	} else {
+		trayMenu.Add("桌宠").OnClick(func(ctx *application.Context) {
+			ShowLive2DWindow()
+		})
+	}
+
 	trayMenu.AddSeparator()
 	trayMenu.Add("退出").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
 
 	systray.SetMenu(trayMenu)
+}
 
-	systray.OnClick(func() {
-		ShowChatWindow()
-	})
+func rebuildTrayMenu() {
+	buildSystemTray()
 }

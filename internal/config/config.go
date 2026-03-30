@@ -122,11 +122,12 @@ func (c *Config) ValidateLive2D() error {
 			return fmt.Errorf("读取模型目录 %s 失败: %w", modelPath, err)
 		}
 		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".model3.json") {
+			name := entry.Name()
+			if strings.HasSuffix(name, ".model.json") || strings.HasSuffix(name, ".model3.json") {
 				return nil
 			}
 		}
-		return fmt.Errorf("模型目录 %s 中不存在 .model3.json 文件", modelPath)
+		return fmt.Errorf("模型目录 %s 中不存在 model.json 或 model3.json 文件", modelPath)
 	}
 	return nil
 }

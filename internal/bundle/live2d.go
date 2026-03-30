@@ -23,7 +23,8 @@ func (*Live2dBundle) GetModelFile() string {
 			if entry.IsDir() {
 				continue
 			}
-			if strings.HasSuffix(entry.Name(), ".model3.json") {
+			name := entry.Name()
+			if strings.HasSuffix(name, ".model.json") || strings.HasSuffix(name, ".model3.json") {
 				// 组装成 /live2d/{modelName}/{modelJson}
 				return "/live2d/" + config.DefaultCfg.Live2D.ModelName + "/" + entry.Name()
 			}

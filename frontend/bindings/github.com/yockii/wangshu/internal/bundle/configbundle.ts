@@ -33,6 +33,10 @@ export function SelectFolder(title: string, defaultPath: string): $CancellablePr
     return $Call.ByID(4068177109, title, defaultPath);
 }
 
+export function ValidateConfig(): $CancellablePromise<void> {
+    return $Call.ByID(2001787529);
+}
+
 // Private type creation functions
 const $$createType0 = config$0.Config.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);

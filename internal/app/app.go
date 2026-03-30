@@ -29,7 +29,8 @@ func InitializeApp(assets embed.FS, services ...application.Service) {
 			Description: "你的智能个人终端助理",
 			Services:    services,
 			Assets: application.AssetOptions{
-				Handler: application.AssetFileServerFS(assets),
+				Handler:    application.AssetFileServerFS(assets),
+				Middleware: localModelMiddleware,
 			},
 			Mac: application.MacOptions{
 				ApplicationShouldTerminateAfterLastWindowClosed: true,

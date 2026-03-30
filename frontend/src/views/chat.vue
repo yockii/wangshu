@@ -11,7 +11,7 @@
 
     <div class="mt-2">
       <InputGroup>
-        <InputGroupTextarea placeholder="Ask, Search or Chat..." v-model="msgContent" :disabled="inputDisabled" />
+        <InputGroupTextarea placeholder="Ask, Search or Chat..." v-model="msgContent" :disabled="inputDisabled" @keydown="handleInputKeydown" />
         <InputGroupAddon align="block-end">
           <InputGroupButton variant="outline" class="rounded-full" size="icon-xs">
             <PlusIcon class="size-4" />
@@ -34,7 +34,7 @@
 import { ArrowUpIcon,PlusIcon } from '@lucide/vue'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea } from '@/components/ui/input-group'
 import { Separator } from '@/components/ui/separator'
-import { onMounted, ref, shallowRef } from 'vue';
+import { nextTick, onMounted, ref, shallowRef } from 'vue';
 import type { Message } from '@/types/message'
 import MessageItem from '@/components/MessageItem.vue'
 import { ChatBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
@@ -55,6 +55,31 @@ const sendMessage = async () => {
   msgContent.value = ''
   inputDisabled.value = true
 }
+
+const handleInputKeydown = (e: KeyboardEvent) => {
+  const isEnterKey = e.key === 'Enter'
+  const isShortcutKey = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey
+  if (isEnterKey) {
+    if (isShortcutKey) {
+      // 获取光标位置
+      const ce = e.target as HTMLTextAreaElement
+      const cursorPosition = ce?.selectionStart || 0
+      const textPrefix = ce?.value.slice(0, cursorPosition) || ''
+      const textSuffix = ce?.value.slice(cursorPosition) || ''
+      const newText = textPrefix + '\n' + textSuffix
+      ce.value = newText
+      nextTick(() => {
+        ce.setSelectionRange(cursorPosition + 1, cursorPosition + 1)
+      })
+    } else {
+      sendMessage()
+    }
+    return
+  }
+}
+
+
+
 
 
 

@@ -20,7 +20,6 @@ import (
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
-	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/ollama"
@@ -37,61 +36,7 @@ import (
 
 var defaultAgent *agent.Agent
 
-func Initialize() (*agent.Agent, error) {
-	if err := config.DefaultCfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	config.ReleaseSkills()
-
-	usedProviders := make(map[string]bool)
-	for _, agent := range config.DefaultCfg.Agents {
-		if agent.Provider == "" {
-			continue
-		}
-		usedProviders[agent.Provider] = true
-	}
-
-	providerCount := 0
-	for providerName, providerCfg := range config.DefaultCfg.Providers {
-		if !usedProviders[providerName] {
-			continue
-		}
-
-		if providerCfg.Type == "" {
-			slog.Error("LLM provider type is empty", "provider", providerName)
-			continue
-		}
-		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
-			slog.Error("LLM provider API key is empty", "provider", providerName)
-			continue
-		}
-
-		switch providerCfg.Type {
-		case "openai":
-			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, openaiProvider)
-			providerCount++
-		case "anthropic":
-			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, claudeProvider)
-			providerCount++
-		case "ollama":
-			ollamaProvider := ollama.NewProvider(providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, ollamaProvider)
-			providerCount++
-		default:
-			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
-		}
-	}
-
-	if providerCount == 0 {
-		slog.Error("No LLM provider configured")
-		return nil, fmt.Errorf("no LLM provider configured")
-	}
-
-	bus.Default().Start(context.Background())
-
+func RegisterTools() {
 	tools.GetDefaultToolRegistry().Register(&builtin.SleepTool{})
 	tools.GetDefaultToolRegistry().Register(&builtin.GetTimeTool{})
 
@@ -119,14 +64,27 @@ func Initialize() (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVariableTool())
-	configtool.SetReloadFunc(Reload)
+	configtool.SetReloadFunc(func() (err error) {
+		_, err = Reload()
+		return
+	})
 	tools.GetDefaultToolRegistry().Register(configtool.NewConfigTool())
 	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
+}
+
+func Initialize() (*agent.Agent, error) {
+	config.ReleaseSkills()
+
+	err := initializeProviders()
+	if err != nil {
+		return nil, err
+	}
 
 	skills.InitializeSkillLoader()
 
 	defaultAgent = agent.InitializeAgentManager()
 
+	InitializeChannels(defaultAgent)
 	return defaultAgent, nil
 }
 
@@ -181,13 +139,11 @@ func InitializeChannels(defaultAgent *agent.Agent) {
 
 // Declared
 func Run() {
-	defaultAgent, err := Initialize()
+	_, err := Initialize()
 	if err != nil {
 		slog.Error("Initialization failed", "error", err)
 		return
 	}
-
-	InitializeChannels(defaultAgent)
 
 	FlagFileCheck()
 
@@ -268,41 +224,41 @@ func GetDefaultAgent() *agent.Agent {
 	return defaultAgent
 }
 
-func Reload() error {
+func Reload() (defaultAgent *agent.Agent, err error) {
 	newCfg, err := config.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load new configuration: %w", err)
+		return nil, fmt.Errorf("failed to load new configuration: %w", err)
 	}
 
 	if err := newCfg.Validate(); err != nil {
-		return fmt.Errorf("new configuration is invalid: %w", err)
+		return nil, fmt.Errorf("new configuration is invalid: %w", err)
 	}
 
-	_, isBuiltinMode := channel.GetChannel(constant.BuiltinChannelName)
+	// _, isBuiltinMode := channel.GetChannel(constant.BuiltinChannelName)
 
-	if isBuiltinMode {
-		channel.ClearChannelsExcept([]string{constant.BuiltinChannelName})
-		bus.Default().ClearHandlersExcept([]string{constant.BuiltinChannelName})
-	} else {
-		channel.ClearChannels()
-		bus.Default().ClearHandlers()
-	}
+	// if isBuiltinMode {
+	// 	channel.ClearChannelsExcept([]string{constant.BuiltinChannelName})
+	// 	bus.Default().ClearHandlersExcept([]string{constant.BuiltinChannelName})
+	// } else {
+	// 	channel.ClearChannels()
+	// 	bus.Default().ClearHandlers()
+	// }
+
+	channel.ClearChannels()
+	bus.Default().ClearHandlers()
 	agent.ClearAgents()
 
 	llm.ClearProviders()
 
 	config.DefaultCfg = newCfg
 
-	if err := initializeProviders(); err != nil {
-		return fmt.Errorf("failed to initialize providers: %w", err)
+	defaultAgent, err = Initialize()
+	if err != nil {
+		return nil, err
 	}
 
-	defaultAgent = agent.InitializeAgentManager()
-
-	InitializeChannels(defaultAgent)
-
 	slog.Info("Configuration reloaded successfully")
-	return nil
+	return defaultAgent, nil
 }
 
 func initializeProviders() error {
@@ -348,6 +304,7 @@ func initializeProviders() error {
 	}
 
 	if providerCount == 0 {
+		slog.Error("No LLM provider configured")
 		return fmt.Errorf("no LLM provider configured")
 	}
 

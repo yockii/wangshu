@@ -16,13 +16,19 @@ func (*ConfigBundle) GetConfig() *config.Config {
 	return config.DefaultCfg
 }
 
+func (*ConfigBundle) ValidateConfig() error {
+	return config.DefaultCfg.Validate()
+}
+
 func (*ConfigBundle) SaveConfig(cfg *config.Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
 	config.SaveConfig(cfg)
-	if err := runner.Reload(); err != nil {
+	if _defaultAgent, err := runner.Reload(); err != nil {
 		return err
+	} else {
+		DefaultChatBundle.SetAgent(_defaultAgent)
 	}
 	return nil
 }

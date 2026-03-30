@@ -1,9 +1,11 @@
 package app
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/yockii/wangshu/internal/config"
 )
 
 var (
@@ -14,8 +16,14 @@ var (
 )
 
 func ShowChatWindow() {
+	if config.DefaultCfg.Validate() != nil {
+		slog.Error("Configuration validation failed")
+		ShowConfigWindow()
+		return
+	}
 	windowLocker.Lock()
 	defer windowLocker.Unlock()
+
 	if chatWindow == nil {
 		chatWindow = app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Title: "望舒 - 个人AI助理",

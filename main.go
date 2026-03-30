@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	_ "embed"
 	"log"
@@ -45,27 +46,33 @@ func main() {
 	}
 	initConfig()
 
-	defaultAgent, err := runner.Initialize()
-	if err != nil {
-		slog.Error("Initialization failed", "error", err)
-		return
+	bus.Default().Start(context.Background())
+
+	runner.RegisterTools()
+
+	if err := config.DefaultCfg.Validate(); err == nil {
+		defaultAgent, err := runner.Initialize()
+		if err != nil {
+			slog.Error("Initialization failed", "error", err)
+		}
+
+		runner.FlagFileCheck()
+
+		bundle.DefaultChatBundle.SetAgent(defaultAgent)
 	}
-
-	runner.InitializeChannels(defaultAgent)
-
-	runner.FlagFileCheck()
 
 	app.InitializeApp(
 		assets,
 		application.NewService(&bundle.WindowBundle{}),
 		application.NewService(&bundle.ConfigBundle{}),
-		application.NewService(bundle.NewChatBundle(defaultAgent)),
+		application.NewService(bundle.DefaultChatBundle),
+		application.NewService(&bundle.DialogBundle{}),
 	)
 
 	app.ShowChatWindow()
 
 	// Run the application. This blocks until the application has been exited.
-	err = app.Run()
+	err := app.Run()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

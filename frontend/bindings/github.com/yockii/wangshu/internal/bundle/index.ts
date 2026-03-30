@@ -3,9 +3,11 @@
 
 import * as ChatBundle from "./chatbundle.js";
 import * as ConfigBundle from "./configbundle.js";
+import * as DialogBundle from "./dialogbundle.js";
 import * as WindowBundle from "./windowbundle.js";
 export {
     ChatBundle,
     ConfigBundle,
+    DialogBundle,
     WindowBundle
 };

@@ -11,19 +11,18 @@ import (
 	"github.com/yockii/wangshu/pkg/constant"
 )
 
+var DefaultChatBundle = &ChatBundle{
+	channel: &BuiltinChannel{},
+}
+
 type ChatBundle struct {
 	channel *BuiltinChannel
 }
 
-func NewChatBundle(agent *agent.Agent) *ChatBundle {
-	b := &ChatBundle{
-		channel: &BuiltinChannel{},
-	}
+func (b *ChatBundle) SetAgent(agent *agent.Agent) {
 	channel.RegisterChannel(constant.BuiltinChannelName, b.channel)
 	bus.Default().RegisterInboundHandler(constant.BuiltinChannelName, agent.SubscribeInbound)
 	bus.Default().RegisterOutboundHandler(b.channel.SubscribeOutbound)
-
-	return b
 }
 
 func (b *ChatBundle) HandleMessage(content string) {

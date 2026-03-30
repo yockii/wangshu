@@ -41,8 +41,10 @@
               <div v-for="(provider, name) in config?.providers" :key="name" class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
                   <Input
-                    :modelValue="name"
-                    @update:modelValue="(newName: string | number) => renameProvider(name as string, String(newName))"
+                    :modelValue="editingNames.providers[name as string] ?? name"
+                    @update:modelValue="(newName: string | number) => updateEditingName('providers', name as string, String(newName))"
+                    @blur="confirmRename('providers', name as string)"
+                    @keyup.enter="($event.target as HTMLInputElement).blur()"
                     class="font-medium"
                   />
                   <Button variant="ghost" size="icon-sm" @click="removeProvider(name as string)" class="text-destructive hover:text-destructive shrink-0">
@@ -89,8 +91,10 @@
               <div v-for="(agent, name) in config?.agents" :key="name" class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
                   <Input
-                    :modelValue="name"
-                    @update:modelValue="(newName: string | number) => renameAgent(name as string, String(newName))"
+                    :modelValue="editingNames.agents[name as string] ?? name"
+                    @update:modelValue="(newName: string | number) => updateEditingName('agents', name as string, String(newName))"
+                    @blur="confirmRename('agents', name as string)"
+                    @keyup.enter="($event.target as HTMLInputElement).blur()"
                     class="font-medium"
                   />
                   <Button variant="ghost" size="icon-sm" @click="removeAgent(name as string)" class="text-destructive hover:text-destructive shrink-0">
@@ -153,8 +157,10 @@
               <div v-for="(channel, name) in config?.channels" :key="name" class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
                   <Input
-                    :modelValue="name"
-                    @update:modelValue="(newName: string | number) => renameChannel(name as string, String(newName))"
+                    :modelValue="editingNames.channels[name as string] ?? name"
+                    @update:modelValue="(newName: string | number) => updateEditingName('channels', name as string, String(newName))"
+                    @blur="confirmRename('channels', name as string)"
+                    @keyup.enter="($event.target as HTMLInputElement).blur()"
                     class="font-medium"
                   />
                   <Button variant="ghost" size="icon-sm" @click="removeChannel(name as string)" class="text-destructive hover:text-destructive shrink-0">
@@ -357,6 +363,16 @@ const hasChanges = ref(false)
 const activeSection = ref('providers')
 const contentRef = ref<HTMLElement | null>(null)
 
+const editingNames = ref<{
+  providers: Record<string, string>
+  agents: Record<string, string>
+  channels: Record<string, string>
+}>({
+  providers: {},
+  agents: {},
+  channels: {}
+})
+
 const providerTypes = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
@@ -427,6 +443,28 @@ const saveConfig = async () => {
   } catch (error) {
     console.error('Failed to save config:', error)
   }
+}
+
+const updateEditingName = (type: 'providers' | 'agents' | 'channels', oldName: string, newName: string) => {
+  editingNames.value[type][oldName] = newName
+}
+
+const confirmRename = (type: 'providers' | 'agents' | 'channels', oldName: string) => {
+  const newName = editingNames.value[type][oldName]
+  if (!newName || newName === oldName) {
+    delete editingNames.value[type][oldName]
+    return
+  }
+  
+  if (type === 'providers') {
+    renameProvider(oldName, newName)
+  } else if (type === 'agents') {
+    renameAgent(oldName, newName)
+  } else if (type === 'channels') {
+    renameChannel(oldName, newName)
+  }
+  
+  delete editingNames.value[type][oldName]
 }
 
 const renameProvider = (oldName: string, newName: string) => {

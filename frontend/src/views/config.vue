@@ -297,35 +297,6 @@
                     </SelectContent>
                   </Select>
                 </div>
-                <div class="col-span-2 space-y-2">
-                  <label class="text-sm text-muted-foreground">缩放 (%)</label>
-                  <div class="flex items-center gap-4">
-                    <Slider
-                      v-model="live2dScaleSlider"
-                      :min="10"
-                      :max="200"
-                      :step="1"
-                      class="flex-1"
-                      @update:modelValue="onScaleSliderChange"
-                    />
-                    <Input
-                      v-model.number="config!.live2d.scale"
-                      type="number"
-                      min="10"
-                      max="200"
-                      class="w-20"
-                      @input="markChanged"
-                    />
-                  </div>
-                </div>
-                <div class="space-y-2">
-                  <label class="text-sm text-muted-foreground">X 位置</label>
-                  <Input v-model.number="config!.live2d.x" type="number" @input="markChanged" />
-                </div>
-                <div class="space-y-2">
-                  <label class="text-sm text-muted-foreground">Y 位置</label>
-                  <Input v-model.number="config!.live2d.y" type="number" @input="markChanged" />
-                </div>
               </div>
             </div>
           </section>
@@ -354,7 +325,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
 import { Server, Bot, MessageSquare, Wrench, Globe, Sparkles, Plus, Trash2, Save, FolderOpen } from '@lucide/vue'
 
 const config = ref<Config | null>(null)
@@ -575,7 +545,6 @@ const selectBrowserFolder = async () => {
 }
 
 const live2dModels = ref<string[]>([])
-const live2dScaleSlider = ref([100])
 
 const loadLive2DModels = async () => {
   if (!config.value?.live2d?.model_dir) {
@@ -599,21 +568,11 @@ const onModelDirChange = async () => {
   await loadLive2DModels()
 }
 
-const onScaleSliderChange = (value: number[] | undefined) => {
-  if (config.value && value && value.length > 0) {
-    config.value.live2d.scale = value[0]
-    markChanged()
-  }
-}
-
 onMounted(async () => {
   config.value = await ConfigBundle.GetConfig()
   console.log(config.value)
   if (config.value) {
     originalConfig.value = JSON.stringify(config.value)
-    if (config.value.live2d?.scale) {
-      live2dScaleSlider.value = [config.value.live2d.scale]
-    }
     await loadLive2DModels()
   }
 })

@@ -29,7 +29,8 @@ type Live2DConfig struct {
 	Enabled   bool   `json:"enabled"`
 	ModelDir  string `json:"model_dir"`
 	ModelName string `json:"model_name"`
-	Scale     int    `json:"scale"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
 	X         int    `json:"x"`
 	Y         int    `json:"y"`
 }
@@ -108,7 +109,8 @@ func defaultConfig() *Config {
 			Enabled:   false,
 			ModelDir:  "~/.wangshu/live2d_models",
 			ModelName: "",
-			Scale:     100,
+			Width:     200,
+			Height:    380,
 			X:         0,
 			Y:         0,
 		},

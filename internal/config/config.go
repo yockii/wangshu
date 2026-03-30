@@ -112,6 +112,25 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) ValidateLive2D() error {
+	if c.Live2D.Enabled {
+		dir := c.Live2D.ModelDir
+		modelPath := filepath.Join(dir, c.Live2D.ModelName)
+		// 检查是否存在 .model3.json结尾的文件
+		entries, err := os.ReadDir(modelPath)
+		if err != nil {
+			return fmt.Errorf("读取模型目录 %s 失败: %w", modelPath, err)
+		}
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), ".model3.json") {
+				return nil
+			}
+		}
+		return fmt.Errorf("模型目录 %s 中不存在 .model3.json 文件", modelPath)
+	}
+	return nil
+}
+
 // validateAgents 验证Agent配置，返回所有错误
 func (c *Config) validateAgents() []string {
 	var errors []string

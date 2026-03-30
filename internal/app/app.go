@@ -57,6 +57,10 @@ func buildSystemTray(iconBytes []byte) {
 	trayMenu.Add("桌宠").OnClick(func(ctx *application.Context) {
 		ShowLive2DWindow()
 	})
+	trayMenu.Add("编辑桌宠").OnClick(func(ctx *application.Context) {
+		ShowLive2DWindow()
+		EnterLive2DEditMode()
+	})
 	trayMenu.AddSeparator()
 	trayMenu.Add("退出").OnClick(func(ctx *application.Context) {
 		app.Quit()

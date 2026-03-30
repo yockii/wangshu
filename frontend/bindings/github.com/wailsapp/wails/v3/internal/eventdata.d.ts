@@ -13,6 +13,7 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "chat-message": bus$0.Message;
+            "live2d-edit-mode": boolean;
         }
     }
 }

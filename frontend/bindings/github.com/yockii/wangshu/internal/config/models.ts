@@ -188,7 +188,8 @@ export class Live2DConfig {
     "enabled": boolean;
     "model_dir": string;
     "model_name": string;
-    "scale": number;
+    "width": number;
+    "height": number;
     "x": number;
     "y": number;
 
@@ -203,8 +204,11 @@ export class Live2DConfig {
         if (!("model_name" in $$source)) {
             this["model_name"] = "";
         }
-        if (!("scale" in $$source)) {
-            this["scale"] = 0;
+        if (!("width" in $$source)) {
+            this["width"] = 0;
+        }
+        if (!("height" in $$source)) {
+            this["height"] = 0;
         }
         if (!("x" in $$source)) {
             this["x"] = 0;

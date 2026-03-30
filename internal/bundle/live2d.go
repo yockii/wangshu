@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/config"
 )
 
@@ -29,4 +30,31 @@ func (*Live2dBundle) GetModelFile() string {
 		}
 	}
 	return ""
+}
+
+func (*Live2dBundle) GetLive2DConfig() *config.Live2DConfig {
+	return &config.DefaultCfg.Live2D
+}
+
+func (*Live2dBundle) UpdateLive2DWindowPosition(x, y int) {
+	config.DefaultCfg.Live2D.X = x
+	config.DefaultCfg.Live2D.Y = y
+}
+
+func (*Live2dBundle) UpdateLive2DWindowSize(width, height int) {
+	config.DefaultCfg.Live2D.Width = width
+	config.DefaultCfg.Live2D.Height = height
+	app.ChangeLive2DWindowSize(width, height)
+}
+
+func (*Live2dBundle) SaveLive2DConfig() error {
+	return config.SaveConfig(config.DefaultCfg)
+}
+
+func (*Live2dBundle) IsEditMode() bool {
+	return app.IsLive2DEditMode()
+}
+
+func (*Live2dBundle) ExitEditMode() {
+	app.ExitLive2DEditMode()
 }

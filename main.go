@@ -24,6 +24,8 @@ var assets embed.FS
 func init() {
 	// application.RegisterEvent[string]("time")
 	application.RegisterEvent[bus.Message](app.EventMessage)
+
+	application.RegisterEvent[bool](app.EventLive2DEditMode)
 }
 
 func initConfig() {
@@ -72,6 +74,9 @@ func main() {
 	)
 
 	app.ShowChatWindow()
+	if config.DefaultCfg.ValidateLive2D() == nil {
+		app.ShowLive2DWindow()
+	}
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()

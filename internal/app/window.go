@@ -104,7 +104,11 @@ func ShowLive2DWindow() {
 			Frameless:        true,
 			BackgroundColour: application.NewRGBA(0, 0, 0, 0),
 			BackgroundType:   application.BackgroundTypeTranslucent,
-			URL:              "#/live2d",
+			URL:              "/live2d",
+			Width:            200,
+			Height:           380,
+			DisableResize:    true,
+			AlwaysOnTop:      true,
 		})
 	}
 	live2dWindow.Show()
@@ -115,5 +119,13 @@ func HideLive2DWindow() {
 	defer windowLocker.Unlock()
 	if live2dWindow != nil {
 		live2dWindow.Hide()
+	}
+}
+
+func ChangeLive2DWindowSize(width, height int) {
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+	if live2dWindow != nil {
+		live2dWindow.SetSize(width, height)
 	}
 }

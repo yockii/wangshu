@@ -272,7 +272,7 @@
             <div class="p-4 border border-border rounded-lg bg-card">
               <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2 flex items-center gap-2">
-                  <Switch v-model:checked="config!.live2d.enabled" @update:checked="markChanged" />
+                  <Switch v-model="config!.live2d.enabled" @update:modelValue="markChanged" />
                   <label class="text-sm text-muted-foreground">启用 Live2D</label>
                 </div>
                 <div class="col-span-2 space-y-2">

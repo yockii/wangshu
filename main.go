@@ -67,6 +67,8 @@ func main() {
 		application.NewService(&bundle.ConfigBundle{}),
 		application.NewService(bundle.DefaultChatBundle),
 		application.NewService(&bundle.DialogBundle{}),
+
+		application.NewService(&bundle.Live2dBundle{}),
 	)
 
 	app.ShowChatWindow()

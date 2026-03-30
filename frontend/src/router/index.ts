@@ -23,11 +23,6 @@ const routes = [
         component: () => import("@/views/config.vue"),
       }
     ]
-  },
-  {
-    path: "/live2d",
-    name: "live2d",
-    component: () => import("@/views/live2d.vue"),
   }
 ];
 

@@ -5,6 +5,14 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as agent$0 from "../agent/models.js";
+
 export function HandleMessage(content: string): $CancellablePromise<void> {
     return $Call.ByID(2613553446, content);
+}
+
+export function SetAgent(agent: agent$0.Agent | null): $CancellablePromise<void> {
+    return $Call.ByID(2869054500, agent);
 }

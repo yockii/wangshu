@@ -4,10 +4,12 @@
 import * as ChatBundle from "./chatbundle.js";
 import * as ConfigBundle from "./configbundle.js";
 import * as DialogBundle from "./dialogbundle.js";
+import * as Live2dBundle from "./live2dbundle.js";
 import * as WindowBundle from "./windowbundle.js";
 export {
     ChatBundle,
     ConfigBundle,
     DialogBundle,
+    Live2dBundle,
     WindowBundle
 };

@@ -23,6 +23,9 @@ func Initialize(cfgFilePath string) error {
 	}
 
 	DefaultCfg = cfg
+
+	ReleaseLive2dModels()
+
 	return nil
 }
 

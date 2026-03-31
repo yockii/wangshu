@@ -2,10 +2,10 @@
 set -e
 
 # Build configuration
-APP_NAME="wangshu-desktop.exe"
-BUNDLE_ID="com.example.wangshudesktop"
-VERSION="0.1.0"
-BUILD_NUMBER="0.1.0"
+APP_NAME="wangshu-desktop"
+BUNDLE_ID="com.xhnic.wangshu"
+VERSION="0.7.0"
+BUILD_NUMBER="0.7.0"
 BUILD_DIR="build/ios"
 TARGET="simulator"
 

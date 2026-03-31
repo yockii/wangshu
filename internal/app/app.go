@@ -40,6 +40,13 @@ func InitializeApp(assets embed.FS, services ...application.Service) {
 			Mac: application.MacOptions{
 				ApplicationShouldTerminateAfterLastWindowClosed: true,
 			},
+			// 单例运行
+			SingleInstance: &application.SingleInstanceOptions{
+				UniqueID: "com.xhnic.wangshu",
+				OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+					ShowChatWindow()
+				},
+			},
 		})
 
 		iconBytes, _ = assets.ReadFile("frontend/dist/tray_icon.png")

@@ -68,7 +68,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]*AgentConfig{
 			constant.Default: {
-				Workspace:              "~/.wangshu/workspace",
+				Workspace:              "./workspace",
 				Provider:               "myProvider",
 				Model:                  "qwen3-max",
 				Temperature:            0.7,
@@ -79,35 +79,20 @@ func defaultConfig() *Config {
 		Providers: map[string]*ProviderConfig{
 			"myProvider": {
 				Type:    "openai",
-				APIKey:  "sk-your-openai-api-key",
-				BaseURL: "your custom base url, blank if use openai official",
+				APIKey:  "",
+				BaseURL: "",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
-			"feishuTest": {
-				Type:      "feishu",
-				Enabled:   false,
-				Agent:     constant.Default,
-				AppID:     "your feishu app id",
-				AppSecret: "your feishu app secret",
-			},
-			"webTest": {
-				Type:        "web",
-				Enabled:     false,
-				Agent:       constant.Default,
-				HostAddress: "localhost:8080",
-				Token:       "custom defined token",
-			},
-		},
+		Channels: map[string]*ChannelConfig{},
 		Skill: SkillConfig{
-			GlobalPath: "~/.wangshu/skills",
+			GlobalPath: "./skills",
 		},
 		Browser: BrowserConfig{
-			DataDir: "~/.wangshu/browser_profile",
+			DataDir: "./browser_profile",
 		},
 		Live2D: Live2DConfig{
-			Enabled:   false,
-			ModelDir:  "~/.wangshu/live2d_models",
+			Enabled:   true,
+			ModelDir:  "./live2d_models",
 			ModelName: "hiyori",
 			Width:     200,
 			Height:    380,

@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "0.7.0"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A wangshu-desktop application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"ProductVersion": "0.7.0",
+			"CompanyName": "XhNIC",
+			"FileDescription": "Wangshu is a live2d chatbot that can help you to do anything.",
+			"LegalCopyright": "(c) 2025, XhNIC",
+			"ProductName": "Wangshu",
+			"Comments": "Wangshu is a live2d chatbot that can help you to do anything."
 		}
 	}
 }

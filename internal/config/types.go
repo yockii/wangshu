@@ -108,7 +108,7 @@ func defaultConfig() *Config {
 		Live2D: Live2DConfig{
 			Enabled:   false,
 			ModelDir:  "~/.wangshu/live2d_models",
-			ModelName: "",
+			ModelName: "hiyori",
 			Width:     200,
 			Height:    380,
 			X:         0,

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/w32"
 	"github.com/yockii/wangshu/internal/config"
 )
 
@@ -114,6 +115,8 @@ func ShowLive2DWindow() {
 			},
 			Windows: application.WindowsWindow{
 				DisableFramelessWindowDecorations: true,
+				// HiddenOnTaskbar:                   true,
+				ExStyle: w32.WS_EX_TOOLWINDOW | w32.WS_EX_NOREDIRECTIONBITMAP | w32.WS_EX_TOPMOST | w32.WS_EX_LAYERED,
 			},
 			Frameless:         true,
 			BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
@@ -121,11 +124,14 @@ func ShowLive2DWindow() {
 			URL:               "#/live2d",
 			Width:             width,
 			Height:            height,
+			MinWidth:          50,
+			MinHeight:         80,
 			DisableResize:     true,
 			AlwaysOnTop:       true,
 			IgnoreMouseEvents: true,
 			X:                 config.DefaultCfg.Live2D.X,
 			Y:                 config.DefaultCfg.Live2D.Y,
+			InitialPosition:   application.WindowXY,
 		})
 
 	}
@@ -180,6 +186,12 @@ func ExitLive2DEditMode() {
 	// 保存当前窗口 xy坐标
 	config.DefaultCfg.Live2D.X = x
 	config.DefaultCfg.Live2D.Y = y
+
+	// 当前窗口大小
+	width, height := live2dWindow.Size()
+	config.DefaultCfg.Live2D.Width = width
+	config.DefaultCfg.Live2D.Height = height
+
 	// 保存当前窗口 xy坐标
 	config.SaveConfig(config.DefaultCfg)
 

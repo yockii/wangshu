@@ -39,7 +39,6 @@ const handleResize = (deltaX: number, deltaY: number) => {
   const newHeight = Math.max(100, windowHeight.value + deltaY)
   windowWidth.value = newWidth
   windowHeight.value = newHeight
-  Live2dBundle.UpdateLive2DWindowSize(newWidth, newHeight)
 }
 
 const onWindowResize = () => {
@@ -107,7 +106,6 @@ const exitEditMode = async () => {
   if (live2dConfig.value) {
     live2dConfig.value.width = windowWidth.value
     live2dConfig.value.height = windowHeight.value
-    await Live2dBundle.SaveLive2DConfig()
   }
   Live2dBundle.ExitEditMode()
   showControlPanel.value = false
@@ -185,7 +183,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative overflow-hidden w-full h-full" :style="{ border: editMode ? '2px solid rgba(255, 255, 255, 1)' : 'none' }">
+  <div class="relative overflow-hidden w-full h-full wails-draggable" :style="{ border: editMode ? '2px solid rgba(111, 111, 111, 1)' : 'none' }">
     <canvas id="live2d" ref="canvasRef"></canvas>
     
     <div v-if="editMode" class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">

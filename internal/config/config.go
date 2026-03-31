@@ -1,7 +1,6 @@
 package config
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -383,9 +382,6 @@ func (c *Config) DeleteChannel(name string) {
 	delete(c.Channels, name)
 }
 
-//go:embed workspace
-var embeddedFiles embed.FS
-
 func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 	// 确保workspace目录存在
 	if _, err := os.Stat(workspaceDir); err != nil {
@@ -440,9 +436,6 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 	})
 }
 
-//go:embed skills
-var embeddedSkills embed.FS
-
 func ReleaseSkills() error {
 	skillsDir := DefaultCfg.Skill.GlobalPath
 	skillsDir = utils.ExpandPath(skillsDir)
@@ -475,6 +468,51 @@ func ReleaseSkills() error {
 
 		// 复制文件
 		data, err := embeddedSkills.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
+
+		return os.WriteFile(targetPath, data, 0644)
+	})
+}
+
+func ReleaseLive2dModels() error {
+	if !DefaultCfg.Live2D.Enabled {
+		return nil
+	}
+	modelsDir := DefaultCfg.Live2D.ModelDir
+	modelsDir = utils.ExpandPath(modelsDir)
+
+	return fs.WalkDir(embeddedLive2DModels, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil // 根目录跳过
+		}
+		if path == "live2d_models" {
+			return nil // live2d_models目录跳过
+		}
+
+		relPath := path
+		if strings.HasPrefix(path, "live2d_models/") {
+			relPath = path[len("live2d_models/"):]
+		}
+
+		targetPath := filepath.Join(modelsDir, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(targetPath, 0755)
+		}
+
+		// 如果已存在，跳过
+		if _, err = os.Stat(targetPath); err == nil {
+			return nil
+		}
+
+		// 复制文件
+		data, err := embeddedLive2DModels.ReadFile(path)
 		if err != nil {
 			return err
 		}

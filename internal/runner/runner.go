@@ -74,6 +74,7 @@ func RegisterTools() {
 
 func Initialize() (*agent.Agent, error) {
 	config.ReleaseSkills()
+	config.ReleaseLive2dModels()
 
 	err := initializeProviders()
 	if err != nil {
@@ -256,6 +257,9 @@ func Reload() (defaultAgent *agent.Agent, err error) {
 	if err != nil {
 		return nil, err
 	}
+
+	config.ReleaseSkills()
+	config.ReleaseLive2dModels()
 
 	slog.Info("Configuration reloaded successfully")
 	return defaultAgent, nil

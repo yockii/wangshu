@@ -27,18 +27,6 @@ export function IsEditMode(): $CancellablePromise<boolean> {
     return $Call.ByID(874476260);
 }
 
-export function SaveLive2DConfig(): $CancellablePromise<void> {
-    return $Call.ByID(2940702932);
-}
-
-export function UpdateLive2DWindowPosition(x: number, y: number): $CancellablePromise<void> {
-    return $Call.ByID(2541802877, x, y);
-}
-
-export function UpdateLive2DWindowSize(width: number, height: number): $CancellablePromise<void> {
-    return $Call.ByID(16244811, width, height);
-}
-
 // Private type creation functions
 const $$createType0 = config$0.Live2DConfig.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);

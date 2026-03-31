@@ -227,6 +227,118 @@
             </div>
           </section>
 
+          <section id="section-mcp_servers" class="scroll-mt-6">
+            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Puzzle class="w-5 h-5" />
+              MCP Servers
+            </h3>
+            <div class="space-y-4">
+              <div v-for="(mcpServer, name) in (config as any)?.mcp_servers" :key="name" class="p-4 border border-border rounded-lg bg-card">
+                <div class="flex items-center justify-between mb-3 gap-4">
+                  <Input
+                    :modelValue="editingNames.mcp_servers[name as string] ?? name"
+                    @update:modelValue="(newName: string | number) => updateEditingName('mcp_servers', name as string, String(newName))"
+                    @blur="confirmRename('mcp_servers', name as string)"
+                    @keyup.enter="($event.target as HTMLInputElement).blur()"
+                    class="font-medium"
+                  />
+                  <Button variant="ghost" size="icon-sm" @click="removeMcpServer(name as string)" class="text-destructive hover:text-destructive shrink-0">
+                    <Trash2 class="w-4 h-4" />
+                  </Button>
+                </div>
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <label class="text-sm text-muted-foreground">Command</label>
+                    <Input v-model="(mcpServer as McpConfig).command" placeholder="e.g., npx, uvx, python" @input="markChanged" />
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm text-muted-foreground">Args</label>
+                      <Button variant="ghost" size="sm" @click="addMcpArg(mcpServer as McpConfig)" class="h-6 px-2">
+                        <Plus class="w-3 h-3 mr-1" />
+                        添加参数
+                      </Button>
+                    </div>
+                    <div v-if="(mcpServer as McpConfig).args?.length" class="flex flex-wrap gap-2">
+                      <div 
+                        v-for="(arg, index) in (mcpServer as McpConfig).args" 
+                        :key="index"
+                        class="flex items-center gap-1 bg-muted px-2 py-1 rounded-md"
+                      >
+                        <Input
+                          :modelValue="arg"
+                          @update:modelValue="(v: string | number) => { (mcpServer as McpConfig).args[index] = String(v); markChanged() }"
+                          class="h-6 w-auto min-w-[60px] text-sm border-0 bg-transparent p-1 focus-visible:ring-0"
+                          placeholder="参数值"
+                        />
+                        <button 
+                          @click="removeMcpArg(mcpServer as McpConfig, index)"
+                          class="text-muted-foreground hover:text-destructive"
+                        >
+                          <X class="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <p v-else class="text-xs text-muted-foreground">暂无参数，点击上方按钮添加</p>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm text-muted-foreground">Environment Variables</label>
+                      <Button variant="ghost" size="sm" @click="addMcpEnv(mcpServer as McpConfig)" class="h-6 px-2">
+                        <Plus class="w-3 h-3 mr-1" />
+                        添加变量
+                      </Button>
+                    </div>
+                    <div v-if="getEnvEntries((mcpServer as McpConfig).env).length" class="space-y-2">
+                      <div 
+                        v-for="[key, value] in getEnvEntries((mcpServer as McpConfig).env)" 
+                        :key="key"
+                        class="flex items-center gap-2"
+                      >
+                        <Input
+                          :modelValue="key"
+                          @update:modelValue="(newKey: string | number) => {
+                            const env = (mcpServer as McpConfig).env
+                            const oldValue = env[key]
+                            delete env[key]
+                            env[String(newKey)] = oldValue
+                            markChanged()
+                          }"
+                          class="flex-1"
+                          placeholder="KEY"
+                        />
+                        <span class="text-muted-foreground">=</span>
+                        <Input
+                          :modelValue="value"
+                          @update:modelValue="(v: string | number) => { (mcpServer as McpConfig).env[key] = String(v); markChanged() }"
+                          class="flex-1"
+                          placeholder="value"
+                        />
+                        <Button variant="ghost" size="icon-sm" @click="removeMcpEnv(mcpServer as McpConfig, key)" class="text-destructive hover:text-destructive shrink-0">
+                          <X class="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p v-else class="text-xs text-muted-foreground">暂无环境变量，点击上方按钮添加</p>
+                  </div>
+                </div>
+              </div>
+              <Button variant="outline" @click="addMcpServer" class="w-full">
+                <Plus class="w-4 h-4 mr-2" />
+                添加 MCP Server
+              </Button>
+              <div class="p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground space-y-2">
+                <p class="font-medium text-foreground">MCP (Model Context Protocol) 服务器可以为 AI 提供额外的工具能力。</p>
+                <p>常见示例：</p>
+                <ul class="list-disc list-inside space-y-1 ml-2">
+                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y @modelcontextprotocol/server-filesystem /path</code> - 文件系统访问</li>
+                  <li><code class="bg-muted px-1 rounded">uvx</code> + <code class="bg-muted px-1 rounded">mcp-server-git</code> - Git 操作</li>
+                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y @modelcontextprotocol/server-github</code> - GitHub 集成</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
           <section id="section-skill" class="scroll-mt-6">
             <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
               <Wrench class="w-5 h-5" />
@@ -325,7 +437,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Server, Bot, MessageSquare, Wrench, Globe, Sparkles, Plus, Trash2, Save, FolderOpen } from '@lucide/vue'
+import { Server, Bot, MessageSquare, Wrench, Globe, Sparkles, Plus, Trash2, Save, FolderOpen, Puzzle, X } from '@lucide/vue'
+
+interface McpConfig {
+  command: string
+  args: string[]
+  env: Record<string, string>
+  transport_type?: string
+  url?: string
+}
 
 const config = ref<Config | null>(null)
 const originalConfig = ref<string>('')
@@ -337,10 +457,12 @@ const editingNames = ref<{
   providers: Record<string, string>
   agents: Record<string, string>
   channels: Record<string, string>
+  mcp_servers: Record<string, string>
 }>({
   providers: {},
   agents: {},
-  channels: {}
+  channels: {},
+  mcp_servers: {}
 })
 
 const providerTypes = [
@@ -368,6 +490,7 @@ const sections = [
   { id: 'providers', label: 'Providers', icon: markRaw(Server) },
   { id: 'agents', label: 'Agents', icon: markRaw(Bot) },
   { id: 'channels', label: 'Channels', icon: markRaw(MessageSquare) },
+  { id: 'mcp_servers', label: 'MCP Servers', icon: markRaw(Puzzle) },
   { id: 'skill', label: 'Skill', icon: markRaw(Wrench) },
   { id: 'browser', label: 'Browser', icon: markRaw(Globe) },
   { id: 'live2d', label: 'Live2D', icon: markRaw(Sparkles) },
@@ -415,11 +538,11 @@ const saveConfig = async () => {
   }
 }
 
-const updateEditingName = (type: 'providers' | 'agents' | 'channels', oldName: string, newName: string) => {
+const updateEditingName = (type: 'providers' | 'agents' | 'channels' | 'mcp_servers', oldName: string, newName: string) => {
   editingNames.value[type][oldName] = newName
 }
 
-const confirmRename = (type: 'providers' | 'agents' | 'channels', oldName: string) => {
+const confirmRename = (type: 'providers' | 'agents' | 'channels' | 'mcp_servers', oldName: string) => {
   const newName = editingNames.value[type][oldName]
   if (!newName || newName === oldName) {
     delete editingNames.value[type][oldName]
@@ -432,6 +555,8 @@ const confirmRename = (type: 'providers' | 'agents' | 'channels', oldName: strin
     renameAgent(oldName, newName)
   } else if (type === 'channels') {
     renameChannel(oldName, newName)
+  } else if (type === 'mcp_servers') {
+    renameMcpServer(oldName, newName)
   }
   
   delete editingNames.value[type][oldName]
@@ -526,6 +651,75 @@ const removeChannel = (name: string) => {
   if (!config.value?.channels) return
   delete config.value.channels[name]
   markChanged()
+}
+
+const renameMcpServer = (oldName: string, newName: string) => {
+  if (!(config.value as any)?.mcp_servers || oldName === newName || !newName.trim()) return
+  const mcpServer = (config.value as any).mcp_servers[oldName]
+  if (!mcpServer) return
+  delete (config.value as any).mcp_servers[oldName]
+  ;(config.value as any).mcp_servers[newName] = mcpServer
+  markChanged()
+}
+
+const addMcpServer = () => {
+  if (!config.value) return
+  const name = `mcp_server_${Date.now()}`
+  if (!(config.value as any).mcp_servers) {
+    ;(config.value as any).mcp_servers = {}
+  }
+  ;(config.value as any).mcp_servers[name] = {
+    command: '',
+    args: [],
+    env: {}
+  } as McpConfig
+  markChanged()
+}
+
+const removeMcpServer = (name: string) => {
+  if (!(config.value as any)?.mcp_servers) return
+  delete (config.value as any).mcp_servers[name]
+  markChanged()
+}
+
+const addMcpArg = (mcpServer: McpConfig) => {
+  if (!mcpServer.args) {
+    mcpServer.args = []
+  }
+  mcpServer.args.push('')
+  markChanged()
+}
+
+const removeMcpArg = (mcpServer: McpConfig, index: number) => {
+  if (!mcpServer.args) return
+  mcpServer.args.splice(index, 1)
+  markChanged()
+}
+
+const addMcpEnv = (mcpServer: McpConfig) => {
+  if (!mcpServer.env) {
+    mcpServer.env = {}
+  }
+  const keys = Object.keys(mcpServer.env)
+  let newKey = 'NEW_KEY'
+  let i = 1
+  while (mcpServer.env[newKey] !== undefined) {
+    newKey = `NEW_KEY_${i}`
+    i++
+  }
+  mcpServer.env[newKey] = ''
+  markChanged()
+}
+
+const removeMcpEnv = (mcpServer: McpConfig, key: string) => {
+  if (!mcpServer.env) return
+  delete mcpServer.env[key]
+  markChanged()
+}
+
+const getEnvEntries = (env: Record<string, string> | undefined): [string, string][] => {
+  if (!env) return []
+  return Object.entries(env)
 }
 
 const selectSkillFolder = async () => {

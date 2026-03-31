@@ -10,6 +10,7 @@ import (
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/mcp"
 	"github.com/yockii/wangshu/pkg/tools"
 )
 
@@ -29,6 +30,11 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 	// availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 	availableTools := tools.GetDefaultToolRegistry().GetProviderDefsWithExcluedTools(constant.ToolNameMessage)
+
+	mcpTools, _ := mcp.DefaultManager.GetMcpTools()
+
+	availableTools = append(availableTools, mcpTools...)
+
 	for i := 0; i < a.maxIter; i++ {
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 		if err != nil {

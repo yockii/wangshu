@@ -1,6 +1,6 @@
 package types
 
-import "github.com/yockii/wangshu/pkg/action/types"
+import "github.com/yockii/wangshu/pkg/types"
 
 type ToolResult struct {
 	Structured *types.ActionOutput `json:"structured"`

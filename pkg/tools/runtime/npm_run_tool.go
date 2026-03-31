@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 type NpmRunTool struct {

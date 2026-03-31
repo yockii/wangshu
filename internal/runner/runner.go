@@ -24,6 +24,7 @@ import (
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/ollama"
 	"github.com/yockii/wangshu/pkg/llm/openai"
+	"github.com/yockii/wangshu/pkg/mcp"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
 	"github.com/yockii/wangshu/pkg/tools/browser"
@@ -86,6 +87,11 @@ func Initialize() (*agent.Agent, error) {
 	defaultAgent = agent.InitializeAgentManager()
 
 	InitializeChannels(defaultAgent)
+
+	if err = mcp.DefaultManager.ReLoadMcpClients(); err != nil {
+		slog.Warn("Some MCP servers failed to load", "error", err)
+	}
+
 	return defaultAgent, nil
 }
 

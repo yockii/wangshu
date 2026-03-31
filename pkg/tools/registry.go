@@ -2,11 +2,15 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/yockii/wangshu/pkg/llm"
+	"github.com/yockii/wangshu/pkg/mcp"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 var defaultToolRegistry = NewRegistry()
@@ -137,6 +141,29 @@ func (r *Registry) ExecuteExtended(ctx context.Context, name string, args map[st
 
 // ExecuteWithContext executes a tool with full tool context
 func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map[string]interface{}, toolCtx *types.ToolContext, channel, chatID string) *types.ToolResult {
+	if strings.HasPrefix(name, mcp.McpToolPrefix) {
+		mcpToolName := strings.TrimPrefix(name, mcp.McpToolPrefix)
+		strs := strings.SplitN(mcpToolName, ":", 2)
+		if len(strs) != 2 {
+			return types.NewToolResult().WithError(fmt.Errorf("Invalid mcp tool name format: %s", mcpToolName))
+		}
+		mcpName := strs[0]
+		toolName := strs[1]
+		res, err := mcp.DefaultManager.CallMcpTool(ctx, mcpName, toolName, args)
+		if err != nil {
+			return types.NewToolResult().WithError(fmt.Errorf("Failed to call mcp tool: %w", err))
+		}
+
+		contents, _ := json.Marshal(res.Content)
+
+		status := "success"
+		if res.IsError {
+			status = "failed"
+		}
+
+		return types.NewToolResult().WithRaw(string(contents)).WithStructured(actiontypes.NewActionOutput(status, res.GetError().Error(), res.StructuredContent, nil))
+	}
+
 	tool, ok := r.Get(name)
 	if !ok {
 		return types.NewToolResult().WithError(fmt.Errorf("tool %s not found", name))

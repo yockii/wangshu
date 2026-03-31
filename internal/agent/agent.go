@@ -111,7 +111,7 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 	pendingImage := sess.GetAndClearPendingImage()
 	if pendingImage != nil {
 		contents := []types.ContentBlock{
-			types.ContentBlock{Type: "text", Text: msg.Content},
+			{Type: "text", Text: msg.Content},
 			*pendingImage,
 		}
 		sess.AddMessageWithContents(constant.RoleUser, contents)

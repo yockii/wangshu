@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 

@@ -50,7 +50,7 @@ func (m *McpManager) ReLoadMcpClients() error {
 	return err
 }
 
-func (m *McpManager) CallMcpTool(ctx context.Context, mcpName, toolName string, args map[string]any) (any, error) {
+func (m *McpManager) CallMcpTool(ctx context.Context, mcpName, toolName string, args map[string]any) (*mcp.CallToolResult, error) {
 	sess, ok := m.sessions.Load(mcpName)
 	if !ok {
 		return nil, fmt.Errorf("mcp client not found: %s", mcpName)
@@ -87,7 +87,7 @@ func (m *McpManager) GetMcpTools() ([]llm.ToolDefinition, error) {
 			res = append(res, llm.ToolDefinition{
 				Type: "function",
 				Function: llm.ToolFunctionDefinition{
-					Name:        "mcp:" + mcpName + ":" + tool.Name,
+					Name:        McpToolPrefix + mcpName + ":" + tool.Name,
 					Description: tool.Description,
 					Parameters:  params,
 				},

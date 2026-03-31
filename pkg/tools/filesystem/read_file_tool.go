@@ -10,10 +10,10 @@ import (
 	"github.com/ledongthuc/pdf"
 	"github.com/nguyenthenguyen/docx"
 	"github.com/xuri/excelize/v2"
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 type ReadFileTool struct {

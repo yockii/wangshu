@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 // SleepTool pauses execution for a specified duration

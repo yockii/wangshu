@@ -8,13 +8,23 @@ import (
 )
 
 type Config struct {
-	Agents    map[string]*AgentConfig    `json:"agents"`
-	Providers map[string]*ProviderConfig `json:"providers"`
-	Channels  map[string]*ChannelConfig  `json:"channels"`
-	Skill     SkillConfig                `json:"skill"`
-	Browser   BrowserConfig              `json:"browser"`
-	Live2D    Live2DConfig               `json:"live2d"`
-	mu        sync.RWMutex
+	Agents     map[string]*AgentConfig    `json:"agents"`
+	Providers  map[string]*ProviderConfig `json:"providers"`
+	Channels   map[string]*ChannelConfig  `json:"channels"`
+	Skill      SkillConfig                `json:"skill"`
+	Browser    BrowserConfig              `json:"browser"`
+	Live2D     Live2DConfig               `json:"live2d"`
+	McpServers map[string]*McpConfig      `json:"mcp_servers"`
+
+	mu sync.RWMutex
+}
+
+type McpConfig struct {
+	Command       string            `json:"command"`
+	Args          []string          `json:"args"`
+	Env           map[string]string `json:"env"`
+	TransportType string            `json:"transport_type,omitempty"` // 通信协议，默认stdio，以后可能扩展到http、sse等
+	URL           string            `json:"url,omitempty"`            // 通信地址，用于http、sse等
 }
 
 type SkillConfig struct {
@@ -99,6 +109,7 @@ func defaultConfig() *Config {
 			X:         0,
 			Y:         0,
 		},
+		McpServers: map[string]*McpConfig{},
 	}
 }
 

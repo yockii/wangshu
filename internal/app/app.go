@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -39,6 +40,12 @@ func InitializeApp(assets embed.FS, services ...application.Service) {
 			},
 			Mac: application.MacOptions{
 				ApplicationShouldTerminateAfterLastWindowClosed: true,
+			},
+			Server: application.ServerOptions{
+				Host:        "localhost",
+				Port:        8080,
+				ReadTimeout: 300 * time.Second,
+				IdleTimeout: 720 * time.Second,
 			},
 			// 单例运行
 			SingleInstance: &application.SingleInstanceOptions{

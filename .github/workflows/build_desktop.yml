@@ -1,0 +1,10 @@
+name: Build Desktop Release
+
+on:
+  workflow_dispatch
+
+jobs:
+  占位：
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "占位"

@@ -1,42 +1,31 @@
 name: Build Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
   packages: write
 
+env:
+  GO_VERSION: '1.25'
+
 jobs:
-  build:
+  build-windows:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-            suffix: ''
-          - goos: linux
-            goarch: arm64
-            suffix: ''
-          - goos: darwin
-            goarch: amd64
-            suffix: ''
-          - goos: darwin
-            goarch: arm64
-            suffix: ''
-          - goos: windows
-            goarch: amd64
-            suffix: '.exe'
-          - goos: windows
-            goarch: arm64
-            suffix: '.exe'
-          - goos: linux
-            goarch: loong64
-            suffix: ''
-
+        goarch: [amd64, arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,31 +33,238 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.0'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Extract version
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Build
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+
+      - name: Build Windows ${{ matrix.goarch }}
         env:
-          GOOS: ${{ matrix.goos }}
+          GOOS: windows
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          output_name="wangshu-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
-          go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${{ steps.version.outputs.version }}'" -trimpath -o "$output_name" ./cmd
+          task windows:build ARCH=${{ matrix.goarch }} VERSION=${{ inputs.version }}
+          mv bin/wangshu-desktop.exe wangshu-windows-${{ matrix.goarch }}.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wangshu-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: wangshu-*
+          name: wangshu-windows-${{ matrix.goarch }}
+          path: wangshu-windows-${{ matrix.goarch }}.exe
+
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            runner: macos-13
+          - goarch: arm64
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+
+      - name: Build macOS ${{ matrix.goarch }}
+        run: |
+          task darwin:build ARCH=${{ matrix.goarch }} VERSION=${{ inputs.version }}
+          mv bin/wangshu-desktop wangshu-darwin-${{ matrix.goarch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-darwin-${{ matrix.goarch }}
+          path: wangshu-darwin-${{ matrix.goarch }}
+
+  build-linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+
+      - name: Build Linux amd64
+        run: |
+          task linux:build ARCH=amd64 VERSION=${{ inputs.version }}
+          mv bin/wangshu-desktop wangshu-linux-amd64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-amd64
+          path: wangshu-linux-amd64
+
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Docker cross-compile image
+        run: docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
+
+      - name: Cross-compile Linux arm64
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/app \
+            -e APP_NAME=wangshu-desktop \
+            -e VERSION=${{ inputs.version }} \
+            wails-cross linux arm64
+          mv bin/wangshu-desktop-linux-arm64 wangshu-linux-arm64 || mv bin/wangshu-desktop wangshu-linux-arm64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-arm64
+          path: wangshu-linux-arm64
+
+  build-linux-loong64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for loong64
+        run: docker run --rm --privileged tonistiigi/binfmt --install loong64
+
+      - name: Build loong64 builder image
+        run: docker build -t wangshu-loong64-builder -f build/docker/Dockerfile.loong64 build/docker/
+
+      - name: Build Linux loong64 (QEMU emulated, ~30-60 min)
+        run: |
+          docker run --rm \
+            --platform linux/loong64 \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            -e "VERSION=${{ inputs.version }}" \
+            wangshu-loong64-builder \
+            bash -c '
+              set -e
+              echo ">>> Installing frontend dependencies..."
+              cd frontend
+              npm install --silent
+              echo ">>> Building frontend..."
+              npm run build --silent
+              cd ..
+              
+              echo ">>> Downloading Go dependencies..."
+              go mod download
+              
+              echo ">>> Building application (this takes a while due to QEMU emulation)..."
+              go build \
+                -tags production \
+                -ldflags="-s -w -X \"github.com/yockii/wangshu/pkg/constant.Version=${VERSION}\"" \
+                -trimpath \
+                -o wangshu-linux-loong64 \
+                .
+              
+              echo ">>> Build complete!"
+              ls -lh wangshu-linux-loong64
+            '
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-loong64
+          path: wangshu-linux-loong64
+
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./build/docker/Dockerfile.server
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ inputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/wangshu:latest
+            ghcr.io/${{ github.repository_owner }}/wangshu:${{ inputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   release:
-    needs: build
+    needs:
+      - build-windows
+      - build-macos
+      - build-linux-amd64
+      - build-linux-arm64
+      - build-linux-loong64
+      - build-docker
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -83,14 +279,16 @@ jobs:
 
       - name: Generate release notes
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          git-cliff --tag $VERSION --latest > release_notes.md
+          git-cliff --tag v${{ inputs.version }} --latest > release_notes.md
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
 
       - name: Generate checksums
         run: |
@@ -100,52 +298,16 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ inputs.version }}
           files: artifacts/*
           body_path: release_notes.md
-          draft: false
+          draft: ${{ inputs.draft }}
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  docker:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract version
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/wangshu:latest
-            ghcr.io/${{ github.repository_owner }}/wangshu:${{ steps.version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   update-changelog:
-    needs: docker
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -160,8 +322,7 @@ jobs:
 
       - name: Generate CHANGELOG.md
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          git-cliff --tag $VERSION > CHANGELOG.md
+          git-cliff --tag v${{ inputs.version }} > CHANGELOG.md
 
       - name: Commit and push CHANGELOG
         run: |
@@ -169,5 +330,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout main
           git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG for ${{ github.ref_name }}"
+          git commit -m "docs: update CHANGELOG for v${{ inputs.version }}"
           git push origin main

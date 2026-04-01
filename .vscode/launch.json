@@ -5,15 +5,47 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Package",
+            "name": "调试wails3",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "FRONTEND_DEVSERVER_URL": "http://localhost:9245"
+            }
+        },
+        {
+            "name": "调试项目配置路径",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd",
+            "console": "externalTerminal",
             "cwd": "${workspaceFolder}",
             "args": [
                 "config.json"
             ]
+        },
+        {
+            "name": "调试默认配置路径",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd",
+            "console": "externalTerminal",
+            "cwd": "${workspaceFolder}",
+            // "args": [
+            //     "D:/wangshu/config.json"
+            // ]
+        },
+        {
+            "name": "调试测试main文件",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/docs/tm/main.go",
+            "cwd": "${workspaceFolder}",
         }
     ]
 }

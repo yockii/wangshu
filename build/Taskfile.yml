@@ -128,7 +128,7 @@ tasks:
     desc: |
       Builds the application with the server build tag enabled.
       Server mode runs as a pure HTTP server without native GUI dependencies.
-      Usage: task build:server
+      Usage: task build:server [VERSION=1.0.0]
     deps:
       - task: build:frontend
         vars:
@@ -137,7 +137,7 @@ tasks:
     cmds:
       - go build -tags server {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}
     vars:
-      BUILD_FLAGS: "{{.BUILD_FLAGS}}"
+      BUILD_FLAGS: "-trimpath -buildvcs=false -ldflags=\"-s -w{{if .VERSION}} -X 'github.com/yockii/wangshu/pkg/constant.Version={{.VERSION}}'{{end}}\""
 
   run:server:
     summary: Builds and runs the application in server mode

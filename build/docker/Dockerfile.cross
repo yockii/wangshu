@@ -193,6 +193,10 @@ if [ -n "$EXTRA_TAGS" ]; then
     TAGS="${TAGS},${EXTRA_TAGS}"
 fi
 
+if [ -n "$VERSION" ]; then
+    LDFLAGS="${LDFLAGS} -X 'github.com/yockii/wangshu/pkg/constant.Version=${VERSION}'"
+fi
+
 go build -tags "$TAGS" -trimpath -buildvcs=false -ldflags="$LDFLAGS" -o bin/${APP}-${GOOS}-${GOARCH}${EXT} .
 echo "Built: bin/${APP}-${GOOS}-${GOARCH}${EXT}"
 SCRIPT

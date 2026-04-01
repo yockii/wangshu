@@ -4,6 +4,8 @@
 # Build stage
 FROM golang:alpine AS builder
 
+ARG VERSION
+
 WORKDIR /app
 
 # Install build dependencies
@@ -18,8 +20,12 @@ RUN sed -i '/^replace/d' go.mod || true
 # Download dependencies
 RUN go mod tidy
 
-# Build the server binary
-RUN go build -tags server -ldflags="-s -w" -o server .
+# Build the server binary with optional version injection
+RUN if [ -n "$VERSION" ]; then \
+      go build -tags server -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${VERSION}'" -o server .; \
+    else \
+      go build -tags server -ldflags="-s -w" -o server .; \
+    fi
 
 # Runtime stage - minimal image
 FROM gcr.io/distroless/static-debian12

@@ -6,12 +6,12 @@
 name: "wangshu-desktop"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.7.0"
+version: "v0.5.0-alpha"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
 description: "Wangshu is a live2d chatbot that can help you to do anything."
-vendor: "XhNIC"
+vendor: "XHNIC"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"

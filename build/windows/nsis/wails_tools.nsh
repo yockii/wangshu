@@ -8,16 +8,16 @@
     !define INFO_PROJECTNAME "wangshu-desktop"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "XhNIC"
+    !define INFO_COMPANYNAME "XHNIC"
 !endif
 !ifndef INFO_PRODUCTNAME
     !define INFO_PRODUCTNAME "Wangshu"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "0.7.0"
+    !define INFO_PRODUCTVERSION "v0.5.0-alpha"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "(c) 2025, XhNIC"
+    !define INFO_COPYRIGHT "(c) 2025, XHNIC"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"

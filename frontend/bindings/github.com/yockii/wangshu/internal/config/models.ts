@@ -126,6 +126,7 @@ export class Config {
     "skill": SkillConfig;
     "browser": BrowserConfig;
     "live2d": Live2DConfig;
+    "mcp_servers": { [_ in string]?: McpConfig | null };
 
     /** Creates a new Config instance. */
     constructor($$source: Partial<Config> = {}) {
@@ -147,6 +148,9 @@ export class Config {
         if (!("live2d" in $$source)) {
             this["live2d"] = (new Live2DConfig());
         }
+        if (!("mcp_servers" in $$source)) {
+            this["mcp_servers"] = {};
+        }
 
         Object.assign(this, $$source);
     }
@@ -161,6 +165,7 @@ export class Config {
         const $$createField3_0 = $$createType9;
         const $$createField4_0 = $$createType10;
         const $$createField5_0 = $$createType11;
+        const $$createField6_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("agents" in $$parsedSource) {
             $$parsedSource["agents"] = $$createField0_0($$parsedSource["agents"]);
@@ -179,6 +184,9 @@ export class Config {
         }
         if ("live2d" in $$parsedSource) {
             $$parsedSource["live2d"] = $$createField5_0($$parsedSource["live2d"]);
+        }
+        if ("mcp_servers" in $$parsedSource) {
+            $$parsedSource["mcp_servers"] = $$createField6_0($$parsedSource["mcp_servers"]);
         }
         return new Config($$parsedSource as Partial<Config>);
     }
@@ -226,6 +234,53 @@ export class Live2DConfig {
     static createFrom($$source: any = {}): Live2DConfig {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Live2DConfig($$parsedSource as Partial<Live2DConfig>);
+    }
+}
+
+export class McpConfig {
+    "command": string;
+    "args": string[];
+    "env": { [_ in string]?: string };
+
+    /**
+     * 通信协议，默认stdio，以后可能扩展到http、sse等
+     */
+    "transport_type"?: string;
+
+    /**
+     * 通信地址，用于http、sse等
+     */
+    "url"?: string;
+
+    /** Creates a new McpConfig instance. */
+    constructor($$source: Partial<McpConfig> = {}) {
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("args" in $$source)) {
+            this["args"] = [];
+        }
+        if (!("env" in $$source)) {
+            this["env"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new McpConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): McpConfig {
+        const $$createField1_0 = $$createType15;
+        const $$createField2_0 = $$createType16;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("args" in $$parsedSource) {
+            $$parsedSource["args"] = $$createField1_0($$parsedSource["args"]);
+        }
+        if ("env" in $$parsedSource) {
+            $$parsedSource["env"] = $$createField2_0($$parsedSource["env"]);
+        }
+        return new McpConfig($$parsedSource as Partial<McpConfig>);
     }
 }
 
@@ -292,3 +347,8 @@ const $$createType8 = $Create.Map($Create.Any, $$createType7);
 const $$createType9 = SkillConfig.createFrom;
 const $$createType10 = BrowserConfig.createFrom;
 const $$createType11 = Live2DConfig.createFrom;
+const $$createType12 = McpConfig.createFrom;
+const $$createType13 = $Create.Nullable($$createType12);
+const $$createType14 = $Create.Map($Create.Any, $$createType13);
+const $$createType15 = $Create.Array($Create.Any);
+const $$createType16 = $Create.Map($Create.Any, $Create.Any);

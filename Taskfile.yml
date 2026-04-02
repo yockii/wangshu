@@ -17,7 +17,62 @@ tasks:
   build:
     summary: Builds the application
     cmds:
-      - task: "{{OS}}:build"
+      - task: "{{if .GOOS}}{{.GOOS}}:build{{else}}{{OS}}:build{{end}}"
+        vars:
+          ARCH: '{{.ARCH}}'
+          DEV: '{{.DEV}}'
+          OUTPUT: '{{.OUTPUT}}'
+          EXTRA_TAGS: '{{.EXTRA_TAGS}}'
+          VERSION: '{{.VERSION}}'
+
+  build:all:
+    summary: Builds all platforms (Windows/Darwin/Linux, AMD64/ARM64)
+    desc: |
+      Builds all platform binaries sequentially.
+      Usage: task build:all VERSION=1.0.0
+      
+      Note: Linux ARM64 requires wails-cross-arm64 image (QEMU).
+      Build it first: docker build --platform linux/arm64 -t wails-cross-arm64 -f build/docker/Dockerfile.cross build/docker/
+    deps:
+      - task: common:build:frontend
+      - task: common:generate:icons
+    cmds:
+      - echo "=== Building Windows AMD64 ==="
+      - task: windows:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Windows ARM64 ==="
+      - task: windows:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Darwin AMD64 ==="
+      - task: darwin:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Darwin ARM64 ==="
+      - task: darwin:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux AMD64 ==="
+      - task: linux:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux ARM64 (QEMU - this may take 10-20 minutes) ==="
+      - task: linux:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== All builds completed! ==="
+      - echo "Binaries in bin/:"
+      - cmd: powershell "dir bin/*.exe, bin/wangshu-desktop-* | Select Name, Length"
+        platforms: [windows]
+      - cmd: ls -lh bin/ | grep -E "wangshu-desktop-"
+        platforms: [linux, darwin]
 
   package:
     summary: Packages a production build of the application
@@ -38,6 +93,22 @@ tasks:
     summary: Builds Docker image for cross-compilation (~800MB download)
     cmds:
       - task: common:setup:docker
+
+  setup:docker:all:
+    summary: Builds all Docker images for cross-compilation (x86_64 + ARM64)
+    desc: |
+      Builds both x86_64 and ARM64 Docker images for full cross-platform support.
+      The ARM64 image is required for Linux ARM64 builds (uses QEMU).
+      Usage: task setup:docker:all
+      
+      Note: ARM64 image build may take 30-60 minutes due to QEMU emulation.
+    cmds:
+      - echo "=== Building x86_64 cross-compilation image ==="
+      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
+      - echo "=== Building ARM64 cross-compilation image (QEMU - this may take 30-60 minutes) ==="
+      - docker build --platform linux/arm64 -t wails-cross-arm64 -f build/docker/Dockerfile.cross build/docker/
+      - echo "=== All Docker images built! ==="
+      - docker images "wails-cross*"
 
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)

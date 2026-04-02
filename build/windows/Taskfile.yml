@@ -42,13 +42,15 @@ tasks:
       - task: common:generate:icons
     cmds:
       - task: generate:syso
-      - go build {{.BUILD_FLAGS}} -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
+      - go build {{.BUILD_FLAGS}} -o "{{.OUTPUT}}"
       - cmd: powershell Remove-item *.syso
         platforms: [windows]
       - cmd: rm -f *.syso
         platforms: [linux, darwin]
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui{{if .VERSION}} -X 'github.com/yockii/wangshu/pkg/constant.Version={{.VERSION}}'{{end}}"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui{{if .VERSION}} -X github.com/yockii/wangshu/pkg/constant.Version={{.VERSION}}{{end}}"{{end}}'
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}-windows-{{.ARCH | default ARCH}}.exe'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
       GOOS: windows
       CGO_ENABLED: '{{.CGO_ENABLED | default "0"}}'
@@ -63,34 +65,64 @@ tasks:
     preconditions:
       - sh: docker info > /dev/null 2>&1
         msg: "Docker is required for CGO cross-compilation. Please install Docker."
-      - sh: docker image inspect {{.CROSS_IMAGE}} > /dev/null 2>&1
-        msg: |
-          Docker image '{{.CROSS_IMAGE}}' not found.
-          Build it first: wails3 task setup:docker
     cmds:
       - task: generate:syso
-      - docker run --rm -v "{{.ROOT_DIR}}:/app" {{.GO_CACHE_MOUNT}} {{.REPLACE_MOUNTS}} -e APP_NAME="{{.APP_NAME}}" {{if .EXTRA_TAGS}}-e EXTRA_TAGS="{{.EXTRA_TAGS}}"{{end}} {{.CROSS_IMAGE}} windows {{.DOCKER_ARCH}}
-      - docker run --rm -v "{{.ROOT_DIR}}:/app" alpine chown -R $(id -u):$(id -g) /app/bin
-      - rm -f *.syso
+      - task: build:docker:run
+        vars:
+          ARCH: '{{.ARCH}}'
+          VERSION: '{{.VERSION}}'
+      - cmd: powershell Remove-item *.syso
+        platforms: [windows]
+      - cmd: rm -f *.syso
+        platforms: [linux, darwin]
     vars:
       DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
-      # Mount Go module cache for faster builds
+
+  build:docker:run:
+    summary: Internal task to run Docker build
+    internal: true
+    cmds:
+      - task: build:docker:run:unix
+        vars:
+          ARCH: '{{.ARCH}}'
+          VERSION: '{{.VERSION}}'
+      - task: build:docker:run:windows
+        vars:
+          ARCH: '{{.ARCH}}'
+          VERSION: '{{.VERSION}}'
+
+  build:docker:run:unix:
+    summary: Run Docker build on Unix systems (macOS/Linux)
+    internal: true
+    platforms: [darwin, linux]
+    cmds:
+      - docker run --rm -v "{{.ROOT_DIR}}:/app" {{.GO_CACHE_MOUNT}} {{.REPLACE_MOUNTS}} -e APP_NAME="{{.APP_NAME}}" {{if .EXTRA_TAGS}}-e EXTRA_TAGS="{{.EXTRA_TAGS}}"{{end}} {{if .VERSION}}-e VERSION="{{.VERSION}}"{{end}} {{.CROSS_IMAGE}} windows {{.DOCKER_ARCH}}
+      - docker run --rm -v "{{.ROOT_DIR}}:/app" alpine chown -R $(id -u):$(id -g) /app/bin
+    vars:
+      DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
       GO_CACHE_MOUNT:
         sh: 'echo "-v ${GOPATH:-$HOME/go}/pkg/mod:/go/pkg/mod"'
-      # Extract replace directives from go.mod and create -v mounts for each
       REPLACE_MOUNTS:
         sh: |
           grep -E '^replace .* => ' go.mod 2>/dev/null | while read -r line; do
             path=$(echo "$line" | sed -E 's/^replace .* => //' | tr -d '\r')
-            # Convert relative paths to absolute
             if [ "${path#/}" = "$path" ]; then
               path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")"
             fi
-            # Only mount if directory exists
             if [ -d "$path" ]; then
               echo "-v $path:$path:ro"
             fi
           done | tr '\n' ' '
+
+  build:docker:run:windows:
+    summary: Run Docker build on Windows
+    internal: true
+    platforms: [windows]
+    cmds:
+      - powershell -Command "docker run --rm -v '{{.ROOT_DIR}}:/app' -v \"$(go env GOPATH)/pkg/mod:/go/pkg/mod\" -e APP_NAME='{{.APP_NAME}}' {{if .VERSION}}-e VERSION='{{.VERSION}}'{{end}} '{{.CROSS_IMAGE}}' windows {{.DOCKER_ARCH}}"
+      - powershell -Command "docker run --rm -v '{{.ROOT_DIR}}:/app' alpine sh -c 'chmod -R 777 /app/bin 2>/dev/null || true'"
+    vars:
+      DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
 
   package:
     summary: Packages the application

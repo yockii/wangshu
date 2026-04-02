@@ -7,6 +7,7 @@ export {
     ChannelConfig,
     Config,
     Live2DConfig,
+    McpConfig,
     ProviderConfig,
     SkillConfig
 } from "./models.js";

@@ -78,6 +78,19 @@ tasks:
         platforms: [windows]
       - cmd: ls -lh bin/ | grep -E "wangshu-desktop-"
         platforms: [linux, darwin]
+      - task: checksums
+
+  checksums:
+    summary: Generates SHA256 checksums for all binaries in bin/
+    desc: |
+      Generates checksums.txt file for all binaries in bin/ directory.
+      Usage: task checksums
+    cmds:
+      - echo "=== Generating checksums ==="
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File build/scripts/checksums.ps1
+        platforms: [windows]
+      - cmd: cd bin && sha256sum *.exe wangshu-desktop-* > checksums.txt 2>/dev/null || (rm -f checksums.tmp; for f in *.exe wangshu-desktop-*; do if [ -f "$f" ]; then sha256sum "$f" >> checksums.tmp; fi; done && mv checksums.tmp checksums.txt && cat checksums.txt)
+        platforms: [linux, darwin]
 
   package:
     summary: Packages a production build of the application

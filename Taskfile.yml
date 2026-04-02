@@ -26,13 +26,13 @@ tasks:
           VERSION: '{{.VERSION}}'
 
   build:all:
-    summary: Builds all platforms (Windows/Darwin/Linux, AMD64/ARM64)
+    summary: Builds all platforms (Windows/Darwin/Linux, AMD64/ARM64/Loong64)
     desc: |
       Builds all platform binaries sequentially.
       Usage: task build:all VERSION=1.0.0
       
-      Note: Linux ARM64 requires wails-cross-arm64 image (QEMU).
-      Build it first: docker build --platform linux/arm64 -t wails-cross-arm64 -f build/docker/Dockerfile.cross build/docker/
+      Note: Linux ARM64 and Loong64 require QEMU-enabled images.
+      Build them first: task setup:docker:all
     deps:
       - task: common:build:frontend
       - task: common:generate:icons
@@ -67,6 +67,11 @@ tasks:
         vars:
           ARCH: arm64
           VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux Loong64 (QEMU - this may take 20-40 minutes) ==="
+      - task: linux:build
+        vars:
+          ARCH: loong64
+          VERSION: '{{.VERSION}}'
       - echo "=== All builds completed! ==="
       - echo "Binaries in bin/:"
       - cmd: powershell "dir bin/*.exe, bin/wangshu-desktop-* | Select Name, Length"
@@ -95,20 +100,36 @@ tasks:
       - task: common:setup:docker
 
   setup:docker:all:
-    summary: Builds all Docker images for cross-compilation (x86_64 + ARM64)
+    summary: Builds all Docker images for cross-compilation (x86_64 + ARM64 + Loong64)
     desc: |
-      Builds both x86_64 and ARM64 Docker images for full cross-platform support.
-      The ARM64 image is required for Linux ARM64 builds (uses QEMU).
+      Builds x86_64, ARM64, and Loong64 Docker images for full cross-platform support.
+      ARM64 and Loong64 images use QEMU emulation.
       Usage: task setup:docker:all
       
-      Note: ARM64 image build may take 30-60 minutes due to QEMU emulation.
+      Note: ARM64 image build may take 30-60 minutes, Loong64 may take 60-90 minutes due to QEMU emulation.
     cmds:
       - echo "=== Building x86_64 cross-compilation image ==="
       - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
       - echo "=== Building ARM64 cross-compilation image (QEMU - this may take 30-60 minutes) ==="
       - docker build --platform linux/arm64 -t wails-cross-arm64 -f build/docker/Dockerfile.cross build/docker/
+      - echo "=== Building Loong64 cross-compilation image (QEMU - this may take 60-90 minutes) ==="
+      - docker build --platform linux/loong64 -t wails-cross-loong64 -f build/docker/Dockerfile.cross-loong64 build/docker/
       - echo "=== All Docker images built! ==="
       - docker images "wails-cross*"
+
+  setup:docker:loong64:
+    summary: Builds Loong64 Docker image for cross-compilation
+    desc: |
+      Builds Loong64 Docker image for Linux LoongArch64 builds.
+      Requires QEMU loong64 support. Install first:
+        docker run --rm --privileged tonistiigi/binfmt --install loong64
+    cmds:
+      - echo "=== Registering QEMU loong64 support ==="
+      - docker run --rm --privileged tonistiigi/binfmt --install loong64
+      - echo "=== Building Loong64 cross-compilation image (QEMU - this may take 60-90 minutes) ==="
+      - docker build --platform linux/loong64 -t wails-cross-loong64 -f build/docker/Dockerfile.cross-loong64 build/docker/
+      - echo "=== Loong64 Docker image built! ==="
+      - docker images "wails-cross-loong64"
 
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)

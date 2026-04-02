@@ -78,8 +78,8 @@ tasks:
           OUTPUT: '{{.OUTPUT}}'
     vars:
       DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
-      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{end}}'
-      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else}}wails-cross{{end}}'
+      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{else if eq .DOCKER_ARCH "loong64"}}--platform linux/loong64{{end}}'
+      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else if eq .DOCKER_ARCH "loong64"}}wails-cross-loong64{{else}}wails-cross{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.DOCKER_ARCH}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
 
@@ -108,8 +108,8 @@ tasks:
       - mkdir -p {{.BIN_DIR}}
     vars:
       DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
-      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{end}}'
-      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else}}wails-cross{{end}}'
+      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{else if eq .DOCKER_ARCH "loong64"}}--platform linux/loong64{{end}}'
+      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else if eq .DOCKER_ARCH "loong64"}}wails-cross-loong64{{else}}wails-cross{{end}}'
       GO_CACHE_MOUNT:
         sh: 'echo "-v ${GOPATH:-$HOME/go}/pkg/mod:/go/pkg/mod"'
       REPLACE_MOUNTS:
@@ -134,8 +134,8 @@ tasks:
       - powershell -Command "if (-not (Test-Path '{{.BIN_DIR}}')) { New-Item -ItemType Directory -Path '{{.BIN_DIR}}' -Force | Out-Null }"
     vars:
       DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
-      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{end}}'
-      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else}}wails-cross{{end}}'
+      DOCKER_PLATFORM: '{{if eq .DOCKER_ARCH "arm64"}}--platform linux/arm64{{else if eq .DOCKER_ARCH "loong64"}}--platform linux/loong64{{end}}'
+      CROSS_IMAGE: '{{if eq .DOCKER_ARCH "arm64"}}wails-cross-arm64{{else if eq .DOCKER_ARCH "loong64"}}wails-cross-loong64{{else}}wails-cross{{end}}'
 
   package:
     summary: Packages the application for Linux

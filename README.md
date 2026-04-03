@@ -16,6 +16,7 @@
 
 > 已支持个人微信渠道，采用官方iLink协议（腾讯开放给OpenClaw使用的协议）
 
+> 关于接入哪个大模型，建议先上openrouter.ai用用免费的模型
 
 <details>
 <summary>你可以查看视频：</summary>

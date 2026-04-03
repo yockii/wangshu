@@ -1,0 +1,195 @@
+name: Build Release (Cross-Platform)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: true
+        type: boolean
+        default: true
+      skip_loong64:
+        description: 'Skip Loong64 build (slow, ~30-60 min)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-cross:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: linux
+            arch: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull cached image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest || true
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            -f build/docker/Dockerfile.cross build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest
+
+      - name: Build ${{ matrix.os }}/${{ matrix.arch }}
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            ${{ matrix.os }} ${{ matrix.arch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-${{ matrix.os }}-${{ matrix.arch }}
+          path: bin/*
+          if-no-files-found: error
+
+  build-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull cached image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest || true
+
+      - name: Build ARM64 image
+        run: |
+          docker build --platform linux/arm64 \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            -f build/docker/Dockerfile.cross build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest
+
+      - name: Build linux/arm64
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            linux arm64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-arm64
+          path: bin/*
+          if-no-files-found: error
+
+  build-loong64:
+    if: ${{ !inputs.skip_loong64 }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Register loong64 support
+        run: docker run --rm --privileged tonistiigi/binfmt --install loong64
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull cached image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest || true
+
+      - name: Build Loong64 image
+        run: |
+          docker build --platform linux/loong64 \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
+            -f build/docker/Dockerfile.cross-loong64 build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest
+
+      - name: Build linux/loong64
+        run: |
+          docker run --rm --platform linux/loong64 \
+            -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-loong64
+          path: bin/*
+          if-no-files-found: error
+
+  release:
+    needs: [build-cross, build-arm64]
+    if: ${{ always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.exe" -o -name "wangshu-desktop-*" -o -name "checksums.txt" \) -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: ${{ inputs.version }}
+          draft: ${{ inputs.draft }}
+          generate_release_notes: true
+          files: release/*

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/types"
 )
 
 type ExecutionContext struct {

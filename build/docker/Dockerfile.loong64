@@ -1,0 +1,40 @@
+FROM alpine:3.21
+
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    git \
+    gcc \
+    g++ \
+    make \
+    pkgconfig \
+    gtk+3.0-dev \
+    webkit2gtk-4.1-dev \
+    nodejs \
+    npm \
+    bash \
+    xz
+
+ARG GO_VERSION=1.25.6
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz
+
+ARG ZIG_VERSION=0.14.0
+RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
+    | tar -xJ -C /opt \
+    && ln -s /opt/zig-linux-x86_64-${ZIG_VERSION}/zig /usr/local/bin/zig
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+WORKDIR /app
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GOARCH=loong64
+ENV CC="zig cc -target loong64-linux-gnu"
+ENV CXX="zig c++ -target loong64-linux-gnu"
+
+ENTRYPOINT ["/bin/bash"]

@@ -17,7 +17,7 @@ var (
 )
 
 // InitializeAgentManager initializes the global agent manager with all agents
-func InitializeAgentManager(isTUIMode bool) (defaultAgent *Agent) {
+func InitializeAgentManager() (defaultAgent *Agent) {
 	agentsMutex.Lock()
 	defer agentsMutex.Unlock()
 
@@ -73,7 +73,7 @@ func InitializeAgentManager(isTUIMode bool) (defaultAgent *Agent) {
 		}
 	}
 
-	if defaultAgent == nil && isTUIMode && defaultAgentName != "" && defaultAgentCfg != nil {
+	if defaultAgent == nil && defaultAgentName != "" && defaultAgentCfg != nil {
 		// 没有任何channel启动，但是在tui mode下
 		var err error
 		defaultAgent, err = initialAgent(defaultAgentName, defaultAgentCfg, workspaceCheckMap)
@@ -99,7 +99,7 @@ func initialAgent(name string, ac *config.AgentConfig, workspaceCheckMap map[str
 		ac.Model,
 		ac.MemoryOrganizeTime,
 		24*time.Hour,
-		10,
+		20,
 		ac.Workspace,
 		ac.EnableImageRecognition,
 	)

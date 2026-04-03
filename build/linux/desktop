@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Wangshu
+Comment=Wangshu is a live2d chatbot that can help you to do anything.
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/wangshu-desktop %u
+Terminal=false
+Type=Application
+Icon=wangshu-desktop
+Categories=Utility;
+StartupWMClass=wangshu-desktop
+
+ 

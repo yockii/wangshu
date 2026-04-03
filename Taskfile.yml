@@ -1,0 +1,165 @@
+version: '3'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+  ios: ./build/ios/Taskfile.yml
+  android: ./build/android/Taskfile.yml
+
+vars:
+  APP_NAME: "wangshu-desktop"
+  BIN_DIR: "bin"
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - task: "{{if .GOOS}}{{.GOOS}}:build{{else}}{{OS}}:build{{end}}"
+        vars:
+          ARCH: '{{.ARCH}}'
+          DEV: '{{.DEV}}'
+          OUTPUT: '{{.OUTPUT}}'
+          EXTRA_TAGS: '{{.EXTRA_TAGS}}'
+          VERSION: '{{.VERSION}}'
+
+  build:all:
+    summary: Builds all platforms (Windows/Darwin/Linux, AMD64/ARM64/Loong64)
+    desc: |
+      Builds all platform binaries sequentially.
+      Usage: task build:all VERSION=1.0.0
+      
+      Note: Linux ARM64 and Loong64 require QEMU-enabled images.
+      Build them first: task setup:docker:all
+    deps:
+      - task: common:build:frontend
+      - task: common:generate:icons
+    cmds:
+      - echo "=== Building Windows AMD64 ==="
+      - task: windows:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Windows ARM64 ==="
+      - task: windows:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Darwin AMD64 ==="
+      - task: darwin:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Darwin ARM64 ==="
+      - task: darwin:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux AMD64 ==="
+      - task: linux:build
+        vars:
+          ARCH: amd64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux ARM64 (QEMU - this may take 10-20 minutes) ==="
+      - task: linux:build
+        vars:
+          ARCH: arm64
+          VERSION: '{{.VERSION}}'
+      - echo "=== Building Linux Loong64 (QEMU - this may take 20-40 minutes) ==="
+      - task: linux:build
+        vars:
+          ARCH: loong64
+          VERSION: '{{.VERSION}}'
+      - echo "=== All builds completed! ==="
+      - echo "Binaries in bin/:"
+      - cmd: powershell "dir bin/*.exe, bin/wangshu-desktop-* | Select Name, Length"
+        platforms: [windows]
+      - cmd: ls -lh bin/ | grep -E "wangshu-desktop-"
+        platforms: [linux, darwin]
+      - task: checksums
+
+  checksums:
+    summary: Generates SHA256 checksums for all binaries in bin/
+    desc: |
+      Generates checksums.txt file for all binaries in bin/ directory.
+      Usage: task checksums
+    cmds:
+      - echo "=== Generating checksums ==="
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File build/scripts/checksums.ps1
+        platforms: [windows]
+      - cmd: cd bin && sha256sum *.exe wangshu-desktop-* > checksums.txt 2>/dev/null || (rm -f checksums.tmp; for f in *.exe wangshu-desktop-*; do if [ -f "$f" ]; then sha256sum "$f" >> checksums.tmp; fi; done && mv checksums.tmp checksums.txt && cat checksums.txt)
+        platforms: [linux, darwin]
+
+  package:
+    summary: Packages a production build of the application
+    cmds:
+      - task: "{{OS}}:package"
+
+  run:
+    summary: Runs the application
+    cmds:
+      - task: "{{OS}}:run"
+
+  dev:
+    summary: Runs the application in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
+  setup:docker:
+    summary: Builds Docker image for cross-compilation (~800MB download)
+    cmds:
+      - task: common:setup:docker
+
+  setup:docker:all:
+    summary: Builds all Docker images for cross-compilation (x86_64 + ARM64 + Loong64)
+    desc: |
+      Builds x86_64, ARM64, and Loong64 Docker images for full cross-platform support.
+      ARM64 and Loong64 images use QEMU emulation.
+      Usage: task setup:docker:all
+      
+      Note: ARM64 image build may take 30-60 minutes, Loong64 may take 60-90 minutes due to QEMU emulation.
+    cmds:
+      - echo "=== Building x86_64 cross-compilation image ==="
+      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
+      - echo "=== Building ARM64 cross-compilation image (QEMU - this may take 30-60 minutes) ==="
+      - docker build --platform linux/arm64 -t wails-cross-arm64 -f build/docker/Dockerfile.cross build/docker/
+      - echo "=== Building Loong64 cross-compilation image (QEMU - this may take 60-90 minutes) ==="
+      - docker build --platform linux/loong64 -t wails-cross-loong64 -f build/docker/Dockerfile.cross-loong64 build/docker/
+      - echo "=== All Docker images built! ==="
+      - docker images "wails-cross*"
+
+  setup:docker:loong64:
+    summary: Builds Loong64 Docker image for cross-compilation
+    desc: |
+      Builds Loong64 Docker image for Linux LoongArch64 builds.
+      Requires QEMU loong64 support. Install first:
+        docker run --rm --privileged tonistiigi/binfmt --install loong64
+    cmds:
+      - echo "=== Registering QEMU loong64 support ==="
+      - docker run --rm --privileged tonistiigi/binfmt --install loong64
+      - echo "=== Building Loong64 cross-compilation image (QEMU - this may take 60-90 minutes) ==="
+      - docker build --platform linux/loong64 -t wails-cross-loong64 -f build/docker/Dockerfile.cross-loong64 build/docker/
+      - echo "=== Loong64 Docker image built! ==="
+      - docker images "wails-cross-loong64"
+
+  build:server:
+    summary: Builds the application in server mode (no GUI, HTTP server only)
+    cmds:
+      - task: common:build:server
+
+  run:server:
+    summary: Runs the application in server mode
+    cmds:
+      - task: common:run:server
+
+  build:docker:
+    summary: Builds a Docker image for server mode deployment
+    cmds:
+      - task: common:build:docker
+
+  run:docker:
+    summary: Builds and runs the Docker image
+    cmds:
+      - task: common:run:docker

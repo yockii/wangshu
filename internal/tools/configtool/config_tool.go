@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/yockii/wangshu/internal/config"
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
-	"github.com/yockii/wangshu/pkg/utils"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 var reloadFunc func() error
@@ -98,14 +96,6 @@ func (t *ConfigTool) execute(ctx context.Context, params map[string]string) *typ
 	default:
 		return types.NewToolResult().WithError(fmt.Errorf("invalid action: %s", action))
 	}
-}
-
-func (t *ConfigTool) getConfigPath() string {
-	cfgPath := "~/.wangshu/config.json"
-	if len(os.Args) > 1 {
-		cfgPath = os.Args[1]
-	}
-	return utils.ExpandPath(cfgPath)
 }
 
 func (t *ConfigTool) get(params map[string]string) *types.ToolResult {
@@ -253,8 +243,7 @@ func (t *ConfigTool) set(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
-	cfgPath := t.getConfigPath()
-	if err := config.SaveConfig(cfgPath, cfg); err != nil {
+	if err := config.SaveConfig(cfg); err != nil {
 		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 
@@ -381,8 +370,7 @@ func (t *ConfigTool) add(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
-	cfgPath := t.getConfigPath()
-	if err := config.SaveConfig(cfgPath, cfg); err != nil {
+	if err := config.SaveConfig(cfg); err != nil {
 		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 
@@ -432,8 +420,7 @@ func (t *ConfigTool) delete(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
-	cfgPath := t.getConfigPath()
-	if err := config.SaveConfig(cfgPath, cfg); err != nil {
+	if err := config.SaveConfig(cfg); err != nil {
 		return types.NewToolResult().WithError(fmt.Errorf("failed to save configuration: %w", err))
 	}
 

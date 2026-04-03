@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools"
+	"github.com/yockii/wangshu/pkg/types"
 )
 
 type ToolFunc func(ctx context.Context, params map[string]any) (*types.ActionOutput, error)

@@ -1,0 +1,22 @@
+FROM ghcr.io/loong64/debian:trixie-slim
+
+ARG TARGETARCH
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl xz-utils nodejs npm pkg-config gcc libc6-dev \
+    libgtk-3-dev libwebkit2gtk-4.1-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG GO_VERSION=1.26.1
+RUN curl -L "https://go.dev/dl/go${GO_VERSION}.linux-loong64.tar.gz" | tar -xzf - -C /usr/local
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+COPY build-loong64.sh /usr/local/bin/build.sh
+RUN chmod +x /usr/local/bin/build.sh
+
+WORKDIR /app
+ENTRYPOINT ["/usr/local/bin/build.sh"]
+CMD ["linux", "loong64"]

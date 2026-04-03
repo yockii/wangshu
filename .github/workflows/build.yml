@@ -1,241 +1,195 @@
-name: Build Release
+name: Build Release (Cross-Platform)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: true
+        type: boolean
+        default: true
+      skip_loong64:
+        description: 'Skip Loong64 build (slow, ~30-60 min)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
   packages: write
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
-  build:
+  build-cross:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - goos: linux
-            goarch: amd64
-            suffix: ''
-          - goos: linux
-            goarch: arm64
-            suffix: ''
-          - goos: darwin
-            goarch: amd64
-            suffix: ''
-          - goos: darwin
-            goarch: arm64
-            suffix: ''
-          - goos: windows
-            goarch: amd64
-            suffix: '.exe'
-          - goos: windows
-            goarch: arm64
-            suffix: '.exe'
-          - goos: linux
-            goarch: loong64
-            suffix: ''
-
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: linux
+            arch: amd64
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          go-version: '1.25.0'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version
-        id: version
+      - name: Pull cached image
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest || true
 
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+      - name: Build Docker image
         run: |
-          output_name="wangshu-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
-          go build -ldflags="-s -w -X 'github.com/yockii/wangshu/pkg/constant.Version=${{ steps.version.outputs.version }}'" -trimpath -o "$output_name" ./cmd
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            -f build/docker/Dockerfile.cross build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest
+
+      - name: Build ${{ matrix.os }}/${{ matrix.arch }}
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross:latest \
+            ${{ matrix.os }} ${{ matrix.arch }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wangshu-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: wangshu-*
+          name: wangshu-${{ matrix.os }}-${{ matrix.arch }}
+          path: bin/*
+          if-no-files-found: error
 
-  release:
-    needs: build
+  build-arm64:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Install git-cliff
-        uses: taiki-e/install-action@v2
-        with:
-          tool: git-cliff
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Generate release notes
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull cached image
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          git-cliff --tag $VERSION --latest > release_notes.md
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest || true
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Build ARM64 image
+        run: |
+          docker build --platform linux/arm64 \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            -f build/docker/Dockerfile.cross build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest
+
+      - name: Build linux/arm64
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-arm64:latest \
+            linux arm64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-arm64
+          path: bin/*
+          if-no-files-found: error
+
+  build-loong64:
+    if: ${{ !inputs.skip_loong64 }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Register loong64 support
+        run: docker run --rm --privileged tonistiigi/binfmt --install loong64
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull cached image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest || true
+
+      - name: Build Loong64 image
+        run: |
+          docker build --platform linux/loong64 \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
+            --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
+            -f build/docker/Dockerfile.cross-loong64 build/docker/
+
+      - name: Push image
+        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest
+
+      - name: Build linux/loong64
+        run: |
+          docker run --rm --platform linux/loong64 \
+            -v ${{ github.workspace }}:/app \
+            -e VERSION=${{ inputs.version }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wangshu-linux-loong64
+          path: bin/*
+          if-no-files-found: error
+
+  release:
+    needs: [build-cross, build-arm64]
+    if: ${{ always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
 
-      - name: Generate checksums
+      - name: Prepare release files
         run: |
-          cd artifacts
-          sha256sum * > checksums.txt
+          mkdir -p release
+          find artifacts -type f \( -name "*.exe" -o -name "wangshu-desktop-*" -o -name "checksums.txt" \) -exec cp {} release/ \;
+          ls -la release/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
-          body_path: release_notes.md
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  docker:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract version
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/wangshu:latest
-            ghcr.io/${{ github.repository_owner }}/wangshu:${{ steps.version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  sync-to-gitee:
-    needs: release
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Sync Release to Gitee
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          TAG=${{ github.ref_name }}
-          echo "Syncing release ${TAG} to Gitee..."
-          
-          RELEASE_ID=$(curl -s "https://gitee.com/api/v5/repos/yockii/wangshu/releases/tags/${TAG}?access_token=${GITEE_TOKEN}" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-          
-          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
-            echo "Creating new release..."
-            RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/yockii/wangshu/releases" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"access_token\": \"${GITEE_TOKEN}\",
-                \"tag_name\": \"${TAG}\",
-                \"name\": \"${TAG}\",
-                \"body\": \"请查看 GitHub Release 页面获取详细更新说明: https://github.com/yockii/wangshu/releases/tag/${TAG}\",
-                \"draft\": false,
-                \"prerelease\": false,
-                \"target_commitish\": \"main\"
-              }")
-            RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-          fi
-          
-          echo "Release ID: $RELEASE_ID"
-          
-          echo "Uploading attachments..."
-          for file in artifacts/*; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              filesize=$(stat -c%s "$file")
-              echo "Uploading $filename ($filesize bytes)..."
-              RESPONSE=$(curl -s -w "\n%{http_code}" \
-                --connect-timeout 60 \
-                --max-time 1800 \
-                --retry 5 \
-                --retry-delay 15 \
-                --retry-connrefused \
-                --speed-limit 1000 \
-                --speed-time 60 \
-                -X POST \
-                "https://gitee.com/api/v5/repos/yockii/wangshu/releases/${RELEASE_ID}/attach_files" \
-                -F "access_token=${GITEE_TOKEN}" \
-                -F "file=@${file}")
-              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-              BODY=$(echo "$RESPONSE" | sed '$d')
-              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-                echo "Success: $filename (HTTP $HTTP_CODE)"
-              else
-                echo "Failed: $filename (HTTP $HTTP_CODE): $BODY"
-              fi
-            fi
-          done
-          
-          echo "Sync completed."
-
-  update-changelog:
-    needs: docker
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install git-cliff
-        uses: taiki-e/install-action@v2
-        with:
-          tool: git-cliff
-
-      - name: Generate CHANGELOG.md
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          git-cliff --tag $VERSION > CHANGELOG.md
-
-      - name: Commit and push CHANGELOG
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG for ${{ github.ref_name }}"
-          git push origin main
+          tag_name: ${{ inputs.version }}
+          name: ${{ inputs.version }}
+          draft: ${{ inputs.draft }}
+          generate_release_notes: true
+          files: release/*

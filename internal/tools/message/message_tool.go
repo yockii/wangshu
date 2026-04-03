@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	actiontypes "github.com/yockii/wangshu/pkg/action/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
+	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
 type MessageTool struct {

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -13,20 +14,20 @@ import (
 )
 
 type Session struct {
-	ID         string
-	ChatType   string // p2p group topic?
-	Channel    string
-	ChatID     string
-	ChatName   string
-	SenderID   string
-	SenderName string
-	Messages   []types.Message
-	Metadata   map[string]string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID               string
+	ChatType         string // p2p group topic?
+	Channel          string
+	ChatID           string
+	ChatName         string
+	SenderID         string
+	SenderName       string
+	Messages         []types.Message
+	Metadata         map[string]string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	LastCompressedAt time.Time // 上次压缩历史的时间
-	workspace  string
-	mu         sync.RWMutex
+	workspace        string
+	mu               sync.RWMutex
 
 	PendingImage   *types.ContentBlock
 	PendingImageAt time.Time
@@ -109,6 +110,41 @@ func (s *Session) GetMessages() []types.Message {
 	copy(messages, s.Messages)
 	return messages
 }
+
+// GetLastNBeforeLastL 获取最近l条消息之前的n条消息
+func (s *Session) GetLastNBeforeLastL(l, n int) []types.Message {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if n <= 0 || len(s.Messages) == 0 {
+		return []types.Message{}
+	}
+
+	if l >= len(s.Messages) {
+		return []types.Message{}
+	}
+
+	var messages []types.Message
+	var gotNum = 0
+	for i := len(s.Messages) - 1 - l; i >= 0; i-- {
+		msg := s.Messages[i]
+		if msg.Role == constant.RoleTool {
+			continue
+		}
+		messages = append(messages, msg)
+		gotNum++
+		if gotNum >= n {
+			break
+		}
+	}
+	// reverse
+	slices.Reverse(messages)
+
+	result := make([]types.Message, gotNum)
+	copy(result, messages)
+	return result
+}
+
 func (s *Session) GetLastN(n int) []types.Message {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

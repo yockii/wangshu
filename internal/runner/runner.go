@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/yockii/wangshu/internal/agent"
+	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/tools/configtool"
 	"github.com/yockii/wangshu/internal/tools/message"
@@ -20,11 +21,12 @@ import (
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
-	"github.com/yockii/wangshu/pkg/constant"
+	"github.com/yockii/wangshu/pkg/channel/wechat"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/ollama"
 	"github.com/yockii/wangshu/pkg/llm/openai"
+	"github.com/yockii/wangshu/pkg/mcp"
 	"github.com/yockii/wangshu/pkg/skills"
 	"github.com/yockii/wangshu/pkg/tools"
 	"github.com/yockii/wangshu/pkg/tools/browser"
@@ -33,66 +35,11 @@ import (
 	"github.com/yockii/wangshu/pkg/tools/memory"
 	"github.com/yockii/wangshu/pkg/tools/network"
 	"github.com/yockii/wangshu/pkg/tools/runtime"
-	"github.com/yockii/wangshu/pkg/utils"
 )
 
 var defaultAgent *agent.Agent
 
-func Initialize(isTUIMode bool) (*agent.Agent, error) {
-	if err := config.DefaultCfg.ValidateWithMode(isTUIMode); err != nil {
-		return nil, err
-	}
-
-	config.ReleaseSkills()
-
-	usedProviders := make(map[string]bool)
-	for _, agent := range config.DefaultCfg.Agents {
-		if agent.Provider == "" {
-			continue
-		}
-		usedProviders[agent.Provider] = true
-	}
-
-	providerCount := 0
-	for providerName, providerCfg := range config.DefaultCfg.Providers {
-		if !usedProviders[providerName] {
-			continue
-		}
-
-		if providerCfg.Type == "" {
-			slog.Error("LLM provider type is empty", "provider", providerName)
-			continue
-		}
-		if providerCfg.APIKey == "" && providerCfg.Type != "ollama" {
-			slog.Error("LLM provider API key is empty", "provider", providerName)
-			continue
-		}
-
-		switch providerCfg.Type {
-		case "openai":
-			openaiProvider := openai.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, openaiProvider)
-			providerCount++
-		case "anthropic":
-			claudeProvider := claude.NewProvider(providerCfg.APIKey, providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, claudeProvider)
-			providerCount++
-		case "ollama":
-			ollamaProvider := ollama.NewProvider(providerCfg.BaseURL)
-			llm.RegisterProvider(providerName, ollamaProvider)
-			providerCount++
-		default:
-			slog.Error("Unsupported LLM provider type", "type", providerCfg.Type)
-		}
-	}
-
-	if providerCount == 0 {
-		slog.Error("No LLM provider configured")
-		return nil, fmt.Errorf("no LLM provider configured")
-	}
-
-	bus.Default().Start(context.Background())
-
+func RegisterTools() {
 	tools.GetDefaultToolRegistry().Register(&builtin.SleepTool{})
 	tools.GetDefaultToolRegistry().Register(&builtin.GetTimeTool{})
 
@@ -120,27 +67,43 @@ func Initialize(isTUIMode bool) (*agent.Agent, error) {
 	tools.GetDefaultToolRegistry().Register(message.NewMessageTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVersionTool())
 	tools.GetDefaultToolRegistry().Register(system.NewVariableTool())
-	configtool.SetReloadFunc(Reload)
+	configtool.SetReloadFunc(func() (err error) {
+		_, err = Reload()
+		return
+	})
 	tools.GetDefaultToolRegistry().Register(configtool.NewConfigTool())
 	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
+}
+
+func Initialize() (*agent.Agent, error) {
+	config.ReleaseSkills()
+	config.ReleaseLive2dModels()
+
+	err := initializeProviders()
+	if err != nil {
+		return nil, err
+	}
 
 	skills.InitializeSkillLoader()
 
-	defaultAgent = agent.InitializeAgentManager(isTUIMode)
+	defaultAgent = agent.InitializeAgentManager()
+
+	InitializeChannels(defaultAgent)
+
+	if err = mcp.DefaultManager.ReLoadMcpClients(); err != nil {
+		slog.Warn("Some MCP servers failed to load", "error", err)
+	}
 
 	return defaultAgent, nil
 }
 
-func InitializeChannels(defaultAgent *agent.Agent) bool {
-	noChannelFound := true
+func InitializeChannels(defaultAgent *agent.Agent) {
 	for name, ch := range config.DefaultCfg.Channels {
 		if ch.Enabled {
 			switch ch.Type {
 			case "web":
 				if ch.HostAddress != "" && ch.Token != "" {
-					noChannelFound = false
 					webChannel := web.NewWebChannel(name, ch.HostAddress, ch.Token)
-					channel.RegisterChannel(name, webChannel)
 					var webAgent *agent.Agent
 					if ch.Agent != "" {
 						a, has := agent.GetAgent(ch.Agent)
@@ -151,6 +114,7 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 					if webAgent == nil {
 						webAgent = defaultAgent
 					}
+					channel.RegisterChannel(name, webChannel)
 					bus.Default().RegisterInboundHandler(name, webAgent.SubscribeInbound)
 					bus.Default().RegisterOutboundHandler(webChannel.SubscribeOutbound)
 				} else {
@@ -158,7 +122,6 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 				}
 			case "feishu":
 				if ch.AppID != "" && ch.AppSecret != "" {
-					noChannelFound = false
 					feishuChannel := feishu.NewFeishuChannel(name, ch.AppID, ch.AppSecret)
 
 					var feishuAgent *agent.Agent
@@ -178,26 +141,65 @@ func InitializeChannels(defaultAgent *agent.Agent) bool {
 					bus.Default().RegisterInboundHandler(name, feishuAgent.SubscribeInbound)
 					bus.Default().RegisterOutboundHandler(feishuChannel.SubscribeOutbound)
 				}
+			case "wechat_ilink":
+				opts := []wechat.IlinkOption{
+					wechat.WithOnQRCode(func(url string) {
+						slog.Info("显示微信登录二维码窗口")
+						app.ShowQRCodeWindow(url)
+					}),
+					wechat.WithOnScanned(func() {
+						slog.Info("微信扫码成功，请在手机上确认登录")
+						app.UpdateQRCodeStatus("scanned")
+					}),
+					wechat.WithOnLoggedIn(func() {
+						slog.Info("微信登录成功")
+						app.UpdateQRCodeStatus("confirmed")
+						app.CloseQRCodeWindow()
+					}),
+					wechat.WithOnExpired(func() {
+						slog.Warn("微信登录二维码已过期")
+						app.UpdateQRCodeStatus("expired")
+					}),
+					wechat.WithOnError(func(err error) {
+						slog.Error("微信登录错误", "error", err)
+						app.UpdateQRCodeStatus("error")
+						app.CloseQRCodeWindow()
+					}),
+				}
+				if ch.CredPath != "" {
+					opts = append(opts, wechat.WithCredPath(ch.CredPath))
+				}
+
+				ilinkChannel := wechat.NewIlinkChannel(name, opts...)
+
+				var ilinkAgent *agent.Agent
+				if ch.Agent != "" {
+					a, has := agent.GetAgent(ch.Agent)
+					if has {
+						ilinkAgent = a
+					}
+				}
+				if ilinkAgent == nil {
+					ilinkAgent = defaultAgent
+				}
+
+				channel.RegisterChannel(name, ilinkChannel)
+				bus.Default().RegisterInboundHandler(name, ilinkAgent.SubscribeInbound)
+				bus.Default().RegisterOutboundHandler(ilinkChannel.SubscribeOutbound)
 			}
 		}
 	}
-	return noChannelFound
 }
 
+// Declared
 func Run() {
-	defaultAgent, err := Initialize(false)
+	_, err := Initialize()
 	if err != nil {
 		slog.Error("Initialization failed", "error", err)
 		return
 	}
 
-	noChannelFound := InitializeChannels(defaultAgent)
-	if noChannelFound {
-		slog.Error("No channel configured")
-		return
-	}
-
-	flagFileCheck()
+	FlagFileCheck()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -209,7 +211,7 @@ func Run() {
 	slog.Info("All agents stopped")
 }
 
-func flagFileCheck() {
+func FlagFileCheck() {
 	exePath, err := os.Executable()
 	if err != nil {
 		slog.Error("Failed to get executable path", "error", err)
@@ -276,50 +278,44 @@ func GetDefaultAgent() *agent.Agent {
 	return defaultAgent
 }
 
-func Reload() error {
-	cfgPath := "~/.wangshu/config.json"
-	if len(os.Args) > 1 {
-		cfgPath = os.Args[1]
-	}
-	cfgPath = utils.ExpandPath(cfgPath)
-
-	newCfg, err := config.LoadConfig(cfgPath)
+func Reload() (defaultAgent *agent.Agent, err error) {
+	newCfg, err := config.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load new configuration: %w", err)
+		return nil, fmt.Errorf("failed to load new configuration: %w", err)
 	}
 
 	if err := newCfg.Validate(); err != nil {
-		return fmt.Errorf("new configuration is invalid: %w", err)
+		return nil, fmt.Errorf("new configuration is invalid: %w", err)
 	}
 
-	_, isTUIMode := channel.GetChannel(constant.TUIChannelName)
+	// _, isBuiltinMode := channel.GetChannel(constant.BuiltinChannelName)
 
-	if isTUIMode {
-		channel.ClearChannelsExcept([]string{constant.TUIChannelName})
-		bus.Default().ClearHandlersExcept([]string{constant.TUIChannelName})
-	} else {
-		channel.ClearChannels()
-		bus.Default().ClearHandlers()
-	}
+	// if isBuiltinMode {
+	// 	channel.ClearChannelsExcept([]string{constant.BuiltinChannelName})
+	// 	bus.Default().ClearHandlersExcept([]string{constant.BuiltinChannelName})
+	// } else {
+	// 	channel.ClearChannels()
+	// 	bus.Default().ClearHandlers()
+	// }
+
+	channel.ClearChannels()
+	bus.Default().ClearHandlers()
 	agent.ClearAgents()
 
 	llm.ClearProviders()
 
 	config.DefaultCfg = newCfg
 
-	if err := initializeProviders(); err != nil {
-		return fmt.Errorf("failed to initialize providers: %w", err)
+	defaultAgent, err = Initialize()
+	if err != nil {
+		return nil, err
 	}
 
-	defaultAgent = agent.InitializeAgentManager(isTUIMode)
-
-	noChannelFound := InitializeChannels(defaultAgent)
-	if noChannelFound && !isTUIMode {
-		slog.Warn("No channel configured after reload")
-	}
+	config.ReleaseSkills()
+	config.ReleaseLive2dModels()
 
 	slog.Info("Configuration reloaded successfully")
-	return nil
+	return defaultAgent, nil
 }
 
 func initializeProviders() error {
@@ -365,6 +361,7 @@ func initializeProviders() error {
 	}
 
 	if providerCount == 0 {
+		slog.Error("No LLM provider configured")
 		return fmt.Errorf("no LLM provider configured")
 	}
 

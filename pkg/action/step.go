@@ -5,7 +5,7 @@ import (
 	"errors"
 	"html/template"
 
-	"github.com/yockii/wangshu/pkg/action/types"
+	"github.com/yockii/wangshu/pkg/types"
 )
 
 type Step struct {

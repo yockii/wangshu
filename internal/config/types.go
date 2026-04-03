@@ -8,12 +8,23 @@ import (
 )
 
 type Config struct {
-	Agents    map[string]*AgentConfig    `json:"agents"`
-	Providers map[string]*ProviderConfig `json:"providers"`
-	Channels  map[string]*ChannelConfig  `json:"channels"`
-	Skill     SkillConfig                `json:"skill"`
-	Browser   BrowserConfig              `json:"browser"`
-	mu        sync.RWMutex
+	Agents     map[string]*AgentConfig    `json:"agents"`
+	Providers  map[string]*ProviderConfig `json:"providers"`
+	Channels   map[string]*ChannelConfig  `json:"channels"`
+	Skill      SkillConfig                `json:"skill"`
+	Browser    BrowserConfig              `json:"browser"`
+	Live2D     Live2DConfig               `json:"live2d"`
+	McpServers map[string]*McpConfig      `json:"mcp_servers"`
+
+	mu sync.RWMutex
+}
+
+type McpConfig struct {
+	Command       string            `json:"command"`
+	Args          []string          `json:"args"`
+	Env           map[string]string `json:"env"`
+	TransportType string            `json:"transport_type,omitempty"` // 通信协议，默认stdio，以后可能扩展到http、sse等
+	URL           string            `json:"url,omitempty"`            // 通信地址，用于http、sse等
 }
 
 type SkillConfig struct {
@@ -22,6 +33,16 @@ type SkillConfig struct {
 
 type BrowserConfig struct {
 	DataDir string `json:"data_dir"` // 浏览器用户数据目录，用于持久化cookies、登录状态等
+}
+
+type Live2DConfig struct {
+	Enabled   bool   `json:"enabled"`
+	ModelDir  string `json:"model_dir"`
+	ModelName string `json:"model_name"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	X         int    `json:"x"`
+	Y         int    `json:"y"`
 }
 
 type AgentConfig struct {
@@ -51,13 +72,15 @@ type ChannelConfig struct {
 	// web
 	HostAddress string `json:"host_address,omitempty"`
 	Token       string `json:"token,omitempty"`
+	// wechat ilink
+	CredPath string `json:"cred_path,omitempty"` // 凭证存储路径，默认 ~/.wechatbot/{name}_credentials.json
 }
 
 func defaultConfig() *Config {
 	return &Config{
 		Agents: map[string]*AgentConfig{
 			constant.Default: {
-				Workspace:              "~/.wangshu/workspace",
+				Workspace:              "./workspace",
 				Provider:               "myProvider",
 				Model:                  "qwen3-max",
 				Temperature:            0.7,
@@ -68,32 +91,27 @@ func defaultConfig() *Config {
 		Providers: map[string]*ProviderConfig{
 			"myProvider": {
 				Type:    "openai",
-				APIKey:  "sk-your-openai-api-key",
-				BaseURL: "your custom base url, blank if use openai official",
+				APIKey:  "",
+				BaseURL: "",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
-			"feishuTest": {
-				Type:      "feishu",
-				Enabled:   false,
-				Agent:     constant.Default,
-				AppID:     "your feishu app id",
-				AppSecret: "your feishu app secret",
-			},
-			"webTest": {
-				Type:        "web",
-				Enabled:     false,
-				Agent:       constant.Default,
-				HostAddress: "localhost:8080",
-				Token:       "custom defined token",
-			},
-		},
+		Channels: map[string]*ChannelConfig{},
 		Skill: SkillConfig{
-			GlobalPath: "~/.wangshu/skills",
+			GlobalPath: "./skills",
 		},
 		Browser: BrowserConfig{
-			DataDir: "~/.wangshu/browser_profile",
+			DataDir: "./browser_profile",
 		},
+		Live2D: Live2DConfig{
+			Enabled:   true,
+			ModelDir:  "./live2d_models",
+			ModelName: "hiyori",
+			Width:     200,
+			Height:    380,
+			X:         0,
+			Y:         0,
+		},
+		McpServers: map[string]*McpConfig{},
 	}
 }
 

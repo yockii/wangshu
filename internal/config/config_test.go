@@ -58,8 +58,10 @@ func TestLoadConfig_NotExist(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.json")
 
+	configFile = cfgPath
+
 	// 加载不存在的配置文件（应该自动创建）
-	cfg, err := LoadConfig(cfgPath)
+	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
@@ -78,6 +80,8 @@ func TestLoadConfig_Exist(t *testing.T) {
 	// 创建临时目录和配置文件
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.json")
+
+	configFile = cfgPath
 
 	// 创建测试配置
 	testCfg := &Config{
@@ -105,13 +109,13 @@ func TestLoadConfig_Exist(t *testing.T) {
 	}
 
 	// 保存配置
-	err := SaveConfig(cfgPath, testCfg)
+	err := SaveConfig(testCfg)
 	if err != nil {
 		t.Fatalf("Failed to save test config: %v", err)
 	}
 
 	// 加载配置
-	cfg, err := LoadConfig(cfgPath)
+	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
@@ -610,21 +614,21 @@ func TestConfigValidate_UnusedProvider(t *testing.T) {
 		Agents: map[string]*AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
-				Provider:  "openaiProvider",  // 使用openaiProvider
+				Provider:  "openaiProvider", // 使用openaiProvider
 				Model:     "gpt-4",
 			},
 		},
 		Providers: map[string]*ProviderConfig{
 			"openaiProvider": {
 				Type:   "openai",
-				APIKey: "test-api-key",  // 配置完整
+				APIKey: "test-api-key", // 配置完整
 			},
-			"unusedProvider": {  // 未被使用的provider，配置不完整
+			"unusedProvider": { // 未被使用的provider，配置不完整
 				Type:   "openai",
-				APIKey: "",  // 空api key，但因为不被使用，所以不应该报错
+				APIKey: "", // 空api key，但因为不被使用，所以不应该报错
 			},
-			"anotherUnused": {  // 另一个未使用的provider
-				Type:   "",  // 空type，但不应该报错
+			"anotherUnused": { // 另一个未使用的provider
+				Type:   "", // 空type，但不应该报错
 				APIKey: "",
 			},
 		},
@@ -640,14 +644,14 @@ func TestConfigValidate_MultipleErrors(t *testing.T) {
 	cfg := &Config{
 		Agents: map[string]*AgentConfig{
 			"default": {
-				Workspace: "",       // 空工作空间
+				Workspace: "",           // 空工作空间
 				Provider:  "myProvider", // 引用myProvider，这样它会被验证
-				Model:     "",       // 空model
+				Model:     "",           // 空model
 			},
 		},
 		Providers: map[string]*ProviderConfig{
 			"myProvider": {
-				Type:   "",  // 空type
+				Type:   "", // 空type
 				APIKey: "", // 空api key
 			},
 		},
@@ -655,9 +659,9 @@ func TestConfigValidate_MultipleErrors(t *testing.T) {
 			"webTest": {
 				Type:        "web",
 				Enabled:     true,
-				Agent:       "",  // 空agent
-				HostAddress: "",  // 空host address
-				Token:       "",  // 空token
+				Agent:       "", // 空agent
+				HostAddress: "", // 空host address
+				Token:       "", // 空token
 			},
 		},
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -65,25 +66,10 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 // checkAndCompressIfNeeded 检查是否需要压缩历史消息（异步执行）
 // 双重条件：message数量 > 200 或 总字符数 > 100K
 // 带防抖机制：避免短时间内重复压缩
-func (a *Agent) checkAndCompressIfNeeded(sess *session.Session) {
-	sessionMessages := sess.GetMessages()
+func (a *Agent) checkAndCompressIfNeeded(sess *session.Session, afterLoop bool) {
 
-	// 计算总字符数（用于条件判断）
-	totalChars := 0
-	for _, msg := range sessionMessages {
-		totalChars += len(msg.Content)
-	}
-
-	// 双重条件：满足任一即触发压缩
-	needCompress := false
-	if len(sessionMessages) > constant.ReachCompressHistory {
-		needCompress = true
-	}
-	if totalChars > constant.MaxHistoryChars {
-		needCompress = true
-	}
-
-	if !needCompress {
+	percentage := a.CalculateSessionPercent(sess)
+	if percentage < 1 || (afterLoop && percentage < 0.85) {
 		return
 	}
 
@@ -99,10 +85,11 @@ func (a *Agent) checkAndCompressIfNeeded(sess *session.Session) {
 
 	// 需要压缩，异步执行
 	go func() {
+		sessionMessages := sess.GetMessages()
 		slog.Debug("开始压缩历史消息",
 			"chat_id", sess.ChatID,
 			"message数量", len(sessionMessages),
-			"总字符数", totalChars)
+			"session_percent", percentage)
 
 		summary, err := a.compressHistory(sessionMessages)
 		if err != nil {
@@ -230,12 +217,12 @@ func (a *Agent) loadAgentContextInfo() string {
 	mdFiles := []string{
 		constant.ProfileFileAgents,
 		constant.ProfileFileBootstrap,
-		constant.ProfileFileHeartbeat,
+		// constant.ProfileFileHeartbeat,
 		constant.ProfileFileIdentity,
 		constant.ProfileFileSoul,
-		constant.ProfileFileTools,
+		// constant.ProfileFileTools,
 		constant.ProfileFileUser,
-		constant.ProfileFileMemory,
+		// constant.ProfileFileMemory,
 	}
 	needSoul := false
 	bootstraped := false
@@ -269,4 +256,36 @@ func (a *Agent) loadAgentContextInfo() string {
 	}
 
 	return content
+}
+
+func (a *Agent) CalculateSessionPercent(sess *session.Session) float64 {
+	sessionMessages := sess.GetMessages()
+	// 计算总字符数（用于条件判断）
+	totalChars := 0
+	for _, msg := range sessionMessages {
+		totalChars += len(msg.Content)
+	}
+
+	// 保留4位小数
+	characterPercent := float64(totalChars) / float64(constant.MaxHistoryChars)
+	characterPercent = math.Round(characterPercent*10000) / 10000
+
+	msgCountPercent := float64(len(sessionMessages)) / float64(constant.ReachCompressHistory)
+	msgCountPercent = math.Round(msgCountPercent*10000) / 10000
+
+	return max(characterPercent, msgCountPercent)
+}
+
+func (a *Agent) GetChannelSession(channel, chatID, chatType, chatName, senderID, senderName string) *session.Session {
+	sess := a.sessions.GetOrCreate(
+		a.workspaceDir,
+		channel,
+		chatID,
+		chatType,
+		chatName,
+		senderID,
+		senderName,
+	)
+
+	return sess
 }

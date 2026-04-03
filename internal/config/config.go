@@ -1,7 +1,6 @@
 package config
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -13,28 +12,33 @@ import (
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
+var configFile string
 var DefaultCfg *Config
 
 func Initialize(cfgFilePath string) error {
-	cfg, err := LoadConfig(cfgFilePath)
+	configFile = cfgFilePath
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
 	DefaultCfg = cfg
+
+	ReleaseLive2dModels()
+
 	return nil
 }
 
-func LoadConfig(cfgFilePath string) (*Config, error) {
-	cfg := defaultConfig()
-
-	data, err := os.ReadFile(cfgFilePath)
+func LoadConfig() (*Config, error) {
+	cfg := &Config{}
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
+			cfg = defaultConfig()
 			// // 引导用户在控制台上填写内容
 			// leadUserToFillConfig(cfg)
 			// 写入文件
-			err = os.MkdirAll(filepath.Dir(cfgFilePath), 0755)
+			err = os.MkdirAll(filepath.Dir(configFile), 0755)
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +46,7 @@ func LoadConfig(cfgFilePath string) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err := os.WriteFile(cfgFilePath, cfgJson, 0644); err != nil {
+			if err := os.WriteFile(configFile, cfgJson, 0644); err != nil {
 				return nil, err
 			}
 
@@ -77,13 +81,13 @@ func dealCfgPath(cfg *Config) {
 	if cfg.Browser.DataDir != "" {
 		cfg.Browser.DataDir = utils.ExpandPath(cfg.Browser.DataDir)
 	}
+
+	if cfg.Live2D.ModelDir != "" {
+		cfg.Live2D.ModelDir = utils.ExpandPath(cfg.Live2D.ModelDir)
+	}
 }
 
 func (c *Config) Validate() error {
-	return c.ValidateWithMode(false)
-}
-
-func (c *Config) ValidateWithMode(isTUIMode bool) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -97,7 +101,7 @@ func (c *Config) ValidateWithMode(isTUIMode bool) error {
 		errors = append(errors, errs...)
 	}
 
-	if errs := c.validateChannels(isTUIMode); len(errs) > 0 {
+	if errs := c.validateChannels(); len(errs) > 0 {
 		errors = append(errors, errs...)
 	}
 
@@ -112,6 +116,26 @@ func (c *Config) ValidateWithMode(isTUIMode bool) error {
 	}
 
 	return nil
+}
+
+func (c *Config) ValidateLive2D() error {
+	if c.Live2D.Enabled {
+		dir := c.Live2D.ModelDir
+		modelPath := filepath.Join(dir, c.Live2D.ModelName)
+		// 检查是否存在 .model3.json结尾的文件
+		entries, err := os.ReadDir(modelPath)
+		if err != nil {
+			return fmt.Errorf("读取模型目录 %s 失败: %w", modelPath, err)
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if strings.HasSuffix(name, ".model.json") || strings.HasSuffix(name, ".model3.json") {
+				return nil
+			}
+		}
+		return fmt.Errorf("模型目录 %s 中不存在 model.json 或 model3.json 文件", modelPath)
+	}
+	return fmt.Errorf("Live2D 未配置")
 }
 
 // validateAgents 验证Agent配置，返回所有错误
@@ -180,16 +204,13 @@ func (c *Config) validateProviders() []string {
 }
 
 // validateChannels 验证Channel配置，返回所有错误
-func (c *Config) validateChannels(isTUIMode bool) []string {
+func (c *Config) validateChannels() []string {
 	var errors []string
-
-	hasChannel := false
 
 	for name, ch := range c.Channels {
 		if !ch.Enabled {
 			continue
 		}
-		hasChannel = true
 
 		if ch.Type == "" {
 			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 缺少类型配置（请添加 \"type\": \"feishu/web\"）", name))
@@ -214,13 +235,11 @@ func (c *Config) validateChannels(isTUIMode bool) []string {
 			if ch.AppSecret == "" {
 				errors = append(errors, fmt.Sprintf("  - 飞书渠道 '%s' 缺少AppSecret配置（请添加 \"app_secret\": \"your-app-secret\"）", name))
 			}
+		case "wechat_ilink":
+			// 微信 iLink 渠道无需验证
 		default:
 			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 的类型 '%s' 不支持（目前仅支持：feishu、web）", name, ch.Type))
 		}
-	}
-
-	if !hasChannel && !isTUIMode {
-		errors = append(errors, "  - 未配置任何启用的渠道（请在channels中添加至少一个渠道配置）")
 	}
 
 	return errors
@@ -249,19 +268,19 @@ func (c *Config) validateReferences() []string {
 }
 
 // SaveConfig saves configuration to file
-func SaveConfig(path string, cfg *Config) error {
+func SaveConfig(cfg *Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	// Create config directory if needed
-	dir := filepath.Dir(path)
+	dir := filepath.Dir(configFile)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(configFile, data, 0644)
 }
 
 // UpdateAgents updates agents configuration with lock protection
@@ -368,9 +387,6 @@ func (c *Config) DeleteChannel(name string) {
 	delete(c.Channels, name)
 }
 
-//go:embed workspace
-var embeddedFiles embed.FS
-
 func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 	// 确保workspace目录存在
 	if _, err := os.Stat(workspaceDir); err != nil {
@@ -425,9 +441,6 @@ func EnsureWorkspace(workspaceDir string, noloop ...bool) error {
 	})
 }
 
-//go:embed skills
-var embeddedSkills embed.FS
-
 func ReleaseSkills() error {
 	skillsDir := DefaultCfg.Skill.GlobalPath
 	skillsDir = utils.ExpandPath(skillsDir)
@@ -460,6 +473,51 @@ func ReleaseSkills() error {
 
 		// 复制文件
 		data, err := embeddedSkills.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		os.MkdirAll(filepath.Dir(targetPath), 0755)
+
+		return os.WriteFile(targetPath, data, 0644)
+	})
+}
+
+func ReleaseLive2dModels() error {
+	if !DefaultCfg.Live2D.Enabled {
+		return nil
+	}
+	modelsDir := DefaultCfg.Live2D.ModelDir
+	modelsDir = utils.ExpandPath(modelsDir)
+
+	return fs.WalkDir(embeddedLive2DModels, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil // 根目录跳过
+		}
+		if path == "live2d_models" {
+			return nil // live2d_models目录跳过
+		}
+
+		relPath := path
+		if strings.HasPrefix(path, "live2d_models/") {
+			relPath = path[len("live2d_models/"):]
+		}
+
+		targetPath := filepath.Join(modelsDir, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(targetPath, 0755)
+		}
+
+		// 如果已存在，跳过
+		if _, err = os.Stat(targetPath); err == nil {
+			return nil
+		}
+
+		// 复制文件
+		data, err := embeddedLive2DModels.ReadFile(path)
 		if err != nil {
 			return err
 		}

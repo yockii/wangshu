@@ -6,6 +6,7 @@ import (
 
 	"github.com/yockii/wangshu/internal/agent"
 	"github.com/yockii/wangshu/internal/app"
+	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/constant"
@@ -33,15 +34,35 @@ func (b *ChatBundle) HandleMessage(content string) {
 			Content: content,
 			Type:    bus.MessageTypeText,
 			Metadata: bus.MessageMetadata{
-				Channel:  b.channel.GetName(),
-				ChatID:   constant.Default,
-				SenderID: constant.Default,
-				ChatType: constant.ChatTypeP2P,
+				Channel:    b.channel.GetName(),
+				ChatID:     constant.Default,
+				ChatName:   constant.Default,
+				ChatType:   constant.ChatTypeP2P,
+				SenderID:   constant.Default,
+				SenderName: constant.Default,
 			},
 		},
 	}
 	bus.Default().PublishInbound(*inboundMsg)
 }
+
+func (b *ChatBundle) GetHistoryMessages(fetchedLength, length int) []types.Message {
+	sess := b.agent.GetChannelSession(
+		b.channel.GetName(),
+		constant.Default,
+		constant.ChatTypeP2P,
+		constant.Default,
+		constant.Default,
+		constant.Default,
+	)
+	if sess == nil {
+		return nil
+	}
+	msgs := sess.GetLastNBeforeLastL(fetchedLength, length)
+	return msgs
+}
+
+// --------------------------------------------------------------------------------
 
 type BuiltinChannel struct{}
 

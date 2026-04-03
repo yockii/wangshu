@@ -275,3 +275,17 @@ func (a *Agent) CalculateSessionPercent(sess *session.Session) float64 {
 
 	return max(characterPercent, msgCountPercent)
 }
+
+func (a *Agent) GetChannelSession(channel, chatID, chatType, chatName, senderID, senderName string) *session.Session {
+	sess := a.sessions.GetOrCreate(
+		a.workspaceDir,
+		channel,
+		chatID,
+		chatType,
+		chatName,
+		senderID,
+		senderName,
+	)
+
+	return sess
+}

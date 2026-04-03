@@ -50,13 +50,7 @@ func (m *Manager) GetOrCreate(workspace, channel, chatID, chatType, chatName, se
 
 	return session
 }
-func (m *Manager) Get(id string) (*Session, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 
-	session, ok := m.sessions[id]
-	return session, ok
-}
 func (m *Manager) Delete(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

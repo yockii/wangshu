@@ -1,5 +1,5 @@
 <template>
-  <div :class="['flex w-full', isUser ? 'justify-end' : 'justify-start']">
+  <div class="wails-nodraggable" :class="['flex w-full', isUser ? 'justify-end' : 'justify-start']">
     <div :class="['max-w-[80%] rounded-lg p-2', isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900']">
       <!-- 用户消息直接显示文本 -->
       <p class="text-sm" v-if="isUser">{{ content }}</p>

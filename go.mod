@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/anthropics/anthropic-sdk-go v1.26.0
 	github.com/charmbracelet/x/term v0.2.2
+	github.com/corespeed-io/wechatbot/golang v0.0.0-20260324012813-f1aa6b16e5f7
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/disintegration/imaging v1.6.2
 	github.com/google/uuid v1.6.0
@@ -30,7 +31,6 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
-	github.com/corespeed-io/wechatbot/golang v0.0.0-20260324012813-f1aa6b16e5f7 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
@@ -63,7 +63,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mdp/qrterminal v1.0.1 // indirect
 	github.com/pjbgf/sha1cd v0.5.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/richardlehane/mscfb v1.0.6 // indirect
@@ -93,7 +92,6 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )
 
 require (

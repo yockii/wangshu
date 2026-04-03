@@ -1,0 +1,40 @@
+[changelog]
+header = ""
+body = """
+## [{{ version }}]
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+
+{% for commit in commits %}
+{% if commit.scope %}- *({{ commit.scope }})* {% endif %}{{ commit.message | trim_start_matches(pat="feat(") | trim_start_matches(pat="fix(") | trim_start_matches(pat="docs(") | trim_start_matches(pat="refactor(") | trim_start_matches(pat="test(") | trim_start_matches(pat="chore(") | trim_start_matches(pat="style(") | trim_start_matches(pat="perf(") | trim_start_matches(pat="ci(") | trim_start_matches(pat="build(") | trim_start_matches(pat="): ") | trim }}
+{% endfor %}
+{% endfor %}
+
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "🚀 Features" },
+  { message = "^fix", group = "🐛 Bug Fixes" },
+  { message = "^docs", group = "📚 Documentation" },
+  { message = "^refactor", group = "🚜 Refactor" },
+  { message = "^test", group = "🧪 Testing" },
+  { message = "^chore", group = "⚙️ Miscellaneous Tasks" },
+  { message = "^style", group = "⚙️ Miscellaneous Tasks" },
+  { message = "^perf", group = "⚙️ Miscellaneous Tasks" },
+  { message = "^ci", group = "⚙️ Miscellaneous Tasks" },
+  { message = "^build", group = "⚙️ Miscellaneous Tasks" },
+  { message = ".*", group = "💼 Other" },
+]
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+skip_tags = ""
+ignore_tags = ""
+topo_order = false
+sort_commits = "oldest"

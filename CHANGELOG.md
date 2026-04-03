@@ -1,6 +1,28 @@
+## [0.4.6] - 2026-03-27
 
-## [v0.5.0-alpha.1] - 2026-04-03
+### 🚀 Features
 
+- 重构工具系统并添加Action执行框架
+- 添加动作类型定义并重构工具返回结构
+- *(文件系统)* 添加文件删除和编辑功能
+- *(工具)* 添加支持排除特定工具的功能
+- 添加文件删除工具到默认工具注册表
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.5
+- 更新 Action 机制文档并添加 README 说明
+## [0.4.5] - 2026-03-20
+
+### 🚀 Features
+
+- *(runtime)* 新增Node.js执行工具并重构Python工具
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.4.4
+- 更新README支持架构和系统信息
+## [0.4.4] - 2026-03-20
 
 ### 🚀 Features
 

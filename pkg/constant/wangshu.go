@@ -1,7 +1,7 @@
 package constant
 
 const (
-	HttpReferer          = "http://localhost"
+	HttpReferer          = "https://github.com/yockii/wangshu"
 	OpenRouterTitle      = "WangShu"
 	OpenRouterCategories = "productivity,personal-agent"
 )

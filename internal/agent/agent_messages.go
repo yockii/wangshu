@@ -217,12 +217,12 @@ func (a *Agent) loadAgentContextInfo() string {
 	mdFiles := []string{
 		constant.ProfileFileAgents,
 		constant.ProfileFileBootstrap,
-		constant.ProfileFileHeartbeat,
+		// constant.ProfileFileHeartbeat,
 		constant.ProfileFileIdentity,
 		constant.ProfileFileSoul,
-		constant.ProfileFileTools,
+		// constant.ProfileFileTools,
 		constant.ProfileFileUser,
-		constant.ProfileFileMemory,
+		// constant.ProfileFileMemory,
 	}
 	needSoul := false
 	bootstraped := false

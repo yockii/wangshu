@@ -221,7 +221,7 @@
                   <template v-if="channel?.type === 'wechat_ilink'">
                     <div class="col-span-2 space-y-2">
                       <label class="text-sm text-muted-foreground">凭证存储路径 (可选)</label>
-                      <Input v-model="channel!.cred_path" placeholder="默认: ~/.wechatbot/{渠道名}_credentials.json" @input="markChanged" />
+                      <Input v-model="channel!.cred_path" placeholder="默认: .wechatbot/{渠道名}_credentials.json" @input="markChanged" />
                     </div>
                     <div class="col-span-2 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
                       <p class="font-medium text-foreground">微信 iLink 渠道说明：</p>

@@ -13,6 +13,7 @@ var (
 	chatWindow   *application.WebviewWindow
 	configWindow *application.WebviewWindow
 	live2dWindow *application.WebviewWindow
+	qrcodeWindow *application.WebviewWindow
 )
 
 func ShowChatWindow() {
@@ -207,4 +208,62 @@ func ToggleLive2DEditMode() {
 
 func IsLive2DEditMode() bool {
 	return Live2DEditMode
+}
+
+func ShowQRCodeWindow(qrURL string) {
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+
+	if qrcodeWindow == nil {
+		qrcodeWindow = app.Window.NewWithOptions(application.WebviewWindowOptions{
+			Title: "微信登录 - 扫码授权",
+			Mac: application.MacWindow{
+				InvisibleTitleBarHeight: 50,
+				Backdrop:                application.MacBackdropTranslucent,
+				TitleBar:                application.MacTitleBarHiddenInset,
+			},
+			Windows: application.WindowsWindow{
+				DisableFramelessWindowDecorations: true,
+			},
+			Frameless:        false,
+			BackgroundColour: application.NewRGBA(255, 255, 255, 255),
+			BackgroundType:   application.BackgroundTypeSolid,
+			URL:              "#/qrcode",
+			Width:            320,
+			Height:           400,
+			MinWidth:         320,
+			MinHeight:        400,
+			MaxWidth:         320,
+			MaxHeight:        400,
+			DisableResize:    true,
+			AlwaysOnTop:      true,
+			InitialPosition:  application.WindowCenter,
+		})
+	}
+
+	qrcodeWindow.Show()
+	qrcodeWindow.Focus()
+
+	app.Event.Emit("qrcode-update", qrURL)
+}
+
+func HideQRCodeWindow() {
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+	if qrcodeWindow != nil {
+		qrcodeWindow.Hide()
+	}
+}
+
+func UpdateQRCodeStatus(status string) {
+	app.Event.Emit("qrcode-status", status)
+}
+
+func CloseQRCodeWindow() {
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+	if qrcodeWindow != nil {
+		qrcodeWindow.Close()
+		qrcodeWindow = nil
+	}
 }

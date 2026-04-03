@@ -235,6 +235,8 @@ func (c *Config) validateChannels() []string {
 			if ch.AppSecret == "" {
 				errors = append(errors, fmt.Sprintf("  - 飞书渠道 '%s' 缺少AppSecret配置（请添加 \"app_secret\": \"your-app-secret\"）", name))
 			}
+		case "wechat_ilink":
+			// 微信 iLink 渠道无需验证
 		default:
 			errors = append(errors, fmt.Sprintf("  - 渠道 '%s' 的类型 '%s' 不支持（目前仅支持：feishu、web）", name, ch.Type))
 		}

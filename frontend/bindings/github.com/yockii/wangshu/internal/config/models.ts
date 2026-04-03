@@ -95,6 +95,12 @@ export class ChannelConfig {
     "host_address"?: string;
     "token"?: string;
 
+    /**
+     * wechat ilink
+     * 凭证存储路径，默认 ~/.wechatbot/{name}_credentials.json
+     */
+    "cred_path"?: string;
+
     /** Creates a new ChannelConfig instance. */
     constructor($$source: Partial<ChannelConfig> = {}) {
         if (!("type" in $$source)) {

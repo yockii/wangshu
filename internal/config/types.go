@@ -72,6 +72,8 @@ type ChannelConfig struct {
 	// web
 	HostAddress string `json:"host_address,omitempty"`
 	Token       string `json:"token,omitempty"`
+	// wechat ilink
+	CredPath string `json:"cred_path,omitempty"` // 凭证存储路径，默认 ~/.wechatbot/{name}_credentials.json
 }
 
 func defaultConfig() *Config {

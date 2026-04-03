@@ -195,7 +195,7 @@
                     </Select>
                   </div>
                   <div class="col-span-2 flex items-center gap-2">
-                    <Switch v-model:checked="channel!.enabled" @update:checked="markChanged" />
+                    <Switch v-model="channel!.enabled" @update:modelValue="markChanged" />
                     <label class="text-sm text-muted-foreground">启用</label>
                   </div>
                   <template v-if="channel?.type === 'feishu'">
@@ -216,6 +216,20 @@
                     <div class="space-y-2">
                       <label class="text-sm text-muted-foreground">Token</label>
                       <Input v-model="channel!.token" type="password" @input="markChanged" />
+                    </div>
+                  </template>
+                  <template v-if="channel?.type === 'wechat_ilink'">
+                    <div class="col-span-2 space-y-2">
+                      <label class="text-sm text-muted-foreground">凭证存储路径 (可选)</label>
+                      <Input v-model="channel!.cred_path" placeholder="默认: ~/.wechatbot/{渠道名}_credentials.json" @input="markChanged" />
+                    </div>
+                    <div class="col-span-2 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                      <p class="font-medium text-foreground">微信 iLink 渠道说明：</p>
+                      <ul class="list-disc list-inside mt-1 space-y-1">
+                        <li>首次启用时需要扫码登录微信</li>
+                        <li>登录成功后凭证会自动保存，下次启动无需重复扫码</li>
+                        <li>如需更换账号，请删除凭证文件后重新启动</li>
+                      </ul>
                     </div>
                   </template>
                 </div>
@@ -474,6 +488,7 @@ const providerTypes = [
 const channelTypes = [
   { value: 'feishu', label: '飞书' },
   { value: 'web', label: 'Web' },
+  { value: 'wechat_ilink', label: '微信 (iLink)' },
 ]
 
 const providerNames = computed(() => {

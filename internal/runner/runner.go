@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/yockii/wangshu/internal/agent"
+	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/tools/configtool"
 	"github.com/yockii/wangshu/internal/tools/message"
@@ -20,6 +21,7 @@ import (
 	"github.com/yockii/wangshu/pkg/channel"
 	"github.com/yockii/wangshu/pkg/channel/feishu"
 	"github.com/yockii/wangshu/pkg/channel/web"
+	"github.com/yockii/wangshu/pkg/channel/wechat"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/llm/claude"
 	"github.com/yockii/wangshu/pkg/llm/ollama"
@@ -139,6 +141,51 @@ func InitializeChannels(defaultAgent *agent.Agent) {
 					bus.Default().RegisterInboundHandler(name, feishuAgent.SubscribeInbound)
 					bus.Default().RegisterOutboundHandler(feishuChannel.SubscribeOutbound)
 				}
+			case "wechat_ilink":
+				opts := []wechat.IlinkOption{
+					wechat.WithOnQRCode(func(url string) {
+						slog.Info("显示微信登录二维码窗口")
+						app.ShowQRCodeWindow(url)
+					}),
+					wechat.WithOnScanned(func() {
+						slog.Info("微信扫码成功，请在手机上确认登录")
+						app.UpdateQRCodeStatus("scanned")
+					}),
+					wechat.WithOnLoggedIn(func() {
+						slog.Info("微信登录成功")
+						app.UpdateQRCodeStatus("confirmed")
+						app.CloseQRCodeWindow()
+					}),
+					wechat.WithOnExpired(func() {
+						slog.Warn("微信登录二维码已过期")
+						app.UpdateQRCodeStatus("expired")
+					}),
+					wechat.WithOnError(func(err error) {
+						slog.Error("微信登录错误", "error", err)
+						app.UpdateQRCodeStatus("error")
+						app.CloseQRCodeWindow()
+					}),
+				}
+				if ch.CredPath != "" {
+					opts = append(opts, wechat.WithCredPath(ch.CredPath))
+				}
+
+				ilinkChannel := wechat.NewIlinkChannel(name, opts...)
+
+				var ilinkAgent *agent.Agent
+				if ch.Agent != "" {
+					a, has := agent.GetAgent(ch.Agent)
+					if has {
+						ilinkAgent = a
+					}
+				}
+				if ilinkAgent == nil {
+					ilinkAgent = defaultAgent
+				}
+
+				channel.RegisterChannel(name, ilinkChannel)
+				bus.Default().RegisterInboundHandler(name, ilinkAgent.SubscribeInbound)
+				bus.Default().RegisterOutboundHandler(ilinkChannel.SubscribeOutbound)
 			}
 		}
 	}

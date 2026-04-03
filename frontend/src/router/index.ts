@@ -31,6 +31,14 @@ const routes = [
       title: "桌宠",
     },
     component: () => import("@/views/live2d.vue"),
+  },
+  {
+    path: "/qrcode",
+    name: "qrcode",
+    meta: {
+      title: "微信登录",
+    },
+    component: () => import("@/views/qrcode.vue"),
   }
 ];
 

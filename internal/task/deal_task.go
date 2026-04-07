@@ -243,7 +243,7 @@ func (tm *TaskManager) dealTask(taskInfo *task.TaskInfo, parentDir string) (resp
 				slog.Error("Failed to do subtask", "task", subtaskInfo.ID, "error", err)
 				return "", false, err
 			}
-			return resp, finished, err
+			return resp, false, err
 		} else {
 			// 没有子任务，则执行自己
 			resp, finished, err = tm.doTask(taskInfo, taskDir)

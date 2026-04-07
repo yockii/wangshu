@@ -17,6 +17,8 @@ import (
 	actiontypes "github.com/yockii/wangshu/pkg/types"
 )
 
+var _ = exec.Command
+
 //go:embed sandbox_wrapper.py
 var wrapperScript string
 
@@ -135,7 +137,7 @@ func (t *PythonRunTool) executeCode(ctx context.Context, code, workingDir string
 
 	fullScript := t.buildSandboxScript(code, "")
 
-	cmd := exec.CommandContext(ctx, pythonCmd, "-c", fullScript)
+	cmd := NewCommandContext(ctx, pythonCmd, "-c", fullScript)
 	cmd.Dir = workingDir
 	cmd.Env = t.buildEnv(workingDir)
 
@@ -181,7 +183,7 @@ func (t *PythonRunTool) executeScript(ctx context.Context, scriptPath, args, wor
 
 	fullScript := t.buildSandboxScript(string(scriptContent), scriptPath)
 
-	cmd := exec.CommandContext(ctx, pythonCmd, "-c", fullScript)
+	cmd := NewCommandContext(ctx, pythonCmd, "-c", fullScript)
 	cmd.Dir = workingDir
 	cmd.Env = t.buildEnv(workingDir)
 
@@ -267,7 +269,7 @@ func (t *PythonRunTool) installPackage(packageName string) *types.ToolResult {
 		return tr.WithError(err)
 	}
 
-	cmd := exec.Command(pythonCmd, "-m", "pip", "install", packageName)
+	cmd := NewCommand(pythonCmd, "-m", "pip", "install", packageName)
 	cmd.Env = os.Environ()
 
 	output, err := cmd.CombinedOutput()

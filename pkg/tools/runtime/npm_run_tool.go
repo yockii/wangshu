@@ -82,7 +82,7 @@ func (t *NpmRunTool) execute(ctx context.Context, params map[string]string) *typ
 		cmdArgs = append(cmdArgs, strings.Fields(flags)...)
 	}
 
-	cmd := exec.CommandContext(ctx, npmCmd, cmdArgs...)
+	cmd := NewCommandContext(ctx, npmCmd, cmdArgs...)
 	if workingDir != "" {
 		cmd.Dir = workingDir
 	} else {

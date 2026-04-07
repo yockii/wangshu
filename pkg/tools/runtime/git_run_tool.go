@@ -69,7 +69,7 @@ func (t *GitRunTool) execute(ctx context.Context, params map[string]string) *typ
 	}
 
 	cmdArgs := strings.Fields(command)
-	cmd := exec.CommandContext(ctx, gitCmd, cmdArgs...)
+	cmd := NewCommandContext(ctx, gitCmd, cmdArgs...)
 
 	if workingDir != "" {
 		cmd.Dir = workingDir

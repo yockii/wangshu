@@ -131,7 +131,7 @@ func (t *NodeRunTool) executeCode(ctx context.Context, code, workingDir string) 
 
 	fullScript := t.buildSandboxScript(code, "")
 
-	cmd := exec.CommandContext(ctx, nodeCmd, "-e", fullScript)
+	cmd := NewCommandContext(ctx, nodeCmd, "-e", fullScript)
 	cmd.Dir = workingDir
 	cmd.Env = t.buildEnv(workingDir)
 
@@ -180,7 +180,7 @@ func (t *NodeRunTool) executeScript(ctx context.Context, scriptPath, workingDir 
 
 	fullScript := t.buildSandboxScript(string(scriptContent), scriptPath)
 
-	cmd := exec.CommandContext(ctx, nodeCmd, "-e", fullScript)
+	cmd := NewCommandContext(ctx, nodeCmd, "-e", fullScript)
 	cmd.Dir = workingDir
 	cmd.Env = t.buildEnv(workingDir)
 
@@ -263,7 +263,7 @@ func (t *NodeRunTool) installNpmPackage(packageName string, workingDir string) *
 		)
 	}
 
-	cmd := exec.Command(npmCmd, "install", packageName)
+	cmd := NewCommand(npmCmd, "install", packageName)
 	cmd.Env = os.Environ()
 	if workingDir != "" {
 		cmd.Dir = workingDir

@@ -1,4 +1,40 @@
 
+## [v0.5.0-alpha.2] - 2026-04-07
+
+
+### ⚙️ Miscellaneous Tasks
+
+
+添加跨平台构建工作流
+
+bump version to v0.5.0-alpha.2
+
+
+### 💼 Other
+
+
+Update CHANGELOG for v0.5.0-alpha.1
+
+Merge pull request #18 from yockii/desktop
+
+Desktop
+
+Merge pull request #20 from yockii/desktop
+
+Add cross-platform command execution with hidden window feature
+
+
+### 📚 Documentation
+
+
+更新README文档，添加微信渠道支持说�?
+
+### 🚀 Features
+
+
+runtime): 添加跨平台命令执行隐藏窗口功�?refactor: 重构工具类使用新的命令执行方�?
+
+
 ## [v0.5.0-alpha.1] - 2026-04-03
 
 
@@ -15,7 +51,7 @@
 ### 📚 Documentation
 
 - Update CHANGELOG for v0.4.5
-- 更新 Action 机制文档并添�?README 说明
+- 更新 Action 机制文档并添加README 说明
 ## [0.4.5] - 2026-03-20
 
 ### 🚀 Features

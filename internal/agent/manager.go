@@ -99,7 +99,7 @@ func initialAgent(name string, ac *config.AgentConfig, workspaceCheckMap map[str
 		ac.Model,
 		ac.MemoryOrganizeTime,
 		24*time.Hour,
-		20,
+		50,
 		ac.Workspace,
 		ac.EnableImageRecognition,
 	)

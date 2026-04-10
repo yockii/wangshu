@@ -256,7 +256,7 @@ func HideQRCodeWindow() {
 }
 
 func UpdateQRCodeStatus(status string) {
-	app.Event.Emit("qrcode-status", status)
+	// app.Event.Emit("qrcode-status", status)
 }
 
 func CloseQRCodeWindow() {

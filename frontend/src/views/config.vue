@@ -266,6 +266,10 @@
                     <Input v-model="(mcpServer as McpConfig).command" placeholder="e.g., npx, uvx, python" @input="markChanged" />
                   </div>
                   <div class="space-y-2">
+                    <label class="text-sm text-muted-foreground">Current Working Directory (CWD)</label>
+                    <Input v-model="(mcpServer as McpConfig).cwd" placeholder="默认: 当前目录" @input="markChanged" />
+                  </div>
+                  <div class="space-y-2">
                     <div class="flex items-center justify-between">
                       <label class="text-sm text-muted-foreground">Args</label>
                       <Button variant="ghost" size="sm" @click="addMcpArg(mcpServer as McpConfig)" class="h-6 px-2">
@@ -457,6 +461,7 @@ interface McpConfig {
   command: string
   args: string[]
   env: Record<string, string>
+  cwd?: string
   transport_type?: string
   url?: string
 }

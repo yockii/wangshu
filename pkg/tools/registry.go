@@ -157,11 +157,13 @@ func (r *Registry) ExecuteWithContext(ctx context.Context, name string, args map
 		contents, _ := json.Marshal(res.Content)
 
 		status := "success"
+		msg := string(contents)
 		if res.IsError {
 			status = "failed"
+			msg = res.GetError().Error()
 		}
 
-		return types.NewToolResult().WithRaw(string(contents)).WithStructured(actiontypes.NewActionOutput(status, res.GetError().Error(), res.StructuredContent, nil))
+		return types.NewToolResult().WithRaw(string(contents)).WithStructured(actiontypes.NewActionOutput(status, msg, res.StructuredContent, nil))
 	}
 
 	tool, ok := r.Get(name)

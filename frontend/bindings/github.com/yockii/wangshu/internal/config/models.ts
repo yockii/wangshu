@@ -247,8 +247,10 @@ export class McpConfig {
     "command": string;
     "args": string[];
     "env": { [_ in string]?: string };
+    "cwd"?: string;
 
     /**
+     * 通信协议，默认stdio，以后可能扩展到http、sse等
      * 通信协议，默认stdio，以后可能扩展到http、sse等
      */
     "transport_type"?: string;

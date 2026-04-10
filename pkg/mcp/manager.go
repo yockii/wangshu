@@ -37,6 +37,9 @@ func (m *McpManager) ReLoadMcpClients() error {
 				}
 				cmd.Env = append(cmd.Environ(), envs...)
 			}
+			if mcpCfg.Cwd != "" {
+				cmd.Dir = mcpCfg.Cwd
+			}
 
 			transport := &mcp.CommandTransport{Command: cmd}
 			sess, connectErr := client.Connect(context.Background(), transport, nil)

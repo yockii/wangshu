@@ -197,6 +197,8 @@ func ExitLive2DEditMode() {
 	// 保存当前窗口 xy坐标
 	config.SaveConfig(config.DefaultCfg)
 
+	RebuildTrayMenu()
+
 	app.Event.Emit("live2d-edit-mode", false)
 }
 

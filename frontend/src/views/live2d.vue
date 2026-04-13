@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Application, Ticker } from 'pixi.js';
 import { Live2DSprite, Config } from 'easy-live2d';
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { Live2dBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
 import { Events } from '@wailsio/runtime';
 
@@ -23,12 +23,8 @@ const live2dConfig = ref<{
   y: number
 } | null>(null)
 
-const modelList = ref<string[]>([])
-
 Config.MotionGroupIdle = 'Idle'
 Config.MouseFollow = false
-
-const isModelLoaded = computed(() => live2DSprite.value !== undefined)
 
 const toggleControlPanel = () => {
   showControlPanel.value = !showControlPanel.value
@@ -54,8 +50,7 @@ const onWindowResize = () => {
 
 const updateSpriteSize = () => {
   if (live2DSprite.value && canvasRef.value) {
-    live2DSprite.value.width = canvasRef.value.clientWidth * window.devicePixelRatio
-    live2DSprite.value.height = canvasRef.value.clientHeight * window.devicePixelRatio
+    live2DSprite.value.setSize(canvasRef.value.clientWidth, canvasRef.value.clientHeight)
   }
 }
 
@@ -80,26 +75,19 @@ const loadModel = async (modelName?: string) => {
   live2DSprite.value = new Live2DSprite()
   live2DSprite.value.init({
     modelPath: modelFile,
-    ticker: Ticker.shared
+    ticker: Ticker.shared,
   })
 
-  live2DSprite.value.onLive2D('hit', ({ hitAreaName, x, y }) => {
-    console.log('hit', hitAreaName, x, y)
-  })
+//  live2DSprite.value.onLive2D('hit', ({ hitAreaName, x, y }) => {
+//    console.log('hit', hitAreaName, x, y)
+//  })
 
-  updateSpriteSize()
   pixiApp.value.stage.addChild(live2DSprite.value)
+  updateSpriteSize()
 
   live2DSprite.value.setExpression({
     expressionId: 'normal',
   })
-}
-
-const loadModelList = async () => {
-  if (!live2dConfig.value?.model_dir) {
-    modelList.value = []
-    return
-  }
 }
 
 const exitEditMode = async () => {
@@ -118,39 +106,15 @@ const handleEditModeChange = (isEdit: boolean) => {
   }
 }
 
-let resizeStartX = 0
-let resizeStartY = 0
-let isResizing = false
-
-const startResize = (e: MouseEvent) => {
-  if (!editMode.value) return
-  isResizing = true
-  resizeStartX = e.clientX
-  resizeStartY = e.clientY
-  document.addEventListener('mousemove', onResize)
-  document.addEventListener('mouseup', stopResize)
-}
-
-const onResize = (e: MouseEvent) => {
-  if (!isResizing) return
-  const deltaX = e.clientX - resizeStartX
-  const deltaY = e.clientY - resizeStartY
-  resizeStartX = e.clientX
-  resizeStartY = e.clientY
-  handleResize(deltaX, deltaY)
-}
-
-const stopResize = () => {
-  isResizing = false
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
-}
 
 onMounted(async () => {
   const app = new Application()
   await app.init({
-    view: document.getElementById('live2d') as HTMLCanvasElement,
+    view: canvasRef.value,
     backgroundAlpha: 0,
+    autoDensity: true,
+    resizeTo: window,
+    resolution: Math.max(window.devicePixelRatio || 1, 1)
   })
   pixiApp.value = app
 
@@ -169,6 +133,7 @@ onMounted(async () => {
   })
 
   if (canvasRef.value) {
+    onWindowResize()
     await loadModel()
   }
 
@@ -212,6 +177,9 @@ onUnmounted(() => {
 
 <style scoped>
 #live2d {
+  position: absolute;
+  top: 0;
+  right: 0;
   width: 100%;
   height: 100%;
 }

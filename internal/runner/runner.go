@@ -288,16 +288,6 @@ func Reload() (defaultAgent *agent.Agent, err error) {
 		return nil, fmt.Errorf("new configuration is invalid: %w", err)
 	}
 
-	// _, isBuiltinMode := channel.GetChannel(constant.BuiltinChannelName)
-
-	// if isBuiltinMode {
-	// 	channel.ClearChannelsExcept([]string{constant.BuiltinChannelName})
-	// 	bus.Default().ClearHandlersExcept([]string{constant.BuiltinChannelName})
-	// } else {
-	// 	channel.ClearChannels()
-	// 	bus.Default().ClearHandlers()
-	// }
-
 	channel.ClearChannels()
 	bus.Default().ClearHandlers()
 	agent.ClearAgents()
@@ -313,6 +303,13 @@ func Reload() (defaultAgent *agent.Agent, err error) {
 
 	config.ReleaseSkills()
 	config.ReleaseLive2dModels()
+
+	if newCfg.Live2D.Enabled {
+		app.ShowLive2DWindow()
+	} else {
+		app.HideLive2DWindow()
+	}
+	app.RebuildTrayMenu()
 
 	slog.Info("Configuration reloaded successfully")
 	return defaultAgent, nil

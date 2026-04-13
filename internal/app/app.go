@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/yockii/wangshu/internal/config"
 )
 
 var (
@@ -79,25 +80,27 @@ func buildSystemTray() {
 		ShowConfigWindow()
 	})
 
-	if Live2DVisible {
-		if Live2DEditMode {
-			trayMenu.Add("退出编辑").OnClick(func(ctx *application.Context) {
-				ExitLive2DEditMode()
-				rebuildTrayMenu()
-			})
+	if config.DefaultCfg.Live2D.Enabled {
+		if Live2DVisible {
+			if Live2DEditMode {
+				trayMenu.Add("退出编辑").OnClick(func(ctx *application.Context) {
+					ExitLive2DEditMode()
+					RebuildTrayMenu()
+				})
+			} else {
+				trayMenu.Add("隐藏桌宠").OnClick(func(ctx *application.Context) {
+					HideLive2DWindow()
+				})
+				trayMenu.Add("编辑桌宠").OnClick(func(ctx *application.Context) {
+					EnterLive2DEditMode()
+					RebuildTrayMenu()
+				})
+			}
 		} else {
-			trayMenu.Add("隐藏桌宠").OnClick(func(ctx *application.Context) {
-				HideLive2DWindow()
-			})
-			trayMenu.Add("编辑桌宠").OnClick(func(ctx *application.Context) {
-				EnterLive2DEditMode()
-				rebuildTrayMenu()
+			trayMenu.Add("桌宠").OnClick(func(ctx *application.Context) {
+				ShowLive2DWindow()
 			})
 		}
-	} else {
-		trayMenu.Add("桌宠").OnClick(func(ctx *application.Context) {
-			ShowLive2DWindow()
-		})
 	}
 
 	trayMenu.AddSeparator()
@@ -108,6 +111,6 @@ func buildSystemTray() {
 	systray.SetMenu(trayMenu)
 }
 
-func rebuildTrayMenu() {
+func RebuildTrayMenu() {
 	buildSystemTray()
 }

@@ -135,9 +135,11 @@ func ShowLive2DWindow() {
 		})
 
 	}
+	// 重载 live2d 页面
+	live2dWindow.Reload()
 	live2dWindow.Show()
 	Live2DVisible = true
-	rebuildTrayMenu()
+	RebuildTrayMenu()
 }
 
 func HideLive2DWindow() {
@@ -146,7 +148,7 @@ func HideLive2DWindow() {
 	if live2dWindow != nil {
 		live2dWindow.Hide()
 		Live2DVisible = false
-		rebuildTrayMenu()
+		RebuildTrayMenu()
 	}
 }
 

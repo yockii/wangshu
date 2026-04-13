@@ -9,7 +9,7 @@ import (
 )
 
 // ChatStreaming 使用流式API来避免10分钟超时限制
-func (p *Provider) ChatStreaming(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
+func (p *Provider) ChatStreaming(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
 	temperature := 0.7
 	if t, ok := options["temperature"]; ok {
 		if tt, ok := t.(float64); ok {
@@ -46,6 +46,15 @@ func (p *Provider) ChatStreaming(ctx context.Context, model string, message []ll
 	if len(tools) > 0 {
 		toolsParams := p.convertTools(tools)
 		params.Tools = toolsParams
+	}
+
+	if jsonSchema != nil {
+		// 设置JSON Schema
+		params.OutputConfig = anthropic.OutputConfigParam{
+			Format: anthropic.JSONOutputFormatParam{
+				Schema: jsonSchema.Schema,
+			},
+		}
 	}
 
 	// 使用流式API

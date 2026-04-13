@@ -9,6 +9,7 @@ import (
 
 type InboundHandler func(ctx context.Context, msg InboundMessage)
 type OutboundHandler func(ctx context.Context, msg Message)
+type EmotionHandler func(emotion string)
 
 // MessageBus 处理消息传递，包括从通道到智能体的入站消息和从智能体到通道的出站消息
 type MessageBus struct {
@@ -18,6 +19,7 @@ type MessageBus struct {
 	outboundHandlers []OutboundHandler
 	mu               sync.RWMutex
 	closed           bool
+	emotionHandlers  []EmotionHandler
 }
 
 // NewMessageBus 创建一个新的消息总线，bufferSize 为缓冲区大小
@@ -96,7 +98,7 @@ func (b *MessageBus) PublishInbound(msg InboundMessage) error {
 
 func (b *MessageBus) PublishOutbound(msg Message) error {
 	// 如果仅仅是HEARTBEAT_OK, 则不发送
-	if msg.Content == constant.HEARTBEAT_OK || (msg.Content == "" && msg.Media == nil) {
+	if msg.Content == constant.HEARTBEAT_OK {
 		return nil
 	}
 
@@ -161,4 +163,18 @@ func (b *MessageBus) UnregisterInboundHandler(channel string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	delete(b.inboundHandlers, channel)
+}
+
+func (b *MessageBus) RegisterEmotionHandler(handler EmotionHandler) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.emotionHandlers = append(b.emotionHandlers, handler)
+}
+
+func (b *MessageBus) PublishEmotion(emotion string) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	for _, handler := range b.emotionHandlers {
+		handler(emotion)
+	}
 }

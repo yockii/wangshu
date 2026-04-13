@@ -354,7 +354,7 @@ func (tm *TaskManager) changeTask(taskInfo *task.TaskInfo, notifyContent string)
 		}
 	}
 	for i := 0; i < 10; i++ {
-		resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, options)
+		resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, nil, options)
 		if err != nil {
 			slog.Error("Failed to summary task memory", "error", err)
 			return err
@@ -452,7 +452,7 @@ func (tm *TaskManager) doTask(taskInfo *task.TaskInfo, taskDir string) (string, 
 
 	ctx := context.Background()
 	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
-	resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, options)
+	resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, nil, options)
 	if err != nil {
 		slog.Error("Failed to chat in running task", "task", taskInfo.ID, "error", err)
 		return "", false, err
@@ -628,7 +628,7 @@ func (tm *TaskManager) summaryTask(taskInfo *task.TaskInfo, taskDir string) (str
 	}
 
 	ctx := context.Background()
-	resp, err := tm.provider.Chat(ctx, tm.model, msgs, nil, options)
+	resp, err := tm.provider.Chat(ctx, tm.model, msgs, nil, nil, options)
 	if err != nil {
 		slog.Error("Failed to summary task memory", "error", err)
 		return "", err
@@ -695,7 +695,7 @@ func (tm *TaskManager) summaryMainTask(taskInfo *task.TaskInfo) {
 	ctx := context.Background()
 	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 	for i := 0; i < 10; i++ {
-		resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, options)
+		resp, err := tm.provider.Chat(ctx, tm.model, msgs, availableTools, nil, options)
 		if err != nil {
 			slog.Error("Failed to summary task memory", "error", err)
 			return

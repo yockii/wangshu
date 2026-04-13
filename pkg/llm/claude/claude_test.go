@@ -45,7 +45,7 @@ func TestProviderChat(t *testing.T) {
 	}
 
 	// 由于没有真实的API key，预期会返回错误
-	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, nil)
+	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, nil, nil)
 	if err == nil {
 		t.Log("Chat succeeded (unexpected, might have valid credentials)")
 	}
@@ -85,7 +85,7 @@ func TestProviderChatWithTools(t *testing.T) {
 		},
 	}
 
-	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, tools, nil)
+	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, tools, nil, nil)
 	if err == nil {
 		t.Log("Chat with tools succeeded (unexpected, might have valid credentials)")
 	}
@@ -270,7 +270,7 @@ func TestProviderChatWithMaxTokens(t *testing.T) {
 		"max_tokens": 16384,
 	}
 
-	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, options)
+	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, nil, options)
 	if err == nil {
 		t.Log("Chat with max_tokens succeeded (unexpected, might have valid credentials)")
 	}
@@ -291,7 +291,7 @@ func TestProviderChatWithTemperature(t *testing.T) {
 		"temperature": 0.5,
 	}
 
-	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, options)
+	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, nil, options)
 	if err == nil {
 		t.Log("Chat with temperature succeeded (unexpected, might have valid credentials)")
 	}
@@ -313,7 +313,7 @@ func TestProviderChatWithStreamingOption(t *testing.T) {
 		"streaming": true,
 	}
 
-	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, options)
+	_, err := provider.Chat(ctx, "claude-3-5-sonnet-20241022", messages, nil, nil, options)
 	if err == nil {
 		t.Log("Chat with streaming option succeeded (unexpected, might have valid credentials)")
 	}

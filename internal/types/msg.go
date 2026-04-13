@@ -23,3 +23,9 @@ type ToolCall struct {
 	Arguments string
 	Result    string
 }
+
+type StructuredResponse struct {
+	Content           string `json:"content" jsonschema:"title=对话内容,description=给用户的直接回复文本"`
+	Emotion           string `json:"emotion" jsonschema:"description=当前的情绪状态,enum=happy,enum=sad,enum=angry,enum=neutral,enum=excited"`
+	InternalMonologue string `json:"internal_monologue,omitempty" jsonschema:"description=内心独白，仅AI内部思考，不展示给用户"`
+}

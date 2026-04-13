@@ -17,10 +17,10 @@ func containsStreamingRequiredError(errMsg string) bool {
 
 // Chat 发送聊天请求
 // 如果 options 中有 "streaming": true，则直接使用流式 API
-func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
+func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
 	// 检查是否主动要求使用流式 API
 	if useStreaming, ok := options["streaming"].(bool); ok && useStreaming {
-		return p.ChatStreaming(ctx, model, message, tools, options)
+		return p.ChatStreaming(ctx, model, message, tools, jsonSchema, options)
 	}
 
 	temperature := 0.7
@@ -50,6 +50,15 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 		MaxTokens:   maxTokens,
 	}
 
+	if jsonSchema != nil {
+		// 设置JSON Schema
+		params.OutputConfig = anthropic.OutputConfigParam{
+			Format: anthropic.JSONOutputFormatParam{
+				Schema: jsonSchema.Schema,
+			},
+		}
+	}
+
 	// 设置system参数
 	if systemPrompt != "" {
 		params.System = []anthropic.TextBlockParam{{Text: systemPrompt}}
@@ -68,7 +77,7 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 		errMsg := err.Error()
 		if containsStreamingRequiredError(errMsg) {
 			// 自动回退到流式API
-			return p.ChatStreaming(ctx, model, message, tools, options)
+			return p.ChatStreaming(ctx, model, message, tools, jsonSchema, options)
 		}
 		return nil, fmt.Errorf("Claude API error: %w", err)
 	}

@@ -55,7 +55,7 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 			Role:    constant.RoleUser,
 			Content: prompt,
 		},
-	}, nil, options)
+	}, nil, nil, options)
 
 	if err != nil {
 		return "", err
@@ -218,10 +218,10 @@ func (a *Agent) loadAgentContextInfo() string {
 		constant.ProfileFileAgents,
 		constant.ProfileFileBootstrap,
 		// constant.ProfileFileHeartbeat,
-		constant.ProfileFileIdentity,
-		constant.ProfileFileSoul,
+		// constant.ProfileFileIdentity,
+		// constant.ProfileFileSoul,
 		// constant.ProfileFileTools,
-		constant.ProfileFileUser,
+		// constant.ProfileFileUser,
 		// constant.ProfileFileMemory,
 	}
 	needSoul := false

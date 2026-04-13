@@ -8,6 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/variable"
 )
 
 var (
@@ -81,8 +82,8 @@ func buildSystemTray() {
 	})
 
 	if config.DefaultCfg.Live2D.Enabled {
-		if Live2DVisible {
-			if Live2DEditMode {
+		if variable.Live2DVisible {
+			if variable.Live2DEditMode {
 				trayMenu.Add("退出编辑").OnClick(func(ctx *application.Context) {
 					ExitLive2DEditMode()
 					RebuildTrayMenu()

@@ -88,6 +88,15 @@ const loadModel = async (modelName?: string) => {
   live2DSprite.value.setExpression({
     expressionId: 'normal',
   })
+
+  const motions = live2DSprite.value.getMotions().map((motion) => ({
+    Group: motion.group,
+    No: motion.no,
+    Name: motion.name,
+  }))
+  Live2dBundle.UpdateLive2DMotions(motions)
+  const expressions = live2DSprite.value.getExpressions().map((expression) => expression.name)
+  Live2dBundle.UpdateLive2DExpressions(expressions)
 }
 
 const exitEditMode = async () => {
@@ -130,6 +139,20 @@ onMounted(async () => {
 
   Events.On('live2d-edit-mode', (data: { data: boolean }) => {
     handleEditModeChange(data.data)
+  })
+
+  Events.On('live2d-do-motion', (data: { data: { group: string, no: number } }) => {
+    live2DSprite.value?.startMotion({
+      group: data.data.group,
+      no: data.data.no,
+      priority: 1,
+    })
+  })
+  
+  Events.On('live2d-do-expression', (data: { data: string }) => {
+    live2DSprite.value?.setExpression({
+      expressionId: data.data,
+    })
   })
 
   if (canvasRef.value) {

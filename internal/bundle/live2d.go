@@ -7,6 +7,8 @@ import (
 
 	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/internal/variable"
 )
 
 type Live2dBundle struct{}
@@ -43,4 +45,12 @@ func (*Live2dBundle) IsEditMode() bool {
 
 func (*Live2dBundle) ExitEditMode() {
 	app.ExitLive2DEditMode()
+}
+
+func (*Live2dBundle) UpdateLive2DMotions(motions []types.Live2DMotion) {
+	variable.Live2DMotions = motions
+}
+
+func (*Live2dBundle) UpdateLive2DExpressions(expressions []string) {
+	variable.Live2DExpressions = expressions
 }

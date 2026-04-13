@@ -3,6 +3,7 @@
 
 export {
     ContentBlock,
+    Live2DMotion,
     Message,
     ToolCall
 } from "./models.js";

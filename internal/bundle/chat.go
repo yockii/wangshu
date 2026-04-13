@@ -94,7 +94,7 @@ func (c *BuiltinChannel) Supports(capability channel.ChannelCapability) bool {
 	return false
 }
 func (c *BuiltinChannel) SendMessage(ctx context.Context, msg *bus.Message) error {
-	app.GetApp().Event.Emit(app.EventMessage, *msg)
+	app.GetApp().Event.Emit(constant.EventMessage, *msg)
 	return nil
 }
 func (c *BuiltinChannel) SendText(ctx context.Context, chatID, text string) error {

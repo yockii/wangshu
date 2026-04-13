@@ -23,9 +23,9 @@ var assets embed.FS
 
 func init() {
 	// application.RegisterEvent[string]("time")
-	application.RegisterEvent[bus.Message](app.EventMessage)
+	application.RegisterEvent[bus.Message](constant.EventMessage)
 
-	application.RegisterEvent[bool](app.EventLive2DEditMode)
+	application.RegisterEvent[bool](constant.EventLive2DEditMode)
 }
 
 func initConfig() {

@@ -6,6 +6,8 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/variable"
+	"github.com/yockii/wangshu/pkg/constant"
 )
 
 var (
@@ -135,9 +137,11 @@ func ShowLive2DWindow() {
 		})
 
 	}
+	// 重载 live2d 页面
+	live2dWindow.Reload()
 	live2dWindow.Show()
-	Live2DVisible = true
-	rebuildTrayMenu()
+	variable.Live2DVisible = true
+	RebuildTrayMenu()
 }
 
 func HideLive2DWindow() {
@@ -145,8 +149,8 @@ func HideLive2DWindow() {
 	defer windowLocker.Unlock()
 	if live2dWindow != nil {
 		live2dWindow.Hide()
-		Live2DVisible = false
-		rebuildTrayMenu()
+		variable.Live2DVisible = false
+		RebuildTrayMenu()
 	}
 }
 
@@ -171,14 +175,14 @@ func EnterLive2DEditMode() {
 		return
 	}
 
-	Live2DEditMode = true
+	variable.Live2DEditMode = true
 	SetLive2DIgnoresMouseEvents(false)
 	live2dWindow.SetResizable(true)
-	app.Event.Emit("live2d-edit-mode", true)
+	app.Event.Emit(constant.EventLive2DEditMode, true)
 }
 
 func ExitLive2DEditMode() {
-	Live2DEditMode = false
+	variable.Live2DEditMode = false
 	SetLive2DIgnoresMouseEvents(true)
 	live2dWindow.SetResizable(false)
 	// 获取当前窗口 xy坐标
@@ -195,11 +199,13 @@ func ExitLive2DEditMode() {
 	// 保存当前窗口 xy坐标
 	config.SaveConfig(config.DefaultCfg)
 
-	app.Event.Emit("live2d-edit-mode", false)
+	RebuildTrayMenu()
+
+	app.Event.Emit(constant.EventLive2DEditMode, false)
 }
 
 func ToggleLive2DEditMode() {
-	if Live2DEditMode {
+	if variable.Live2DEditMode {
 		ExitLive2DEditMode()
 	} else {
 		EnterLive2DEditMode()
@@ -207,7 +213,7 @@ func ToggleLive2DEditMode() {
 }
 
 func IsLive2DEditMode() bool {
-	return Live2DEditMode
+	return variable.Live2DEditMode
 }
 
 func ShowQRCodeWindow(qrURL string) {
@@ -244,7 +250,7 @@ func ShowQRCodeWindow(qrURL string) {
 	qrcodeWindow.Show()
 	qrcodeWindow.Focus()
 
-	app.Event.Emit("qrcode-update", qrURL)
+	app.Event.Emit(constant.EventQrcodeUpdate, qrURL)
 }
 
 func HideQRCodeWindow() {

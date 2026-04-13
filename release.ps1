@@ -1,4 +1,6 @@
-﻿param(
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+param(
     [Parameter(Mandatory=$true)]
     [string]$Version,
     

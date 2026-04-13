@@ -8,6 +8,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as config$0 from "../config/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as types$0 from "../types/models.js";
 
 export function ExitEditMode(): $CancellablePromise<void> {
     return $Call.ByID(1230589064);
@@ -25,6 +28,14 @@ export function GetModelFile(): $CancellablePromise<string> {
 
 export function IsEditMode(): $CancellablePromise<boolean> {
     return $Call.ByID(874476260);
+}
+
+export function UpdateLive2DExpressions(expressions: string[]): $CancellablePromise<void> {
+    return $Call.ByID(2622243581, expressions);
+}
+
+export function UpdateLive2DMotions(motions: types$0.Live2DMotion[]): $CancellablePromise<void> {
+    return $Call.ByID(1003079821, motions);
 }
 
 // Private type creation functions

@@ -128,7 +128,7 @@ func (s *Session) GetLastNBeforeLastL(l, n int) []types.Message {
 	var gotNum = 0
 	for i := len(s.Messages) - 1 - l; i >= 0; i-- {
 		msg := s.Messages[i]
-		if msg.Role == constant.RoleTool {
+		if msg.Role == constant.RoleTool || msg.Content == "" {
 			continue
 		}
 		messages = append(messages, msg)

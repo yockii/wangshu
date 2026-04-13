@@ -57,6 +57,35 @@ export class ContentBlock {
     }
 }
 
+export class Live2DMotion {
+    "Group": string;
+    "No": number;
+    "Name": string;
+
+    /** Creates a new Live2DMotion instance. */
+    constructor($$source: Partial<Live2DMotion> = {}) {
+        if (!("Group" in $$source)) {
+            this["Group"] = "";
+        }
+        if (!("No" in $$source)) {
+            this["No"] = 0;
+        }
+        if (!("Name" in $$source)) {
+            this["Name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Live2DMotion instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Live2DMotion {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Live2DMotion($$parsedSource as Partial<Live2DMotion>);
+    }
+}
+
 export class Message {
     "Role": string;
 

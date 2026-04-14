@@ -82,6 +82,19 @@ const loadModel = async (modelName?: string) => {
 //    console.log('hit', hitAreaName, x, y)
 //  })
 
+  live2DSprite.value.onLive2D('ready', () => {
+    if (live2DSprite.value) {
+      const motions = live2DSprite.value.getMotions().map((motion) => ({
+        Group: motion.group,
+        No: motion.no,
+        Name: motion.name,
+      }))
+      Live2dBundle.UpdateLive2DMotions(motions)
+      const expressions = live2DSprite.value.getExpressions().map((expression) => expression.name)
+      Live2dBundle.UpdateLive2DExpressions(expressions)
+    }
+  })
+
   pixiApp.value.stage.addChild(live2DSprite.value)
   updateSpriteSize()
 
@@ -89,14 +102,6 @@ const loadModel = async (modelName?: string) => {
     expressionId: 'normal',
   })
 
-  const motions = live2DSprite.value.getMotions().map((motion) => ({
-    Group: motion.group,
-    No: motion.no,
-    Name: motion.name,
-  }))
-  Live2dBundle.UpdateLive2DMotions(motions)
-  const expressions = live2DSprite.value.getExpressions().map((expression) => expression.name)
-  Live2dBundle.UpdateLive2DExpressions(expressions)
 }
 
 const exitEditMode = async () => {

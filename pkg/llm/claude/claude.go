@@ -1,6 +1,8 @@
 package claude
 
 import (
+	"strings"
+
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/yockii/wangshu/pkg/constant"
@@ -15,12 +17,16 @@ type Provider struct {
 func NewProvider(apiKey, baseURL string) *Provider {
 	opts := []option.RequestOption{
 		option.WithAPIKey(apiKey),
-		option.WithHeader("HTTP-Referer", constant.HttpReferer),
-		option.WithHeader("X-OpenRouter-Title", constant.OpenRouterTitle),
-		option.WithHeader("X-OpenRouter-Categories", constant.OpenRouterCategories),
 	}
 	if baseURL != "" {
 		opts = append(opts, option.WithBaseURL(baseURL))
+	}
+	if strings.Contains(baseURL, "openrouter.ai") {
+		opts = append(opts,
+			option.WithHeader("HTTP-Referer", constant.HttpReferer),
+			option.WithHeader("X-OpenRouter-Title", constant.OpenRouterTitle),
+			option.WithHeader("X-OpenRouter-Categories", constant.OpenRouterCategories),
+		)
 	}
 
 	return &Provider{client: anthropic.NewClient(opts...)}

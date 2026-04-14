@@ -25,7 +25,7 @@ func NewSpriteTool() *SpriteTool {
 			"emotion": map[string]any{
 				"type":        "string",
 				"description": "The emotion to set for sprite",
-				"enum":        []string{constant.SpriteEmotionHappy, constant.SpriteEmotionSad, constant.SpriteEmotionAngry, constant.SpriteEmotionNeutral, constant.SpriteEmotionExcited},
+				"enum":        constant.SpriteEmotions,
 			},
 		},
 		"required": []string{"emotion"},
@@ -45,7 +45,7 @@ func (*SpriteTool) execute(ctx context.Context, params map[string]string) *types
 	default:
 		return types.NewToolResult().WithError(
 			fmt.Errorf("emotion must be one of %s",
-				strings.Join([]string{constant.SpriteEmotionHappy, constant.SpriteEmotionSad, constant.SpriteEmotionAngry, constant.SpriteEmotionNeutral, constant.SpriteEmotionExcited}, ",")))
+				strings.Join(constant.SpriteEmotions, ",")))
 	}
 
 	bus.Default().PublishEmotion(emotion)

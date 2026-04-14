@@ -19,6 +19,7 @@ type MessageBus struct {
 	outboundHandlers []OutboundHandler
 	mu               sync.RWMutex
 	closed           bool
+	emotion          string
 	emotionHandlers  []EmotionHandler
 }
 
@@ -77,9 +78,15 @@ func (b *MessageBus) processOutboundMessages(ctx context.Context) {
 			b.mu.RLock()
 			handlers := make([]OutboundHandler, len(b.outboundHandlers))
 			copy(handlers, b.outboundHandlers)
+			emotion := b.emotion
 			b.mu.RUnlock()
 			for _, handler := range handlers {
 				go handler(ctx, msg)
+			}
+			if emotion != "" {
+				for _, handler := range b.emotionHandlers {
+					go handler(emotion)
+				}
 			}
 		}
 	}
@@ -172,9 +179,7 @@ func (b *MessageBus) RegisterEmotionHandler(handler EmotionHandler) {
 }
 
 func (b *MessageBus) PublishEmotion(emotion string) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	for _, handler := range b.emotionHandlers {
-		handler(emotion)
-	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.emotion = emotion
 }

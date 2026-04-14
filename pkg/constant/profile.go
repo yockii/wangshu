@@ -10,4 +10,5 @@ const (
 	ProfileFileUser      = "USER.md"
 	ProfileFileMemory    = "MEMORY.md"
 	ProfileLockBootstrap = "BOOTSTRAP.lock"
+	ProfileFileSprite    = "SPRITE.md"
 )

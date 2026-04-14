@@ -14,6 +14,7 @@ import (
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/session"
 	"github.com/yockii/wangshu/internal/types"
+	"github.com/yockii/wangshu/internal/variable"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 	"github.com/yockii/wangshu/pkg/skills"
@@ -55,7 +56,7 @@ func (a *Agent) compressHistory(sessionMsgs []types.Message) (string, error) {
 			Role:    constant.RoleUser,
 			Content: prompt,
 		},
-	}, nil, nil, options)
+	}, nil, options)
 
 	if err != nil {
 		return "", err
@@ -223,6 +224,7 @@ func (a *Agent) loadAgentContextInfo() string {
 		// constant.ProfileFileTools,
 		// constant.ProfileFileUser,
 		// constant.ProfileFileMemory,
+		constant.ProfileFileSprite,
 	}
 	needSoul := false
 	bootstraped := false
@@ -245,10 +247,16 @@ func (a *Agent) loadAgentContextInfo() string {
 		if err != nil {
 			continue
 		}
+
+		if fileName == constant.ProfileFileSprite && (!config.DefaultCfg.Live2D.Enabled || !variable.Live2DVisible) {
+			continue
+		}
+
 		content += fmt.Sprintf("\n## %s\n%s\n", mdFile, string(data))
 		if fileName == constant.ProfileFileSoul {
 			needSoul = true
 		}
+
 	}
 
 	if bootstraped && needSoul {

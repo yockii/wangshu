@@ -10,7 +10,7 @@ import (
 )
 
 // Chat 发送聊天请求
-func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
+func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
 	temperature := 0.7
 	if t, ok := options["temperature"]; ok {
 		if tt, ok := t.(float64); ok {
@@ -29,26 +29,6 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 		Temperature: openai.Float(temperature),
 		Messages:    msgs,
 		Tools:       toolsUnion,
-	}
-
-	if jsonSchema != nil {
-		jsonSchemaParam := shared.ResponseFormatJSONSchemaJSONSchemaParam{
-			Name: jsonSchema.Name,
-		}
-		if jsonSchema.Description != "" {
-			jsonSchemaParam.Description = openai.String(jsonSchema.Description)
-		}
-		if jsonSchema.Schema != nil {
-			jsonSchemaParam.Schema = jsonSchema.Schema
-		}
-		if jsonSchema.Strict {
-			jsonSchemaParam.Strict = openai.Bool(true)
-		}
-		body.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
-			OfJSONSchema: &shared.ResponseFormatJSONSchemaParam{
-				JSONSchema: jsonSchemaParam,
-			},
-		}
 	}
 
 	// 调用OpenAI API

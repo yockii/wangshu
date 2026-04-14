@@ -145,3 +145,12 @@ onMounted(async () => {
   scrollToBottom()
 })
 </script>
+
+<style>
+:root {
+  --background: oklch(1 0 0 / 50%);
+}
+#app {
+  border: 1px solid oklch(0 0 0 / 50%);
+}
+</style>

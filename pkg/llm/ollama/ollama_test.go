@@ -46,7 +46,7 @@ func TestProviderChat(t *testing.T) {
 		},
 	}
 
-	resp, err := provider.Chat(ctx, "llama3.2", messages, nil, nil, nil)
+	resp, err := provider.Chat(ctx, "llama3.2", messages, nil, nil)
 	if err != nil {
 		t.Logf("Chat error (expected if mock server not running): %v", err)
 		return
@@ -93,7 +93,7 @@ func TestProviderChatWithTools(t *testing.T) {
 		},
 	}
 
-	resp, err := provider.Chat(ctx, "llama3.2", messages, tools, nil, nil)
+	resp, err := provider.Chat(ctx, "llama3.2", messages, tools, nil)
 	if err != nil {
 		t.Logf("Chat with tools error (expected if mock server not running): %v", err)
 		return
@@ -156,7 +156,7 @@ func TestProviderChatWithTemperature(t *testing.T) {
 		"temperature": 0.5,
 	}
 
-	resp, err := provider.Chat(ctx, "llama3.2", messages, nil, nil, options)
+	resp, err := provider.Chat(ctx, "llama3.2", messages, nil, options)
 	if err != nil {
 		t.Logf("Chat with temperature error (expected if mock server not running): %v", err)
 		return

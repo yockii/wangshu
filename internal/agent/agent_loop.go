@@ -2,13 +2,11 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/invopop/jsonschema"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/session"
 	"github.com/yockii/wangshu/internal/types"
@@ -40,30 +38,10 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 	availableTools = append(availableTools, mcpTools...)
 
-	// 结构化响应，生成jsonschema 2026.4.13
-	reflector := jsonschema.Reflector{
-		AllowAdditionalProperties: false,
-		DoNotReference:            true,
-	}
-	schema := reflector.Reflect(&types.StructuredResponse{})
-	data, _ := json.Marshal(schema)
-	var result map[string]any
-	json.Unmarshal(data, &result)
-
 	rateLimitCount := 0
 	for i := 0; i < a.maxIter; i++ {
-		isFinal, resp, err := a.chatInLoop(ctx, msgs, availableTools, &llm.JSONSchema{
-			Name:   "StructuredResponse",
-			Schema: result,
-			Strict: true,
-		}, options)
+		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 
-		// resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
-		// resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, &llm.JSONSchema{
-		// 	Name:   "StructuredResponse",
-		// 	Schema: result,
-		// 	Strict: true,
-		// }, options)
 		if err != nil {
 			// 这里尝试将err解构为map[string]any，方便后续处理
 			if strings.Contains(err.Error(), "429") && rateLimitCount < 10 {
@@ -83,7 +61,7 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 		}
 		rateLimitCount = 0
 
-		if isFinal {
+		if len(resp.Message.ToolCalls) == 0 {
 			finalContent = resp.Message.Content
 			break
 		}

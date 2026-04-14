@@ -10,7 +10,7 @@ import (
 	"github.com/yockii/wangshu/pkg/llm"
 )
 
-func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
+func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
 	temperature := float32(0.7)
 	if t, ok := options["temperature"]; ok {
 		switch tt := t.(type) {
@@ -32,12 +32,8 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 		Tools:    toolsParam,
 		Options: map[string]any{
 			"temperature": temperature,
+			"top_p":       0.95,
 		},
-	}
-
-	if jsonSchema != nil {
-		raw, _ := json.Marshal(jsonSchema.Schema)
-		req.Format = json.RawMessage(raw)
 	}
 
 	var resp *api.ChatResponse

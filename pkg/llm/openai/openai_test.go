@@ -31,7 +31,7 @@ func TestProviderChat(t *testing.T) {
 	}
 
 	// 由于没有真实的API key，预期会返回错误
-	_, err := provider.Chat(ctx, "gpt-4o-mini", messages, nil, nil, nil)
+	_, err := provider.Chat(ctx, "gpt-4o-mini", messages, nil, nil)
 	if err == nil {
 		t.Log("Chat succeeded (unexpected, might have valid credentials)")
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/tools/configtool"
 	"github.com/yockii/wangshu/internal/tools/message"
+	"github.com/yockii/wangshu/internal/tools/sprite"
 	"github.com/yockii/wangshu/internal/tools/system"
 	"github.com/yockii/wangshu/internal/tools/task"
 	"github.com/yockii/wangshu/pkg/bus"
@@ -73,6 +74,8 @@ func RegisterTools() {
 	})
 	tools.GetDefaultToolRegistry().Register(configtool.NewConfigTool())
 	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
+
+	tools.GetDefaultToolRegistry().Register(sprite.NewSpriteTool())
 }
 
 func Initialize() (*agent.Agent, error) {

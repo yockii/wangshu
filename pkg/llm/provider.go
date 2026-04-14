@@ -6,7 +6,7 @@ import (
 )
 
 type Provider interface {
-	Chat(ctx context.Context, model string, message []Message, tools []ToolDefinition, jsonSchema *JSONSchema, options map[string]any) (*ChatResponse, error)
+	Chat(ctx context.Context, model string, message []Message, tools []ToolDefinition, options map[string]any) (*ChatResponse, error)
 
 	// ChatWithJSONSchema sends a chat request with JSON schema for structured output.
 	// The LLM will respond with JSON that conforms to the provided schema.

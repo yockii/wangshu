@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -148,16 +147,6 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 	if err != nil {
 		slog.Error("Failed to run with channel", "error", err)
 		response = fmt.Sprintf("Agent dealing failed: %+v", err)
-	}
-
-	// 反序列化
-	needParse := llm.ExtractJSONFromContent(response)
-	var result types.StructuredResponse
-	if err := json.Unmarshal([]byte(needParse), &result); err != nil {
-		slog.Error("Failed to parse structured response", "error", err)
-	} else {
-		response = result.Content
-		bus.Default().PublishEmotion(result.Emotion)
 	}
 
 	// 发布消息

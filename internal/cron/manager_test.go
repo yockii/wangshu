@@ -17,7 +17,7 @@ import (
 // mockProvider 是一个用于测试的模拟 LLM Provider
 type mockProvider struct{}
 
-func (m *mockProvider) Chat(ctx context.Context, model string, messages []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
+func (m *mockProvider) Chat(ctx context.Context, model string, messages []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
 	return &llm.ChatResponse{
 		Message: llm.Message{
 			Role:    constant.RoleAssistant,
@@ -381,7 +381,7 @@ func TestCronManager_Execute_TaskType(t *testing.T) {
 // mockProviderTask 返回 task 类型的响应
 type mockProviderTask struct{}
 
-func (m *mockProviderTask) Chat(ctx context.Context, model string, messages []llm.Message, tools []llm.ToolDefinition, jsonSchema *llm.JSONSchema, options map[string]any) (*llm.ChatResponse, error) {
+func (m *mockProviderTask) Chat(ctx context.Context, model string, messages []llm.Message, tools []llm.ToolDefinition, options map[string]any) (*llm.ChatResponse, error) {
 	return &llm.ChatResponse{
 		Message: llm.Message{
 			Role:    constant.RoleAssistant,

@@ -8,15 +8,24 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yockii/wangshu/internal/store"
+	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/utils"
 )
 
 var configFile string
+var dbFile string
 var DefaultCfg *Config
 
 func Initialize(cfgFilePath string) error {
-	configFile = cfgFilePath
+	// 检查是否以.json结尾
+	if strings.HasSuffix(cfgFilePath, ".json") {
+		configFile = cfgFilePath
+	} else {
+		dbFile = cfgFilePath
+	}
+
 	cfg, err := LoadConfig()
 	if err != nil {
 		return err
@@ -31,39 +40,117 @@ func Initialize(cfgFilePath string) error {
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{}
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			cfg = defaultConfig()
-			// // 引导用户在控制台上填写内容
-			// leadUserToFillConfig(cfg)
-			// 写入文件
-			err = os.MkdirAll(filepath.Dir(configFile), 0755)
-			if err != nil {
-				return nil, err
-			}
-			cfgJson, err := json.MarshalIndent(cfg, "", "\t")
-			if err != nil {
-				return nil, err
-			}
-			if err := os.WriteFile(configFile, cfgJson, 0644); err != nil {
-				return nil, err
-			}
+	if configFile != "" {
+		data, err := os.ReadFile(configFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				cfg = defaultConfig()
+				// // 引导用户在控制台上填写内容
+				// leadUserToFillConfig(cfg)
+				// 写入文件
+				err = os.MkdirAll(filepath.Dir(configFile), 0755)
+				if err != nil {
+					return nil, err
+				}
+				cfgJson, err := json.MarshalIndent(cfg, "", "\t")
+				if err != nil {
+					return nil, err
+				}
+				if err := os.WriteFile(configFile, cfgJson, 0644); err != nil {
+					return nil, err
+				}
 
-			dealCfgPath(cfg)
+				dealCfgPath(cfg)
 
-			return cfg, nil
+				return cfg, nil
+			}
+			return nil, err
 		}
-		return nil, err
-	}
 
-	if err := json.Unmarshal(data, cfg); err != nil {
-		return nil, err
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, err
+		}
+	} else {
+		cfg = loadFromDB()
 	}
 
 	dealCfgPath(cfg)
 
 	return cfg, nil
+}
+
+func loadFromDB() *Config {
+	cfg := &Config{}
+	agents, err := store.List[*types.AgentConfig](constant.StorePrefixAgent)
+	if err != nil {
+		return nil
+	}
+	cfg.Agents = make(map[string]*types.AgentConfig)
+	for _, agent := range agents {
+		cfg.Agents[agent.AgentName] = agent
+	}
+
+	providers, err := store.List[*types.ProviderConfig](constant.StorePrefixProvider)
+	if err != nil {
+		return nil
+	}
+	cfg.Providers = make(map[string]*types.ProviderConfig)
+	for _, provider := range providers {
+		cfg.Providers[provider.ProviderName] = provider
+	}
+
+	channels, err := store.List[*types.ChannelConfig](constant.StorePrefixChannel)
+	if err != nil {
+		return nil
+	}
+	cfg.Channels = make(map[string]*types.ChannelConfig)
+	for _, channel := range channels {
+		cfg.Channels[channel.ChannelName] = channel
+	}
+
+	skill, err := store.Get[*types.SkillConfig](constant.StoreSkill, constant.SkillID)
+	if err != nil {
+		skill = &types.SkillConfig{
+			ID:         constant.SkillID,
+			GlobalPath: "./skills",
+		}
+		err = nil
+	}
+	cfg.Skill = *skill
+
+	browser, err := store.Get[*types.BrowserConfig](constant.StoreBrowser, constant.BrowserID)
+	if err != nil {
+		browser = &types.BrowserConfig{
+			ID:      constant.BrowserID,
+			DataDir: "./browser",
+		}
+		err = nil
+	}
+	cfg.Browser = *browser
+
+	live2d, err := store.Get[*types.Live2DConfig](constant.StoreLive2D, constant.Live2DID)
+	if err != nil {
+		live2d = &types.Live2DConfig{
+			ID:       constant.Live2DID,
+			Enabled:  false,
+			ModelDir: "./live2d",
+			Width:    200,
+			Height:   380,
+		}
+		err = nil
+	}
+	cfg.Live2D = *live2d
+
+	mcpServers, err := store.List[*types.McpConfig](constant.StorePrefixMcpServer)
+	if err != nil {
+		return nil
+	}
+	cfg.McpServers = make(map[string]*types.McpConfig)
+	for _, mcp := range mcpServers {
+		cfg.McpServers[mcp.Name] = mcp
+	}
+
+	return cfg
 }
 
 func dealCfgPath(cfg *Config) {
@@ -269,22 +356,53 @@ func (c *Config) validateReferences() []string {
 
 // SaveConfig saves configuration to file
 func SaveConfig(cfg *Config) error {
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
+	for name, mcp := range cfg.McpServers {
+		mcp.Name = name
+		store.Save(constant.StorePrefixMcpServer, mcp)
 	}
 
-	// Create config directory if needed
-	dir := filepath.Dir(configFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
+	for name, agent := range cfg.Agents {
+		agent.AgentName = name
+		store.Save(constant.StorePrefixAgent, agent)
 	}
 
-	return os.WriteFile(configFile, data, 0644)
+	for name, provider := range cfg.Providers {
+		provider.ProviderName = name
+		store.Save(constant.StorePrefixProvider, provider)
+	}
+
+	for name, channel := range cfg.Channels {
+		channel.ChannelName = name
+		store.Save(constant.StorePrefixChannel, channel)
+	}
+
+	cfg.Skill.ID = constant.SkillID
+	store.Save(constant.StoreSkill, &cfg.Skill)
+
+	cfg.Browser.ID = constant.BrowserID
+	store.Save(constant.StoreBrowser, &cfg.Browser)
+
+	cfg.Live2D.ID = constant.Live2DID
+	store.Save(constant.StoreLive2D, &cfg.Live2D)
+
+	return nil
+
+	// data, err := json.MarshalIndent(cfg, "", "  ")
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // Create config directory if needed
+	// dir := filepath.Dir(configFile)
+	// if err := os.MkdirAll(dir, 0755); err != nil {
+	// 	return err
+	// }
+
+	// return os.WriteFile(configFile, data, 0644)
 }
 
 // UpdateAgents updates agents configuration with lock protection
-func (c *Config) UpdateAgents(agents map[string]*AgentConfig) {
+func (c *Config) UpdateAgents(agents map[string]*types.AgentConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for name, agent := range agents {
@@ -296,7 +414,7 @@ func (c *Config) UpdateAgents(agents map[string]*AgentConfig) {
 }
 
 // UpdateProviders updates providers configuration with lock protection
-func (c *Config) UpdateProviders(providers map[string]*ProviderConfig) {
+func (c *Config) UpdateProviders(providers map[string]*types.ProviderConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for name, provider := range providers {
@@ -305,7 +423,7 @@ func (c *Config) UpdateProviders(providers map[string]*ProviderConfig) {
 }
 
 // UpdateChannels updates channels configuration with lock protection
-func (c *Config) UpdateChannels(channels map[string]*ChannelConfig) {
+func (c *Config) UpdateChannels(channels map[string]*types.ChannelConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for name, channel := range channels {
@@ -314,7 +432,7 @@ func (c *Config) UpdateChannels(channels map[string]*ChannelConfig) {
 }
 
 // UpdateSkill updates skill configuration with lock protection
-func (c *Config) UpdateSkill(skill SkillConfig) {
+func (c *Config) UpdateSkill(skill types.SkillConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if skill.GlobalPath != "" {
@@ -324,7 +442,7 @@ func (c *Config) UpdateSkill(skill SkillConfig) {
 }
 
 // UpdateBrowser updates browser configuration with lock protection
-func (c *Config) UpdateBrowser(browser BrowserConfig) {
+func (c *Config) UpdateBrowser(browser types.BrowserConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if browser.DataDir != "" {
@@ -334,34 +452,34 @@ func (c *Config) UpdateBrowser(browser BrowserConfig) {
 }
 
 // SetAgent sets a single agent configuration with lock protection
-func (c *Config) SetAgent(name string, agent *AgentConfig) {
+func (c *Config) SetAgent(name string, agent *types.AgentConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if agent != nil {
 		agent.Workspace = utils.ExpandPath(agent.Workspace)
 	}
 	if c.Agents == nil {
-		c.Agents = make(map[string]*AgentConfig)
+		c.Agents = make(map[string]*types.AgentConfig)
 	}
 	c.Agents[name] = agent
 }
 
 // SetProvider sets a single provider configuration with lock protection
-func (c *Config) SetProvider(name string, provider *ProviderConfig) {
+func (c *Config) SetProvider(name string, provider *types.ProviderConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.Providers == nil {
-		c.Providers = make(map[string]*ProviderConfig)
+		c.Providers = make(map[string]*types.ProviderConfig)
 	}
 	c.Providers[name] = provider
 }
 
 // SetChannel sets a single channel configuration with lock protection
-func (c *Config) SetChannel(name string, channel *ChannelConfig) {
+func (c *Config) SetChannel(name string, channel *types.ChannelConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.Channels == nil {
-		c.Channels = make(map[string]*ChannelConfig)
+		c.Channels = make(map[string]*types.ChannelConfig)
 	}
 	c.Channels[name] = channel
 }

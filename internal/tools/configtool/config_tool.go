@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/yockii/wangshu/internal/config"
+	configtypes "github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools/basic"
 	"github.com/yockii/wangshu/pkg/tools/types"
@@ -59,16 +60,16 @@ Available actions:
 			},
 			"section": map[string]any{
 				"type":        "string",
-				"description": "Configuration section: 'agents', 'providers', 'channels', 'skill', 'browser'. Required for get/set/add/delete actions.",
-				"enum":        []string{"agents", "providers", "channels", "skill", "browser"},
+				"description": "Configuration section: 'agents', 'providers', 'channels', 'skill', 'browser', 'live2d', 'mcp_servers'. Required for get/set/add/delete actions.",
+				"enum":        []string{"agents", "providers", "channels", "skill", "browser", "live2d", "mcp_servers"},
 			},
-			"name": map[string]any{
+			"id": map[string]any{
 				"type":        "string",
-				"description": "Name of the specific item to get/set/add/delete (e.g., agent name 'default', provider name 'myProvider', channel name 'webTest'). For get action: returns specific item. For set action: updates specific item. For add action: name of new item. For delete action: name of item to delete.",
+				"description": "ID of the specific item to get/set/add/delete. For get action: returns specific item. For set action: updates specific item. For add action: Keep empty. For delete action: ID of item to delete.",
 			},
 			"data": map[string]any{
 				"type":        "string",
-				"description": "JSON string containing configuration data. For 'set' action on section: updates entire section. For 'set' with name: updates single item. For 'add' action: the new item's configuration. Examples: '{\"workspace\": \"/path\", \"provider\": \"myProvider\", \"model\": \"gpt-4\"}' for a single agent, or '{\"default\": {...}}' for section-level update.",
+				"description": "JSON string containing configuration data. For 'set' action on section: updates entire section. For 'set' with ID: updates single item. For 'add' action: the new item's configuration.",
 			},
 		},
 		"required": []string{"action"},
@@ -99,6 +100,7 @@ func (t *ConfigTool) execute(ctx context.Context, params map[string]string) *typ
 }
 
 func (t *ConfigTool) get(params map[string]string) *types.ToolResult {
+
 	cfgOrigin := config.DefaultCfg
 	if cfgOrigin == nil {
 		return types.NewToolResult().WithError(fmt.Errorf("configuration not initialized"))
@@ -253,31 +255,31 @@ func (t *ConfigTool) set(params map[string]string) *types.ToolResult {
 func (t *ConfigTool) setSection(cfg *config.Config, section, dataStr string) string {
 	switch section {
 	case "agents":
-		var agents map[string]*config.AgentConfig
+		var agents map[string]*configtypes.AgentConfig
 		if err := json.Unmarshal([]byte(dataStr), &agents); err == nil {
 			cfg.UpdateAgents(agents)
 			return fmt.Sprintf("Agents section updated with %d items", len(agents))
 		}
 	case "providers":
-		var providers map[string]*config.ProviderConfig
+		var providers map[string]*configtypes.ProviderConfig
 		if err := json.Unmarshal([]byte(dataStr), &providers); err == nil {
 			cfg.UpdateProviders(providers)
 			return fmt.Sprintf("Providers section updated with %d items", len(providers))
 		}
 	case "channels":
-		var channels map[string]*config.ChannelConfig
+		var channels map[string]*configtypes.ChannelConfig
 		if err := json.Unmarshal([]byte(dataStr), &channels); err == nil {
 			cfg.UpdateChannels(channels)
 			return fmt.Sprintf("Channels section updated with %d items", len(channels))
 		}
 	case "skill":
-		var skill config.SkillConfig
+		var skill configtypes.SkillConfig
 		if err := json.Unmarshal([]byte(dataStr), &skill); err == nil {
 			cfg.UpdateSkill(skill)
 			return "Skill configuration updated"
 		}
 	case "browser":
-		var browser config.BrowserConfig
+		var browser configtypes.BrowserConfig
 		if err := json.Unmarshal([]byte(dataStr), &browser); err == nil {
 			cfg.UpdateBrowser(browser)
 			return "Browser configuration updated"
@@ -289,19 +291,19 @@ func (t *ConfigTool) setSection(cfg *config.Config, section, dataStr string) str
 func (t *ConfigTool) setSectionItem(cfg *config.Config, section, name, dataStr string) string {
 	switch section {
 	case "agents":
-		var agent config.AgentConfig
+		var agent configtypes.AgentConfig
 		if err := json.Unmarshal([]byte(dataStr), &agent); err == nil {
 			cfg.SetAgent(name, &agent)
 			return fmt.Sprintf("Agent '%s' updated", name)
 		}
 	case "providers":
-		var provider config.ProviderConfig
+		var provider configtypes.ProviderConfig
 		if err := json.Unmarshal([]byte(dataStr), &provider); err == nil {
 			cfg.SetProvider(name, &provider)
 			return fmt.Sprintf("Provider '%s' updated", name)
 		}
 	case "channels":
-		var channel config.ChannelConfig
+		var channel configtypes.ChannelConfig
 		if err := json.Unmarshal([]byte(dataStr), &channel); err == nil {
 			cfg.SetChannel(name, &channel)
 			return fmt.Sprintf("Channel '%s' updated", name)
@@ -336,7 +338,7 @@ func (t *ConfigTool) add(params map[string]string) *types.ToolResult {
 		if _, exists := cfg.Agents[name]; exists {
 			return types.NewToolResult().WithError(fmt.Errorf("agent '%s' already exists, use 'set' action to update", name))
 		}
-		var agent config.AgentConfig
+		var agent configtypes.AgentConfig
 		if err := json.Unmarshal([]byte(dataStr), &agent); err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to parse agent data: %w", err))
 		}
@@ -346,7 +348,7 @@ func (t *ConfigTool) add(params map[string]string) *types.ToolResult {
 		if _, exists := cfg.Providers[name]; exists {
 			return types.NewToolResult().WithError(fmt.Errorf("provider '%s' already exists, use 'set' action to update", name))
 		}
-		var provider config.ProviderConfig
+		var provider configtypes.ProviderConfig
 		if err := json.Unmarshal([]byte(dataStr), &provider); err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to parse provider data: %w", err))
 		}
@@ -356,7 +358,7 @@ func (t *ConfigTool) add(params map[string]string) *types.ToolResult {
 		if _, exists := cfg.Channels[name]; exists {
 			return types.NewToolResult().WithError(fmt.Errorf("channel '%s' already exists, use 'set' action to update", name))
 		}
-		var channel config.ChannelConfig
+		var channel configtypes.ChannelConfig
 		if err := json.Unmarshal([]byte(dataStr), &channel); err != nil {
 			return types.NewToolResult().WithError(fmt.Errorf("failed to parse channel data: %w", err))
 		}

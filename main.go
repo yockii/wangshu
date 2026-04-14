@@ -13,6 +13,7 @@ import (
 	"github.com/yockii/wangshu/internal/bundle"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/runner"
+	"github.com/yockii/wangshu/internal/store"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/utils"
@@ -29,7 +30,7 @@ func init() {
 }
 
 func initConfig() {
-	cfgPath := "./config.json"
+	cfgPath := "./data"
 	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}
@@ -37,12 +38,18 @@ func initConfig() {
 
 	err := config.Initialize(cfgPath)
 	if err != nil {
-		slog.Error("Failed to load config", "error", err)
+		slog.Error("Failed to load data", "error", err)
 		return
 	}
 }
 
 func main() {
+	if err := store.Initialize(); err != nil {
+		slog.Error("Failed to initialize store", "error", err)
+		return
+	}
+	defer store.Shutdown()
+
 	if constant.Version == "dev" {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}

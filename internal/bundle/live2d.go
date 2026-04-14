@@ -35,7 +35,7 @@ func (*Live2dBundle) GetModelFile() string {
 	return ""
 }
 
-func (*Live2dBundle) GetLive2DConfig() *config.Live2DConfig {
+func (*Live2dBundle) GetLive2DConfig() *types.Live2DConfig {
 	return &config.DefaultCfg.Live2D
 }
 

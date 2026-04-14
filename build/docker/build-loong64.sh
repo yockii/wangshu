@@ -9,7 +9,7 @@ export GOARCH=loong64
 export GOOS=linux
 
 if [ -d "frontend" ] && [ -f "frontend/package.json" ] && [ ! -d "frontend/dist" ]; then
-    (cd frontend && npm install --silent && npm run build --silent)
+    (cd frontend && rm -rf node_modules package-lock.json && npm install --silent --force && npm run build --silent)
 fi
 
 APP=${APP_NAME:-$(basename $(pwd))}

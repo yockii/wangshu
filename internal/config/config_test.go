@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/yockii/wangshu/internal/types"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -85,7 +87,7 @@ func TestLoadConfig_Exist(t *testing.T) {
 
 	// 创建测试配置
 	testCfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"test": {
 				Workspace:   "/tmp/workspace",
 				Provider:    "testProvider",
@@ -93,13 +95,13 @@ func TestLoadConfig_Exist(t *testing.T) {
 				Temperature: 0.5,
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"testProvider": {
 				Type:   "openai",
 				APIKey: "test-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"testChannel": {
 				Type:    "web",
 				Enabled: true,
@@ -128,20 +130,20 @@ func TestLoadConfig_Exist(t *testing.T) {
 
 func TestConfigValidate_Valid(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"webTest": {
 				Type:        "web",
 				Enabled:     true,
@@ -160,14 +162,14 @@ func TestConfigValidate_Valid(t *testing.T) {
 
 func TestConfigValidate_MissingWorkspace(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "", // 空工作空间
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -194,14 +196,14 @@ func TestConfigValidate_MissingWorkspace(t *testing.T) {
 
 func TestConfigValidate_MissingProvider(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "", // 空provider
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -222,14 +224,14 @@ func TestConfigValidate_MissingProvider(t *testing.T) {
 
 func TestConfigValidate_MissingAPIKey(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "", // 空API key
@@ -245,20 +247,20 @@ func TestConfigValidate_MissingAPIKey(t *testing.T) {
 
 func TestConfigValidate_WebChannel_MissingHostAddress(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"webTest": {
 				Type:    "web",
 				Enabled: true,
@@ -277,20 +279,20 @@ func TestConfigValidate_WebChannel_MissingHostAddress(t *testing.T) {
 
 func TestConfigValidate_WebChannel_MissingToken(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"webTest": {
 				Type:        "web",
 				Enabled:     true,
@@ -309,20 +311,20 @@ func TestConfigValidate_WebChannel_MissingToken(t *testing.T) {
 
 func TestConfigValidate_FeishuChannel_MissingAppID(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"feishuTest": {
 				Type:    "feishu",
 				Enabled: true,
@@ -341,20 +343,20 @@ func TestConfigValidate_FeishuChannel_MissingAppID(t *testing.T) {
 
 func TestConfigValidate_FeishuChannel_MissingAppSecret(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"feishuTest": {
 				Type:    "feishu",
 				Enabled: true,
@@ -378,14 +380,14 @@ func TestConfigValidate_FeishuChannel_MissingAppSecret(t *testing.T) {
 
 func TestConfigValidate_MissingModel(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "", // 空model
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -406,7 +408,7 @@ func TestConfigValidate_MissingModel(t *testing.T) {
 
 func TestConfigValidate_TemperatureOutOfRange(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace:   "/tmp/workspace",
 				Provider:    "myProvider",
@@ -414,7 +416,7 @@ func TestConfigValidate_TemperatureOutOfRange(t *testing.T) {
 				Temperature: 3.0, // 超出范围
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -435,7 +437,7 @@ func TestConfigValidate_TemperatureOutOfRange(t *testing.T) {
 
 func TestConfigValidate_TemperatureNegative(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace:   "/tmp/workspace",
 				Provider:    "myProvider",
@@ -443,7 +445,7 @@ func TestConfigValidate_TemperatureNegative(t *testing.T) {
 				Temperature: -0.5, // 负数
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -459,14 +461,14 @@ func TestConfigValidate_TemperatureNegative(t *testing.T) {
 
 func TestConfigValidate_ProviderNotFound(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "nonExistentProvider", // 不存在的provider
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
@@ -487,20 +489,20 @@ func TestConfigValidate_ProviderNotFound(t *testing.T) {
 
 func TestConfigValidate_AgentNotFound(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"webTest": {
 				Type:        "web",
 				Enabled:     true,
@@ -524,14 +526,14 @@ func TestConfigValidate_AgentNotFound(t *testing.T) {
 
 func TestConfigValidate_InvalidBaseURL(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:    "openai",
 				APIKey:  "test-api-key",
@@ -553,14 +555,14 @@ func TestConfigValidate_InvalidBaseURL(t *testing.T) {
 
 func TestConfigValidate_OllamaWithoutAPIKey(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "ollamaProvider",
 				Model:     "llama2",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"ollamaProvider": {
 				Type:   "ollama",
 				APIKey: "", // ollama不需要API key
@@ -576,20 +578,20 @@ func TestConfigValidate_OllamaWithoutAPIKey(t *testing.T) {
 
 func TestConfigValidate_UnsupportedChannelType(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "myProvider",
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key",
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"unsupportedTest": {
 				Type:    "unsupported_type", // 不支持的类型
 				Enabled: true,
@@ -611,14 +613,14 @@ func TestConfigValidate_UnsupportedChannelType(t *testing.T) {
 
 func TestConfigValidate_UnusedProvider(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "/tmp/workspace",
 				Provider:  "openaiProvider", // 使用openaiProvider
 				Model:     "gpt-4",
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"openaiProvider": {
 				Type:   "openai",
 				APIKey: "test-api-key", // 配置完整
@@ -642,20 +644,20 @@ func TestConfigValidate_UnusedProvider(t *testing.T) {
 
 func TestConfigValidate_MultipleErrors(t *testing.T) {
 	cfg := &Config{
-		Agents: map[string]*AgentConfig{
+		Agents: map[string]*types.AgentConfig{
 			"default": {
 				Workspace: "",           // 空工作空间
 				Provider:  "myProvider", // 引用myProvider，这样它会被验证
 				Model:     "",           // 空model
 			},
 		},
-		Providers: map[string]*ProviderConfig{
+		Providers: map[string]*types.ProviderConfig{
 			"myProvider": {
 				Type:   "", // 空type
 				APIKey: "", // 空api key
 			},
 		},
-		Channels: map[string]*ChannelConfig{
+		Channels: map[string]*types.ChannelConfig{
 			"webTest": {
 				Type:        "web",
 				Enabled:     true,

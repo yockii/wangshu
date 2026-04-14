@@ -151,9 +151,9 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 	}
 
 	// 反序列化
-	response = llm.ExtractJSONFromContent(response)
+	needParse := llm.ExtractJSONFromContent(response)
 	var result types.StructuredResponse
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
+	if err := json.Unmarshal([]byte(needParse), &result); err != nil {
 		slog.Error("Failed to parse structured response", "error", err)
 	} else {
 		response = result.Content

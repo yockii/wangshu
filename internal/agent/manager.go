@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
 )
@@ -32,7 +33,7 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 	workspaceCheckMap := make(map[string]struct{})
 
 	defaultAgentName := ""
-	var defaultAgentCfg *config.AgentConfig
+	var defaultAgentCfg *types.AgentConfig
 
 	for name, ac := range config.DefaultCfg.Agents {
 		if defaultAgentName == "" || name == constant.Default {
@@ -86,7 +87,7 @@ func InitializeAgentManager() (defaultAgent *Agent) {
 	return
 }
 
-func initialAgent(name string, ac *config.AgentConfig, workspaceCheckMap map[string]struct{}) (*Agent, error) {
+func initialAgent(name string, ac *types.AgentConfig, workspaceCheckMap map[string]struct{}) (*Agent, error) {
 	// 检查workspace是否存在
 	if _, ok := workspaceCheckMap[ac.Workspace]; ok {
 		slog.Warn("DUPLICATE workspace FOUND for agent, this MAY CAUSE UNEXPECTED BEHAVIOR", "agent", name, "workspace", ac.Workspace)

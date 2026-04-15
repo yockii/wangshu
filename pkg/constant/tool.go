@@ -31,4 +31,5 @@ const (
 	ToolNameWebSearch   = "web.search"
 	ToolNameWebFetch    = "web.fetch"
 	ToolNameBrowser     = "browser"
+	ToolNameSprite      = "sprite"
 )

@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	windowLocker sync.Mutex
-	chatWindow   *application.WebviewWindow
-	configWindow *application.WebviewWindow
-	live2dWindow *application.WebviewWindow
-	qrcodeWindow *application.WebviewWindow
+	windowLocker         sync.Mutex
+	chatWindow           *application.WebviewWindow
+	configWindow         *application.WebviewWindow
+	live2dWindow         *application.WebviewWindow
+	qrcodeWindow         *application.WebviewWindow
+	emotionMappingWindow *application.WebviewWindow
 )
 
 func ShowChatWindow() {
@@ -93,7 +94,8 @@ func HideConfigWindow() {
 func ShowLive2DWindow() {
 	if config.DefaultCfg.ValidateLive2D() != nil {
 		slog.Error("Live2D configuration validation failed")
-		app.Dialog.Warning().SetTitle("警告").SetMessage("Live2D 配置无效，请检查配置文件").Show()
+		app.Dialog.Warning().SetTitle("警告").SetMessage("Live2D 配置无效，请检查配置").Show()
+		ShowConfigWindow()
 		return
 	}
 
@@ -271,5 +273,43 @@ func CloseQRCodeWindow() {
 	if qrcodeWindow != nil {
 		qrcodeWindow.Close()
 		qrcodeWindow = nil
+	}
+}
+
+func ShowEmotionMappingWindow() {
+	if !config.DefaultCfg.Live2D.Enabled {
+		app.Dialog.Warning().SetTitle("警告").SetMessage("Live2D 配置无效，请检查配置").Show()
+		ShowConfigWindow()
+		return
+	}
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+
+	if emotionMappingWindow == nil {
+		emotionMappingWindow = app.Window.NewWithOptions(application.WebviewWindowOptions{
+			Title: "望舒 - 个人AI助理 - 精灵情感映射",
+			Mac: application.MacWindow{
+				InvisibleTitleBarHeight: 50,
+				Backdrop:                application.MacBackdropTranslucent,
+				TitleBar:                application.MacTitleBarHiddenInset,
+			},
+			Windows: application.WindowsWindow{
+				DisableFramelessWindowDecorations: true,
+			},
+			Frameless:        true,
+			BackgroundColour: application.NewRGBA(0, 0, 0, 0),
+			BackgroundType:   application.BackgroundTypeTranslucent,
+			URL:              "#/emotion",
+		})
+	}
+	emotionMappingWindow.Show()
+	emotionMappingWindow.Focus()
+}
+
+func HideEmotionMappingWindow() {
+	windowLocker.Lock()
+	defer windowLocker.Unlock()
+	if emotionMappingWindow != nil {
+		emotionMappingWindow.Hide()
 	}
 }

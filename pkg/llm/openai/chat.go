@@ -24,13 +24,15 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 	// 转换工具定义
 	toolsUnion := p.convertTools(tools)
 
-	// 调用OpenAI API
-	resp, err := p.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+	body := openai.ChatCompletionNewParams{
 		Model:       openai.ChatModel(model),
 		Temperature: openai.Float(temperature),
 		Messages:    msgs,
 		Tools:       toolsUnion,
-	})
+	}
+
+	// 调用OpenAI API
+	resp, err := p.client.Chat.Completions.New(ctx, body)
 	if err != nil {
 		return nil, err
 	}

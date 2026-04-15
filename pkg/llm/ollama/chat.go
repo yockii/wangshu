@@ -32,6 +32,7 @@ func (p *Provider) Chat(ctx context.Context, model string, message []llm.Message
 		Tools:    toolsParam,
 		Options: map[string]any{
 			"temperature": temperature,
+			"top_p":       0.95,
 		},
 	}
 

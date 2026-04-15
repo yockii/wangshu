@@ -3,6 +3,9 @@ package agent
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/session"
@@ -35,14 +38,30 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 	availableTools = append(availableTools, mcpTools...)
 
+	rateLimitCount := 0
 	for i := 0; i < a.maxIter; i++ {
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
+
 		if err != nil {
+			// 这里尝试将err解构为map[string]any，方便后续处理
+			if strings.Contains(err.Error(), "429") && rateLimitCount < 10 {
+				slog.Error("LLM call failed (429)", "error", err)
+				if rateLimitCount == 0 {
+					percentage := a.CalculateSessionPercent(sess)
+					msg := bus.NewOutboundMessage(sess.ChatID, "大脑思考过速了……我需要冷静一下(429限流中)，请耐心等待一会……")
+					msg.Metadata.Channel = sess.Channel
+					msg.Metadata.SessionPercent = percentage
+					bus.Default().PublishOutbound(msg)
+				}
+				rateLimitCount++
+				time.Sleep(10 * time.Second)
+				continue
+			}
 			return "", fmt.Errorf("LLM call failed (iteration %d): %w", i+1, err)
 		}
+		rateLimitCount = 0
 
 		if len(resp.Message.ToolCalls) == 0 {
-			// 不需要调用工具，则开始输出
 			finalContent = resp.Message.Content
 			break
 		}

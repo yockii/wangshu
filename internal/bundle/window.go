@@ -27,3 +27,11 @@ func (w *WindowBundle) ShowLive2DWindow() {
 func (w *WindowBundle) HideLive2DWindow() {
 	app.HideLive2DWindow()
 }
+
+func (w *WindowBundle) ShowEmotionMappingWindow() {
+	app.ShowEmotionMappingWindow()
+}
+
+func (w *WindowBundle) HideEmotionMappingWindow() {
+	app.HideEmotionMappingWindow()
+}

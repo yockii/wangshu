@@ -130,12 +130,7 @@ func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (str
 		return "", fmt.Errorf("Agent loop failed: %w", err)
 	}
 
-	// 异步检查并压缩历史（不阻塞响应）
-	// go a.checkAndCompressIfNeeded(sess)
-
 	return response, nil
-
-	// resp, err := a.provider.Chat(ctx, sessionID, msgs, tools, nil)
 }
 
 func (a *Agent) loadImageAsBase64(filePath string) (string, string, error) {
@@ -154,6 +149,7 @@ func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
 		response = fmt.Sprintf("Agent dealing failed: %+v", err)
 	}
 
+	// 发布消息
 	outboundMsg := bus.NewOutboundMessage(msg.Metadata.ChatID, response)
 	outboundMsg.Metadata.Channel = msg.Metadata.Channel
 	bus.Default().PublishOutbound(outboundMsg)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Application, Ticker } from 'pixi.js';
-import { Live2DSprite, Config } from 'easy-live2d';
+import { Live2DSprite, Config, Priority } from 'easy-live2d';
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { Live2dBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
 import { Events } from '@wailsio/runtime';
@@ -82,6 +82,15 @@ const loadModel = async (modelName?: string) => {
 //    console.log('hit', hitAreaName, x, y)
 //  })
 
+  live2DSprite.value.onLive2D('ready', () => {
+    if (live2DSprite.value) {
+      const motions = live2DSprite.value.getMotions()
+      Live2dBundle.UpdateLive2DMotions(motions)
+      const expressions = live2DSprite.value.getExpressions().map((expression) => expression.name)
+      Live2dBundle.UpdateLive2DExpressions(expressions)
+    }
+  })
+
   pixiApp.value.stage.addChild(live2DSprite.value)
   updateSpriteSize()
 
@@ -89,14 +98,6 @@ const loadModel = async (modelName?: string) => {
     expressionId: 'normal',
   })
 
-  const motions = live2DSprite.value.getMotions().map((motion) => ({
-    Group: motion.group,
-    No: motion.no,
-    Name: motion.name,
-  }))
-  Live2dBundle.UpdateLive2DMotions(motions)
-  const expressions = live2DSprite.value.getExpressions().map((expression) => expression.name)
-  Live2dBundle.UpdateLive2DExpressions(expressions)
 }
 
 const exitEditMode = async () => {
@@ -142,11 +143,13 @@ onMounted(async () => {
   })
 
   Events.On('live2d-do-motion', (data: { data: { group: string, no: number } }) => {
-    live2DSprite.value?.startMotion({
+    const param = {
       group: data.data.group,
       no: data.data.no,
-      priority: 1,
-    })
+      priority: Priority.Force,
+    }
+    console.log(param)
+    live2DSprite.value?.startMotion(param)
   })
   
   Events.On('live2d-do-expression', (data: { data: string }) => {

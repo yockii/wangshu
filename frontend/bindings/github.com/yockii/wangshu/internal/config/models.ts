@@ -5,134 +5,18 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
-export class AgentConfig {
-    "workspace": string;
-    "provider": string;
-    "model": string;
-    "temperature": number;
-    "max_tokens": number;
-    "enable_image_recognition": boolean;
-
-    /**
-     * 每日0点或配置的时间进行记忆整理
-     */
-    "memory_organize_time": string;
-
-    /** Creates a new AgentConfig instance. */
-    constructor($$source: Partial<AgentConfig> = {}) {
-        if (!("workspace" in $$source)) {
-            this["workspace"] = "";
-        }
-        if (!("provider" in $$source)) {
-            this["provider"] = "";
-        }
-        if (!("model" in $$source)) {
-            this["model"] = "";
-        }
-        if (!("temperature" in $$source)) {
-            this["temperature"] = 0;
-        }
-        if (!("max_tokens" in $$source)) {
-            this["max_tokens"] = 0;
-        }
-        if (!("enable_image_recognition" in $$source)) {
-            this["enable_image_recognition"] = false;
-        }
-        if (!("memory_organize_time" in $$source)) {
-            this["memory_organize_time"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new AgentConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): AgentConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new AgentConfig($$parsedSource as Partial<AgentConfig>);
-    }
-}
-
-export class BrowserConfig {
-    /**
-     * 浏览器用户数据目录，用于持久化cookies、登录状态等
-     */
-    "data_dir": string;
-
-    /** Creates a new BrowserConfig instance. */
-    constructor($$source: Partial<BrowserConfig> = {}) {
-        if (!("data_dir" in $$source)) {
-            this["data_dir"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new BrowserConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): BrowserConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new BrowserConfig($$parsedSource as Partial<BrowserConfig>);
-    }
-}
-
-export class ChannelConfig {
-    "type": string;
-    "enabled": boolean;
-    "agent": string;
-
-    /**
-     * feishu
-     */
-    "app_id"?: string;
-    "app_secret"?: string;
-
-    /**
-     * web
-     */
-    "host_address"?: string;
-    "token"?: string;
-
-    /**
-     * wechat ilink
-     * 凭证存储路径，默认 ~/.wechatbot/{name}_credentials.json
-     */
-    "cred_path"?: string;
-
-    /** Creates a new ChannelConfig instance. */
-    constructor($$source: Partial<ChannelConfig> = {}) {
-        if (!("type" in $$source)) {
-            this["type"] = "";
-        }
-        if (!("enabled" in $$source)) {
-            this["enabled"] = false;
-        }
-        if (!("agent" in $$source)) {
-            this["agent"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ChannelConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ChannelConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ChannelConfig($$parsedSource as Partial<ChannelConfig>);
-    }
-}
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as types$0 from "../types/models.js";
 
 export class Config {
-    "agents": { [_ in string]?: AgentConfig | null };
-    "providers": { [_ in string]?: ProviderConfig | null };
-    "channels": { [_ in string]?: ChannelConfig | null };
-    "skill": SkillConfig;
-    "browser": BrowserConfig;
-    "live2d": Live2DConfig;
-    "mcp_servers": { [_ in string]?: McpConfig | null };
+    "agents": { [_ in string]?: types$0.AgentConfig | null };
+    "providers": { [_ in string]?: types$0.ProviderConfig | null };
+    "channels": { [_ in string]?: types$0.ChannelConfig | null };
+    "skill": types$0.SkillConfig;
+    "browser": types$0.BrowserConfig;
+    "live2d": types$0.Live2DConfig;
+    "mcp_servers": { [_ in string]?: types$0.McpConfig | null };
 
     /** Creates a new Config instance. */
     constructor($$source: Partial<Config> = {}) {
@@ -146,13 +30,13 @@ export class Config {
             this["channels"] = {};
         }
         if (!("skill" in $$source)) {
-            this["skill"] = (new SkillConfig());
+            this["skill"] = (new types$0.SkillConfig());
         }
         if (!("browser" in $$source)) {
-            this["browser"] = (new BrowserConfig());
+            this["browser"] = (new types$0.BrowserConfig());
         }
         if (!("live2d" in $$source)) {
-            this["live2d"] = (new Live2DConfig());
+            this["live2d"] = (new types$0.Live2DConfig());
         }
         if (!("mcp_servers" in $$source)) {
             this["mcp_servers"] = {};
@@ -198,165 +82,19 @@ export class Config {
     }
 }
 
-export class Live2DConfig {
-    "enabled": boolean;
-    "model_dir": string;
-    "model_name": string;
-    "width": number;
-    "height": number;
-    "x": number;
-    "y": number;
-
-    /** Creates a new Live2DConfig instance. */
-    constructor($$source: Partial<Live2DConfig> = {}) {
-        if (!("enabled" in $$source)) {
-            this["enabled"] = false;
-        }
-        if (!("model_dir" in $$source)) {
-            this["model_dir"] = "";
-        }
-        if (!("model_name" in $$source)) {
-            this["model_name"] = "";
-        }
-        if (!("width" in $$source)) {
-            this["width"] = 0;
-        }
-        if (!("height" in $$source)) {
-            this["height"] = 0;
-        }
-        if (!("x" in $$source)) {
-            this["x"] = 0;
-        }
-        if (!("y" in $$source)) {
-            this["y"] = 0;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new Live2DConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): Live2DConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new Live2DConfig($$parsedSource as Partial<Live2DConfig>);
-    }
-}
-
-export class McpConfig {
-    "command": string;
-    "args": string[];
-    "env": { [_ in string]?: string };
-    "cwd"?: string;
-
-    /**
-     * 通信协议，默认stdio，以后可能扩展到http、sse等
-     * 通信协议，默认stdio，以后可能扩展到http、sse等
-     */
-    "transport_type"?: string;
-
-    /**
-     * 通信地址，用于http、sse等
-     */
-    "url"?: string;
-
-    /** Creates a new McpConfig instance. */
-    constructor($$source: Partial<McpConfig> = {}) {
-        if (!("command" in $$source)) {
-            this["command"] = "";
-        }
-        if (!("args" in $$source)) {
-            this["args"] = [];
-        }
-        if (!("env" in $$source)) {
-            this["env"] = {};
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new McpConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): McpConfig {
-        const $$createField1_0 = $$createType15;
-        const $$createField2_0 = $$createType16;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("args" in $$parsedSource) {
-            $$parsedSource["args"] = $$createField1_0($$parsedSource["args"]);
-        }
-        if ("env" in $$parsedSource) {
-            $$parsedSource["env"] = $$createField2_0($$parsedSource["env"]);
-        }
-        return new McpConfig($$parsedSource as Partial<McpConfig>);
-    }
-}
-
-export class ProviderConfig {
-    /**
-     * openai/anthropic/ollama/...
-     */
-    "type": string;
-    "api_key": string;
-    "base_url"?: string;
-
-    /** Creates a new ProviderConfig instance. */
-    constructor($$source: Partial<ProviderConfig> = {}) {
-        if (!("type" in $$source)) {
-            this["type"] = "";
-        }
-        if (!("api_key" in $$source)) {
-            this["api_key"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ProviderConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ProviderConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ProviderConfig($$parsedSource as Partial<ProviderConfig>);
-    }
-}
-
-export class SkillConfig {
-    "global_path": string;
-
-    /** Creates a new SkillConfig instance. */
-    constructor($$source: Partial<SkillConfig> = {}) {
-        if (!("global_path" in $$source)) {
-            this["global_path"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SkillConfig instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SkillConfig {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new SkillConfig($$parsedSource as Partial<SkillConfig>);
-    }
-}
-
 // Private type creation functions
-const $$createType0 = AgentConfig.createFrom;
+const $$createType0 = types$0.AgentConfig.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = $Create.Map($Create.Any, $$createType1);
-const $$createType3 = ProviderConfig.createFrom;
+const $$createType3 = types$0.ProviderConfig.createFrom;
 const $$createType4 = $Create.Nullable($$createType3);
 const $$createType5 = $Create.Map($Create.Any, $$createType4);
-const $$createType6 = ChannelConfig.createFrom;
+const $$createType6 = types$0.ChannelConfig.createFrom;
 const $$createType7 = $Create.Nullable($$createType6);
 const $$createType8 = $Create.Map($Create.Any, $$createType7);
-const $$createType9 = SkillConfig.createFrom;
-const $$createType10 = BrowserConfig.createFrom;
-const $$createType11 = Live2DConfig.createFrom;
-const $$createType12 = McpConfig.createFrom;
+const $$createType9 = types$0.SkillConfig.createFrom;
+const $$createType10 = types$0.BrowserConfig.createFrom;
+const $$createType11 = types$0.Live2DConfig.createFrom;
+const $$createType12 = types$0.McpConfig.createFrom;
 const $$createType13 = $Create.Nullable($$createType12);
 const $$createType14 = $Create.Map($Create.Any, $$createType13);
-const $$createType15 = $Create.Array($Create.Any);
-const $$createType16 = $Create.Map($Create.Any, $Create.Any);

@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import { Browser } from '@wailsio/runtime'
+
+document.addEventListener('click', (e: MouseEvent | TouchEvent) => {
+  if (e.target instanceof HTMLElement && e.target.tagName === 'A') {
+    e.preventDefault()
+    Browser.OpenURL((e.target as HTMLAnchorElement).href)
+  }
+}, true)
 </script>
 
 <template>

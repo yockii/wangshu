@@ -247,7 +247,7 @@
               MCP Servers
             </h3>
             <div class="space-y-4">
-              <div v-for="(mcpServer, name) in (config as any)?.mcp_servers" :key="name" class="p-4 border border-border rounded-lg bg-card">
+              <div v-for="(mcpServer, name) in config.mcp_servers" :key="name" class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
                   <Input
                     :modelValue="editingNames.mcp_servers[name as string] ?? name"
@@ -307,9 +307,9 @@
                         添加变量
                       </Button>
                     </div>
-                    <div v-if="getEnvEntries((mcpServer as McpConfig).env).length" class="space-y-2">
+                    <div v-if="getEnvEntries(mcpServer?.env).length" class="space-y-2">
                       <div 
-                        v-for="[key, value] in getEnvEntries((mcpServer as McpConfig).env)" 
+                        v-for="[key, value] in getEnvEntries(mcpServer?.env)" 
                         :key="key"
                         class="flex items-center gap-2"
                       >
@@ -395,15 +395,21 @@
           </section>
 
           <section id="section-live2d" class="scroll-mt-6">
-            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Sparkles class="w-5 h-5" />
-              Live2D
-            </h3>
+            <div class="flex items-center justify-between">
+              <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Sparkles class="w-5 h-5" />
+                桌面精灵
+              </h3>
+              <Button variant="outline" @click="WindowBundle.ShowEmotionMappingWindow()">
+                <Sparkles class="w-4 h-4 cursor-pointer" />
+                配置精灵情感映射
+              </Button>
+            </div>
             <div class="p-4 border border-border rounded-lg bg-card">
               <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2 flex items-center gap-2">
                   <Switch v-model="config!.live2d.enabled" @update:modelValue="markChanged" />
-                  <label class="text-sm text-muted-foreground">启用 Live2D</label>
+                  <label class="text-sm text-muted-foreground">启用桌面精灵</label>
                 </div>
                 <div class="col-span-2 space-y-2">
                   <label class="text-sm text-muted-foreground">模型目录</label>
@@ -449,22 +455,14 @@
 
 <script setup lang="ts">
 import { onMounted, ref, markRaw, computed } from 'vue'
-import { ConfigBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle'
-import { Config, AgentConfig, ProviderConfig, ChannelConfig } from '../../bindings/github.com/yockii/wangshu/internal/config'
+import { ConfigBundle, WindowBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle'
+import { Config } from '../../bindings/github.com/yockii/wangshu/internal/config'
+import { AgentConfig, ProviderConfig, ChannelConfig, McpConfig } from '../../bindings/github.com/yockii/wangshu/internal/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Server, Bot, MessageSquare, Wrench, Globe, Sparkles, Plus, Trash2, Save, FolderOpen, Puzzle, X } from '@lucide/vue'
-
-interface McpConfig {
-  command: string
-  args: string[]
-  env: Record<string, string>
-  cwd?: string
-  transport_type?: string
-  url?: string
-}
 
 const config = ref<Config | null>(null)
 const originalConfig = ref<string>('')
@@ -685,14 +683,16 @@ const renameMcpServer = (oldName: string, newName: string) => {
 const addMcpServer = () => {
   if (!config.value) return
   const name = `mcp_server_${Date.now()}`
-  if (!(config.value as any).mcp_servers) {
-    ;(config.value as any).mcp_servers = {}
+  if (!config.value.mcp_servers) {
+    config.value.mcp_servers = {}
   }
-  ;(config.value as any).mcp_servers[name] = {
+  config.value.mcp_servers[name] = {
+    id: '',
+    name,
     command: '',
     args: [],
     env: {}
-  } as McpConfig
+  }
   markChanged()
 }
 
@@ -737,9 +737,9 @@ const removeMcpEnv = (mcpServer: McpConfig, key: string) => {
   markChanged()
 }
 
-const getEnvEntries = (env: Record<string, string> | undefined): [string, string][] => {
+const getEnvEntries = (env: { [x: string]: string | undefined; } | undefined): [string, string][] => {
   if (!env) return []
-  return Object.entries(env)
+  return Object.entries(env).map(([key, value]) => [key, value || ''])
 }
 
 const selectSkillFolder = async () => {

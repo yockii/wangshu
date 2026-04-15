@@ -9,6 +9,147 @@ import { Create as $Create } from "@wailsio/runtime";
 // @ts-ignore: Unused imports
 import * as time$0 from "../../../../../time/models.js";
 
+export class AgentConfig {
+    "id": string;
+    "agent_name": string;
+    "workspace": string;
+    "provider": string;
+    "model": string;
+    "temperature": number;
+    "max_tokens": number;
+    "enable_image_recognition": boolean;
+
+    /**
+     * 每日0点或配置的时间进行记忆整理
+     */
+    "memory_organize_time": string;
+
+    /** Creates a new AgentConfig instance. */
+    constructor($$source: Partial<AgentConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("agent_name" in $$source)) {
+            this["agent_name"] = "";
+        }
+        if (!("workspace" in $$source)) {
+            this["workspace"] = "";
+        }
+        if (!("provider" in $$source)) {
+            this["provider"] = "";
+        }
+        if (!("model" in $$source)) {
+            this["model"] = "";
+        }
+        if (!("temperature" in $$source)) {
+            this["temperature"] = 0;
+        }
+        if (!("max_tokens" in $$source)) {
+            this["max_tokens"] = 0;
+        }
+        if (!("enable_image_recognition" in $$source)) {
+            this["enable_image_recognition"] = false;
+        }
+        if (!("memory_organize_time" in $$source)) {
+            this["memory_organize_time"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AgentConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AgentConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AgentConfig($$parsedSource as Partial<AgentConfig>);
+    }
+}
+
+export class BrowserConfig {
+    "id": string;
+
+    /**
+     * 浏览器用户数据目录，用于持久化cookies、登录状态等
+     */
+    "data_dir": string;
+
+    /** Creates a new BrowserConfig instance. */
+    constructor($$source: Partial<BrowserConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("data_dir" in $$source)) {
+            this["data_dir"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BrowserConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BrowserConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BrowserConfig($$parsedSource as Partial<BrowserConfig>);
+    }
+}
+
+export class ChannelConfig {
+    "id": string;
+    "channel_name": string;
+    "type": string;
+    "enabled": boolean;
+    "agent": string;
+
+    /**
+     * feishu
+     */
+    "app_id"?: string;
+    "app_secret"?: string;
+
+    /**
+     * web
+     */
+    "host_address"?: string;
+    "token"?: string;
+
+    /**
+     * wechat ilink
+     * 凭证存储路径，默认 ~/.wechatbot/{name}_credentials.json
+     */
+    "cred_path"?: string;
+
+    /** Creates a new ChannelConfig instance. */
+    constructor($$source: Partial<ChannelConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("channel_name" in $$source)) {
+            this["channel_name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("enabled" in $$source)) {
+            this["enabled"] = false;
+        }
+        if (!("agent" in $$source)) {
+            this["agent"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ChannelConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ChannelConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ChannelConfig($$parsedSource as Partial<ChannelConfig>);
+    }
+}
+
 export class ContentBlock {
     /**
      * "text", "image"
@@ -57,21 +198,115 @@ export class ContentBlock {
     }
 }
 
+export class EmotionAction {
+    "motion_group"?: string;
+    "motion_no"?: number;
+    "expression_id"?: string;
+
+    /** Creates a new EmotionAction instance. */
+    constructor($$source: Partial<EmotionAction> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EmotionAction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EmotionAction {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new EmotionAction($$parsedSource as Partial<EmotionAction>);
+    }
+}
+
+export class EmotionMapping {
+    "id": string;
+    "mappings": { [_ in string]?: EmotionAction | null };
+
+    /** Creates a new EmotionMapping instance. */
+    constructor($$source: Partial<EmotionMapping> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("mappings" in $$source)) {
+            this["mappings"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EmotionMapping instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EmotionMapping {
+        const $$createField1_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("mappings" in $$parsedSource) {
+            $$parsedSource["mappings"] = $$createField1_0($$parsedSource["mappings"]);
+        }
+        return new EmotionMapping($$parsedSource as Partial<EmotionMapping>);
+    }
+}
+
+export class Live2DConfig {
+    "id": string;
+    "enabled": boolean;
+    "model_dir": string;
+    "model_name": string;
+    "width": number;
+    "height": number;
+    "x": number;
+    "y": number;
+
+    /** Creates a new Live2DConfig instance. */
+    constructor($$source: Partial<Live2DConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("enabled" in $$source)) {
+            this["enabled"] = false;
+        }
+        if (!("model_dir" in $$source)) {
+            this["model_dir"] = "";
+        }
+        if (!("model_name" in $$source)) {
+            this["model_name"] = "";
+        }
+        if (!("width" in $$source)) {
+            this["width"] = 0;
+        }
+        if (!("height" in $$source)) {
+            this["height"] = 0;
+        }
+        if (!("x" in $$source)) {
+            this["x"] = 0;
+        }
+        if (!("y" in $$source)) {
+            this["y"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Live2DConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Live2DConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Live2DConfig($$parsedSource as Partial<Live2DConfig>);
+    }
+}
+
 export class Live2DMotion {
-    "Group": string;
-    "No": number;
-    "Name": string;
+    "group": string;
+    "no": number;
 
     /** Creates a new Live2DMotion instance. */
     constructor($$source: Partial<Live2DMotion> = {}) {
-        if (!("Group" in $$source)) {
-            this["Group"] = "";
+        if (!("group" in $$source)) {
+            this["group"] = "";
         }
-        if (!("No" in $$source)) {
-            this["No"] = 0;
-        }
-        if (!("Name" in $$source)) {
-            this["Name"] = "";
+        if (!("no" in $$source)) {
+            this["no"] = 0;
         }
 
         Object.assign(this, $$source);
@@ -83,6 +318,63 @@ export class Live2DMotion {
     static createFrom($$source: any = {}): Live2DMotion {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Live2DMotion($$parsedSource as Partial<Live2DMotion>);
+    }
+}
+
+export class McpConfig {
+    "id": string;
+    "name": string;
+    "command": string;
+    "args": string[];
+    "env": { [_ in string]?: string };
+    "cwd"?: string;
+
+    /**
+     * 通信协议，默认stdio，以后可能扩展到http、sse等
+     * 通信协议，默认stdio，以后可能扩展到http、sse等
+     */
+    "transport_type"?: string;
+
+    /**
+     * 通信地址，用于http、sse等
+     */
+    "url"?: string;
+
+    /** Creates a new McpConfig instance. */
+    constructor($$source: Partial<McpConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("args" in $$source)) {
+            this["args"] = [];
+        }
+        if (!("env" in $$source)) {
+            this["env"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new McpConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): McpConfig {
+        const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("args" in $$parsedSource) {
+            $$parsedSource["args"] = $$createField3_0($$parsedSource["args"]);
+        }
+        if ("env" in $$parsedSource) {
+            $$parsedSource["env"] = $$createField4_0($$parsedSource["env"]);
+        }
+        return new McpConfig($$parsedSource as Partial<McpConfig>);
     }
 }
 
@@ -126,8 +418,8 @@ export class Message {
      * Creates a new Message instance from a string or object.
      */
     static createFrom($$source: any = {}): Message {
-        const $$createField2_0 = $$createType1;
-        const $$createField4_0 = $$createType3;
+        const $$createField2_0 = $$createType6;
+        const $$createField4_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("Contents" in $$parsedSource) {
             $$parsedSource["Contents"] = $$createField2_0($$parsedSource["Contents"]);
@@ -136,6 +428,69 @@ export class Message {
             $$parsedSource["ToolCalls"] = $$createField4_0($$parsedSource["ToolCalls"]);
         }
         return new Message($$parsedSource as Partial<Message>);
+    }
+}
+
+export class ProviderConfig {
+    "id": string;
+    "provider_name": string;
+
+    /**
+     * openai/anthropic/ollama/...
+     */
+    "type": string;
+    "api_key": string;
+    "base_url"?: string;
+
+    /** Creates a new ProviderConfig instance. */
+    constructor($$source: Partial<ProviderConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("provider_name" in $$source)) {
+            this["provider_name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("api_key" in $$source)) {
+            this["api_key"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProviderConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProviderConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProviderConfig($$parsedSource as Partial<ProviderConfig>);
+    }
+}
+
+export class SkillConfig {
+    "id": string;
+    "global_path": string;
+
+    /** Creates a new SkillConfig instance. */
+    constructor($$source: Partial<SkillConfig> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("global_path" in $$source)) {
+            this["global_path"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SkillConfig($$parsedSource as Partial<SkillConfig>);
     }
 }
 
@@ -173,7 +528,12 @@ export class ToolCall {
 }
 
 // Private type creation functions
-const $$createType0 = ContentBlock.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = ToolCall.createFrom;
-const $$createType3 = $Create.Array($$createType2);
+const $$createType0 = EmotionAction.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $Create.Map($Create.Any, $$createType1);
+const $$createType3 = $Create.Array($Create.Any);
+const $$createType4 = $Create.Map($Create.Any, $Create.Any);
+const $$createType5 = ContentBlock.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = ToolCall.createFrom;
+const $$createType8 = $Create.Array($$createType7);

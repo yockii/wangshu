@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"strings"
+
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/yockii/wangshu/pkg/constant"
@@ -13,12 +15,19 @@ type Provider struct {
 
 // NewProvider 创建一个新的OpenAI Provider
 func NewProvider(apiKey, baseURL string) *Provider {
+	var opts []option.RequestOption
+	opts = append(opts, option.WithAPIKey(apiKey), option.WithBaseURL(baseURL))
+
+	if strings.Contains(baseURL, "openrouter.ai") {
+		opts = append(opts,
+			option.WithHeader("HTTP-Referer", constant.HttpReferer),
+			option.WithHeader("X-OpenRouter-Title", constant.OpenRouterTitle),
+			option.WithHeader("X-OpenRouter-Categories", constant.OpenRouterCategories),
+		)
+	}
+
 	client := openai.NewClient(
-		option.WithAPIKey(apiKey),
-		option.WithBaseURL(baseURL),
-		option.WithHeader("HTTP-Referer", constant.HttpReferer),
-		option.WithHeader("X-OpenRouter-Title", constant.OpenRouterTitle),
-		option.WithHeader("X-OpenRouter-Categories", constant.OpenRouterCategories),
+		opts...,
 	)
 	return &Provider{client: client}
 }

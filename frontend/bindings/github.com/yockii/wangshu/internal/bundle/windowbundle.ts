@@ -13,6 +13,10 @@ export function HideConfigWindow(): $CancellablePromise<void> {
     return $Call.ByID(452590901);
 }
 
+export function HideEmotionMappingWindow(): $CancellablePromise<void> {
+    return $Call.ByID(81050102);
+}
+
 export function HideLive2DWindow(): $CancellablePromise<void> {
     return $Call.ByID(3633599899);
 }
@@ -23,6 +27,10 @@ export function ShowChatWindow(): $CancellablePromise<void> {
 
 export function ShowConfigWindow(): $CancellablePromise<void> {
     return $Call.ByID(1082889232);
+}
+
+export function ShowEmotionMappingWindow(): $CancellablePromise<void> {
+    return $Call.ByID(1443830995);
 }
 
 export function ShowLive2DWindow(): $CancellablePromise<void> {

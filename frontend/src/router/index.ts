@@ -21,6 +21,14 @@ const routes = [
           title: "配置",
         },
         component: () => import("@/views/config.vue"),
+      },
+      {
+        path: "/emotion",
+        name: "emotion",
+        meta: {
+          title: "情感映射",
+        },
+        component: () => import("@/views/emotion.vue"),
       }
     ]
   },

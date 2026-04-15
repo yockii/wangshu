@@ -17,13 +17,15 @@
 </template>
 
 <script setup lang="ts">
-import { Minus, Square, X, BotMessageSquare, Settings } from '@lucide/vue'
+import { Minus, Square, X, BotMessageSquare, Settings, Sparkles } from '@lucide/vue'
 import RestoreWindow from '@/components/icons/RestoreWindow.vue'
 import { Window } from '@wailsio/runtime'
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import {WindowBundle, ConfigBundle, DialogBundle} from '../../bindings/github.com/yockii/wangshu/internal/bundle'
+
+const router = useRouter()
 
 const showChatWindow = async () => {
   try {

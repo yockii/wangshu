@@ -1,10 +1,11 @@
 package constant
 
 const (
-	StorePrefixAgent     = "agent:"
-	StorePrefixProvider  = "provider:"
-	StorePrefixChannel   = "channel:"
-	StorePrefixMcpServer = "mcp_server:"
+	StorePrefixAgent          = "agent:"
+	StorePrefixProvider       = "provider:"
+	StorePrefixChannel        = "channel:"
+	StorePrefixMcpServer      = "mcp_server:"
+	StorePrefixEmotionMapping = "emotion_mapping:"
 
 	StoreSkill   = "skill"
 	StoreBrowser = "browser"

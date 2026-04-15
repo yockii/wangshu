@@ -6,6 +6,8 @@ import (
 
 	"github.com/yockii/wangshu/internal/agent"
 	"github.com/yockii/wangshu/internal/app"
+	"github.com/yockii/wangshu/internal/config"
+	"github.com/yockii/wangshu/internal/store"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/bus"
 	"github.com/yockii/wangshu/pkg/channel"
@@ -26,6 +28,29 @@ func (b *ChatBundle) SetAgent(agent *agent.Agent) {
 	channel.RegisterChannel(constant.BuiltinChannelName, b.channel)
 	bus.Default().RegisterInboundHandler(constant.BuiltinChannelName, agent.SubscribeInbound)
 	bus.Default().RegisterOutboundHandler(b.channel.SubscribeOutbound)
+
+	bus.Default().RegisterEmotionHandler(func(emotion string) {
+		if config.DefaultCfg.Live2D.Enabled {
+			mapping, err := store.Get[*types.EmotionMapping](constant.StorePrefixEmotionMapping, config.DefaultCfg.Live2D.ModelName)
+			if err != nil || mapping == nil {
+				return
+			}
+			m, ok := mapping.Mappings[emotion]
+			if !ok {
+				return
+			}
+
+			if m.MotionGroup != "" {
+				app.GetApp().Event.Emit(constant.EventLive2DDoMotion, map[string]any{
+					"group": m.MotionGroup,
+					"no":    m.MotionNo,
+				})
+			}
+			if m.ExpressionId != "" {
+				app.GetApp().Event.Emit(constant.EventLive2DDoExpression, m.ExpressionId)
+			}
+		}
+	})
 }
 
 func (b *ChatBundle) HandleMessage(content string) {

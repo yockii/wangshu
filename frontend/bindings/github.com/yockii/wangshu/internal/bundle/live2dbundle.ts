@@ -7,18 +7,37 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as config$0 from "../config/models.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
 import * as types$0 from "../types/models.js";
 
 export function ExitEditMode(): $CancellablePromise<void> {
     return $Call.ByID(1230589064);
 }
 
-export function GetLive2DConfig(): $CancellablePromise<config$0.Live2DConfig | null> {
-    return $Call.ByID(1944404803).then(($result: any) => {
+export function GetCurrentModelName(): $CancellablePromise<string> {
+    return $Call.ByID(375949052);
+}
+
+export function GetEmotionMapping(modelName: string): $CancellablePromise<types$0.EmotionMapping | null> {
+    return $Call.ByID(2334424652, modelName).then(($result: any) => {
         return $$createType1($result);
+    });
+}
+
+export function GetEmotions(): $CancellablePromise<string[]> {
+    return $Call.ByID(2168120955).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+export function GetExpressions(): $CancellablePromise<string[]> {
+    return $Call.ByID(2724768416).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+export function GetLive2DConfig(): $CancellablePromise<types$0.Live2DConfig | null> {
+    return $Call.ByID(1944404803).then(($result: any) => {
+        return $$createType4($result);
     });
 }
 
@@ -26,8 +45,30 @@ export function GetModelFile(): $CancellablePromise<string> {
     return $Call.ByID(2429407108);
 }
 
+export function GetMotions(): $CancellablePromise<types$0.Live2DMotion[]> {
+    return $Call.ByID(1269180068).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
 export function IsEditMode(): $CancellablePromise<boolean> {
     return $Call.ByID(874476260);
+}
+
+export function PreviewExpression(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2953586843, id);
+}
+
+export function PreviewMotion(group: string, no: number): $CancellablePromise<void> {
+    return $Call.ByID(4151753687, group, no);
+}
+
+export function SaveEmotionMapping(mapping: types$0.EmotionMapping | null): $CancellablePromise<void> {
+    return $Call.ByID(431983007, mapping);
+}
+
+export function TriggerEmotion(emotion: string): $CancellablePromise<void> {
+    return $Call.ByID(1518821226, emotion);
 }
 
 export function UpdateLive2DExpressions(expressions: string[]): $CancellablePromise<void> {
@@ -39,5 +80,10 @@ export function UpdateLive2DMotions(motions: types$0.Live2DMotion[]): $Cancellab
 }
 
 // Private type creation functions
-const $$createType0 = config$0.Live2DConfig.createFrom;
+const $$createType0 = types$0.EmotionMapping.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = types$0.Live2DConfig.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);
+const $$createType5 = types$0.Live2DMotion.createFrom;
+const $$createType6 = $Create.Array($$createType5);

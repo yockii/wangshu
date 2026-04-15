@@ -1,7 +1,6 @@
 package types
 
 type Live2DMotion struct {
-	Group string
-	No    int
-	Name  string
+	Group string `json:"group"`
+	No    int    `json:"no"`
 }

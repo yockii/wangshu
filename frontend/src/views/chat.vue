@@ -39,7 +39,7 @@ import { Separator } from '@/components/ui/separator'
 import { nextTick, onMounted, ref, shallowRef } from 'vue';
 import type { Message } from '@/types/message'
 import MessageItem from '@/components/MessageItem.vue'
-import { ChatBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
+import { ChatBundle, WindowBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
 import { Events } from "@wailsio/runtime";
 import type { Message as BusMessage } from '../../bindings/github.com/yockii/wangshu/pkg/bus';
 
@@ -132,7 +132,25 @@ const scrollToBottom = () => {
   })
 }
 
+const updateLocation = async () => {
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const coords = position.coords
+      WindowBundle.UpdateGeoLocation(
+        coords.latitude + '',
+        coords.longitude + '',
+        coords.altitude + '',
+        coords.accuracy + '',
+        coords.altitudeAccuracy + '',
+        coords.heading + '',
+        coords.speed + '',
+      )
+    })
+  }
+}
+
 onMounted(async () => {
+  updateLocation()
   Events.On('chat-message', (msg: { data: BusMessage }) => {
     messages.value = [...messages.value, { id: Date.now(), content: msg.data.content, isUser: false }]
     inputDisabled.value = false

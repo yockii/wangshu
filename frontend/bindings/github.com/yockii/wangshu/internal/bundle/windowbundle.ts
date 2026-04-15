@@ -36,3 +36,7 @@ export function ShowEmotionMappingWindow(): $CancellablePromise<void> {
 export function ShowLive2DWindow(): $CancellablePromise<void> {
     return $Call.ByID(3615451778);
 }
+
+export function UpdateGeoLocation(latitude: string, longitude: string, altitude: string, accuracy: string, altitudeAccuracy: string, heading: string, speed: string): $CancellablePromise<void> {
+    return $Call.ByID(2584754536, latitude, longitude, altitude, accuracy, altitudeAccuracy, heading, speed);
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/yockii/wangshu/internal/app"
 	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/tools/configtool"
+	"github.com/yockii/wangshu/internal/tools/location"
 	"github.com/yockii/wangshu/internal/tools/message"
 	"github.com/yockii/wangshu/internal/tools/sprite"
 	"github.com/yockii/wangshu/internal/tools/system"
@@ -76,6 +77,8 @@ func RegisterTools() {
 	tools.GetDefaultToolRegistry().Register(browser.NewBrowserTool())
 
 	tools.GetDefaultToolRegistry().Register(sprite.NewSpriteTool())
+
+	tools.GetDefaultToolRegistry().Register(location.NewLocationTool())
 }
 
 func Initialize() (*agent.Agent, error) {

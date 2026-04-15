@@ -110,7 +110,6 @@ require (
 require (
 	github.com/dgraph-io/badger/v4 v4.9.1
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/invopop/jsonschema v0.13.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/larksuite/oapi-sdk-go/v3 v3.5.3
 	github.com/modelcontextprotocol/go-sdk v1.4.1

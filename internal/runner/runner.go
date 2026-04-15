@@ -189,6 +189,8 @@ func InitializeChannels(defaultAgent *agent.Agent) {
 					ilinkAgent = defaultAgent
 				}
 
+				ilinkChannel.SetWorkspace(ilinkAgent.GetWorkspace())
+
 				channel.RegisterChannel(name, ilinkChannel)
 				bus.Default().RegisterInboundHandler(name, ilinkAgent.SubscribeInbound)
 				bus.Default().RegisterOutboundHandler(ilinkChannel.SubscribeOutbound)

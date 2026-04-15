@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full flex flex-col justify-between px-4 py-2 wails-draggable">
-    <div class="w-50 absolute top-4 left-1/2 -translate-y-1/2">  
+    <div class="w-50 absolute top-4 left-1/2 -translate-y-1/2">
       <OpacitySlider />
     </div>
 
@@ -40,7 +40,7 @@ import { nextTick, onMounted, ref, shallowRef } from 'vue';
 import type { Message } from '@/types/message'
 import MessageItem from '@/components/MessageItem.vue'
 import { ChatBundle, WindowBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle';
-import { Events } from "@wailsio/runtime";
+import { Events, Window } from "@wailsio/runtime";
 import type { Message as BusMessage } from '../../bindings/github.com/yockii/wangshu/pkg/bus';
 
 // 使用 shallowRef 优化性能，避免深度监听整个消息数组
@@ -54,11 +54,14 @@ const sendMessage = async () => {
   if (!msgContent.value) {
     return
   }
-  await ChatBundle.HandleMessage(msgContent.value)
-  messages.value = [...messages.value, { id: Date.now(), content: msgContent.value, isUser: true }]
-  msgContent.value = ''
   inputDisabled.value = true
-
+  try {
+    await ChatBundle.HandleMessage(msgContent.value)
+    messages.value = [...messages.value, { id: Date.now(), content: msgContent.value, isUser: true }]
+    msgContent.value = ''
+  } finally {
+    inputDisabled.value = false
+  }
   // 滚动到最新消息
   scrollToBottom()
 }
@@ -155,7 +158,7 @@ onMounted(async () => {
     messages.value = [...messages.value, { id: Date.now(), content: msg.data.content, isUser: false }]
     inputDisabled.value = false
     sessionPercent.value = (msg.data.metadata.session_percent || 0) * 100
-    
+
     // 滚动到最新消息
     scrollToBottom()
   });

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	wechatbot "github.com/corespeed-io/wechatbot/golang"
 	"github.com/yockii/wangshu/pkg/bus"
@@ -15,6 +16,7 @@ import (
 
 type IlinkChannel struct {
 	name       string
+	workspace  string
 	credPath   string
 	bot        *wechatbot.Bot
 	stopCh     chan struct{}
@@ -29,6 +31,24 @@ type IlinkChannel struct {
 	onLoggedIn func()
 
 	pendingMessages sync.Map
+}
+
+func (c *IlinkChannel) SetWorkspace(workspace string) {
+	c.mu.Lock()
+	c.workspace = workspace
+	c.mu.Unlock()
+}
+
+func (c *IlinkChannel) SetBot(bot *wechatbot.Bot) {
+	c.mu.Lock()
+	c.bot = bot
+	c.mu.Unlock()
+}
+
+func (c *IlinkChannel) GetBot() *wechatbot.Bot {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.bot
 }
 
 type IlinkOption func(*IlinkChannel)
@@ -183,9 +203,20 @@ func (c *IlinkChannel) convertMessage(msg *wechatbot.IncomingMessage) bus.Inboun
 	case "image":
 		inboundMsg.Type = bus.MessageTypeImage
 		if len(msg.Images) > 0 {
-			inboundMsg.Media = &bus.MediaContent{
-				Type: bus.MediaTypeImage,
-				URL:  msg.Images[0].URL,
+			dm, err := c.bot.Download(c.ctx, msg)
+			if err != nil {
+				slog.Error("微信ilink渠道下载收到的图片失败", "error", err)
+				inboundMsg.Content = "[用户发送了一个图片，但下载失败]"
+			} else if dm != nil {
+				path := filepath.Join(c.workspace, "download", fmt.Sprintf("%d-%s", time.Now().Unix(), dm.FileName))
+				os.MkdirAll(filepath.Dir(path), 0755)
+				err = os.WriteFile(path, dm.Data, 0644)
+				if err != nil {
+					slog.Error("微信ilink渠道下载收到的图片失败", "error", err)
+					inboundMsg.Content = "[用户发送了一个图片，但下载失败]"
+				} else {
+					inboundMsg.Content = fmt.Sprintf("[用户发送了一个文件]\n文件名: %s\n文件路径: %s\n你可以读取这个文件来查看内容。", dm.FileName, path)
+				}
 			}
 		}
 	case "voice":
@@ -200,17 +231,43 @@ func (c *IlinkChannel) convertMessage(msg *wechatbot.IncomingMessage) bus.Inboun
 	case "video":
 		inboundMsg.Type = bus.MessageTypeVideo
 		if len(msg.Videos) > 0 && msg.Videos[0].Media != nil {
-			inboundMsg.Media = &bus.MediaContent{
-				Type: bus.MediaTypeVideo,
+			dm, err := c.bot.Download(c.ctx, msg)
+			if err != nil {
+				slog.Error("微信ilink渠道下载收到的视频失败", "error", err)
+				inboundMsg.Content = "[用户发送了一个视频，但下载失败]"
+			} else if dm != nil {
+				path := filepath.Join(c.workspace, "download", fmt.Sprintf("%d-%s", time.Now().Unix(), dm.FileName))
+				os.MkdirAll(filepath.Dir(path), 0755)
+				err = os.WriteFile(path, dm.Data, 0644)
+				if err != nil {
+					slog.Error("微信ilink渠道下载收到的视频失败", "error", err)
+					inboundMsg.Media = &bus.MediaContent{
+						Type: bus.MediaTypeVideo,
+					}
+				} else {
+					inboundMsg.Content = fmt.Sprintf("[用户发送了一个文件]\n文件名: %s\n文件路径: %s\n你可以读取这个文件来查看内容。", dm.FileName, path)
+				}
 			}
 		}
 	case "file":
 		inboundMsg.Type = bus.MessageTypeFile
 		if len(msg.Files) > 0 {
-			inboundMsg.Media = &bus.MediaContent{
-				Type:     bus.MediaTypeFile,
-				FileName: msg.Files[0].FileName,
-				Size:     msg.Files[0].Size,
+			dm, err := c.bot.Download(c.ctx, msg)
+			if err != nil {
+				slog.Error("微信ilink渠道下载收到的视频失败", "error", err)
+				inboundMsg.Content = "[用户发送了一个视频，但下载失败]"
+			} else if dm != nil {
+				path := filepath.Join(c.workspace, "download", fmt.Sprintf("%d-%s", time.Now().Unix(), dm.FileName))
+				os.MkdirAll(filepath.Dir(path), 0755)
+				err = os.WriteFile(path, dm.Data, 0644)
+				if err != nil {
+					slog.Error("微信ilink渠道下载收到的视频失败", "error", err)
+					inboundMsg.Media = &bus.MediaContent{
+						Type: bus.MediaTypeVideo,
+					}
+				} else {
+					inboundMsg.Content = fmt.Sprintf("[用户发送了一个文件]\n文件名: %s\n文件路径: %s\n你可以读取这个文件来查看内容。", dm.FileName, path)
+				}
 			}
 		}
 	default:

@@ -443,9 +443,10 @@
         <div class="max-w-4xl mx-auto flex items-center justify-between">
           <span v-if="hasChanges" class="text-sm text-muted-foreground">有未保存的更改</span>
           <span v-else class="text-sm text-muted-foreground/50">无更改</span>
-          <Button :disabled="!hasChanges" @click="saveConfig" :variant="hasChanges ? 'default' : 'outline'">
-            <Save class="w-4 h-4 mr-2" />
-            保存配置
+          <Button :disabled="!hasChanges || saving" @click="saveConfig" :variant="hasChanges && !saving ? 'default' : 'outline'">
+            <Save class="w-4 h-4 mr-2" v-if="!saving" />
+            <Spinner class="w-4 h-4 mr-2" v-else />
+            {{ saving ? '保存中...' : '保存配置' }}
           </Button>
         </div>
       </div>
@@ -545,14 +546,19 @@ const markChanged = () => {
   }
 }
 
+const saving = ref(false)
+
 const saveConfig = async () => {
   if (!config.value) return
+  saving.value = true
   try {
     await ConfigBundle.SaveConfig(config.value)
     originalConfig.value = JSON.stringify(config.value)
     hasChanges.value = false
   } catch (error) {
     console.error('Failed to save config:', error)
+  } finally {
+    saving.value = false
   }
 }
 

@@ -7,15 +7,12 @@
       <nav class="flex-1 overflow-y-auto p-2">
         <ul class="space-y-1">
           <li v-for="section in sections" :key="section.id">
-            <button
-              @click="scrollToSection(section.id)"
-              :class="[
-                'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors text-left',
-                activeSection === section.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-              ]"
-            >
+            <button @click="scrollToSection(section.id)" :class="[
+              'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors text-left',
+              activeSection === section.id
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+            ]">
               <component :is="section.icon" class="w-4 h-4" />
               {{ section.label }}
             </button>
@@ -25,12 +22,7 @@
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <div
-        v-if="config"
-        ref="contentRef"
-        @scroll="handleScroll"
-        class="flex-1 overflow-y-auto p-6"
-      >
+      <div v-if="config" ref="contentRef" @scroll="handleScroll" class="flex-1 overflow-y-auto p-6">
         <div class="max-w-4xl mx-auto space-y-8 pb-24">
           <section id="section-providers" class="scroll-mt-6">
             <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -38,16 +30,15 @@
               Providers
             </h3>
             <div class="space-y-4">
-              <div v-for="(provider, name) in config?.providers" :key="name" class="p-4 border border-border rounded-lg bg-card">
+              <div v-for="(provider, name) in config?.providers" :key="name"
+                class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
-                  <Input
-                    :modelValue="editingNames.providers[name as string] ?? name"
+                  <Input :modelValue="editingNames.providers[name as string] ?? name"
                     @update:modelValue="(newName: string | number) => updateEditingName('providers', name as string, String(newName))"
                     @blur="confirmRename('providers', name as string)"
-                    @keyup.enter="($event.target as HTMLInputElement).blur()"
-                    class="font-medium"
-                  />
-                  <Button variant="ghost" size="icon-sm" @click="removeProvider(name as string)" class="text-destructive hover:text-destructive shrink-0">
+                    @keyup.enter="($event.target as HTMLInputElement).blur()" class="font-medium" />
+                  <Button variant="ghost" size="icon-sm" @click="removeProvider(name as string)"
+                    class="text-destructive hover:text-destructive shrink-0">
                     <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
@@ -88,16 +79,15 @@
               Agents
             </h3>
             <div class="space-y-4">
-              <div v-for="(agent, name) in config?.agents" :key="name" class="p-4 border border-border rounded-lg bg-card">
+              <div v-for="(agent, name) in config?.agents" :key="name"
+                class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
-                  <Input
-                    :modelValue="editingNames.agents[name as string] ?? name"
+                  <Input :modelValue="editingNames.agents[name as string] ?? name"
                     @update:modelValue="(newName: string | number) => updateEditingName('agents', name as string, String(newName))"
                     @blur="confirmRename('agents', name as string)"
-                    @keyup.enter="($event.target as HTMLInputElement).blur()"
-                    class="font-medium"
-                  />
-                  <Button variant="ghost" size="icon-sm" @click="removeAgent(name as string)" class="text-destructive hover:text-destructive shrink-0">
+                    @keyup.enter="($event.target as HTMLInputElement).blur()" class="font-medium" />
+                  <Button variant="ghost" size="icon-sm" @click="removeAgent(name as string)"
+                    class="text-destructive hover:text-destructive shrink-0">
                     <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
@@ -125,7 +115,8 @@
                   </div>
                   <div class="space-y-2">
                     <label class="text-sm text-muted-foreground">Temperature</label>
-                    <Input v-model.number="agent!.temperature" type="number" step="0.1" min="0" max="2" @input="markChanged" />
+                    <Input v-model.number="agent!.temperature" type="number" step="0.1" min="0" max="2"
+                      @input="markChanged" />
                   </div>
                   <div class="space-y-2">
                     <label class="text-sm text-muted-foreground">Max Tokens</label>
@@ -154,16 +145,15 @@
               Channels
             </h3>
             <div class="space-y-4">
-              <div v-for="(channel, name) in config?.channels" :key="name" class="p-4 border border-border rounded-lg bg-card">
+              <div v-for="(channel, name) in config?.channels" :key="name"
+                class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
-                  <Input
-                    :modelValue="editingNames.channels[name as string] ?? name"
+                  <Input :modelValue="editingNames.channels[name as string] ?? name"
                     @update:modelValue="(newName: string | number) => updateEditingName('channels', name as string, String(newName))"
                     @blur="confirmRename('channels', name as string)"
-                    @keyup.enter="($event.target as HTMLInputElement).blur()"
-                    class="font-medium"
-                  />
-                  <Button variant="ghost" size="icon-sm" @click="removeChannel(name as string)" class="text-destructive hover:text-destructive shrink-0">
+                    @keyup.enter="($event.target as HTMLInputElement).blur()" class="font-medium" />
+                  <Button variant="ghost" size="icon-sm" @click="removeChannel(name as string)"
+                    class="text-destructive hover:text-destructive shrink-0">
                     <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
@@ -221,7 +211,8 @@
                   <template v-if="channel?.type === 'wechat_ilink'">
                     <div class="col-span-2 space-y-2">
                       <label class="text-sm text-muted-foreground">凭证存储路径 (可选)</label>
-                      <Input v-model="channel!.cred_path" placeholder="默认: .wechatbot/{渠道名}_credentials.json" @input="markChanged" />
+                      <Input v-model="channel!.cred_path" placeholder="默认: .wechatbot/{渠道名}_credentials.json"
+                        @input="markChanged" />
                     </div>
                     <div class="col-span-2 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
                       <p class="font-medium text-foreground">微信 iLink 渠道说明：</p>
@@ -247,23 +238,23 @@
               MCP Servers
             </h3>
             <div class="space-y-4">
-              <div v-for="(mcpServer, name) in config.mcp_servers" :key="name" class="p-4 border border-border rounded-lg bg-card">
+              <div v-for="(mcpServer, name) in config.mcp_servers" :key="name"
+                class="p-4 border border-border rounded-lg bg-card">
                 <div class="flex items-center justify-between mb-3 gap-4">
-                  <Input
-                    :modelValue="editingNames.mcp_servers[name as string] ?? name"
+                  <Input :modelValue="editingNames.mcp_servers[name as string] ?? name"
                     @update:modelValue="(newName: string | number) => updateEditingName('mcp_servers', name as string, String(newName))"
                     @blur="confirmRename('mcp_servers', name as string)"
-                    @keyup.enter="($event.target as HTMLInputElement).blur()"
-                    class="font-medium"
-                  />
-                  <Button variant="ghost" size="icon-sm" @click="removeMcpServer(name as string)" class="text-destructive hover:text-destructive shrink-0">
+                    @keyup.enter="($event.target as HTMLInputElement).blur()" class="font-medium" />
+                  <Button variant="ghost" size="icon-sm" @click="removeMcpServer(name as string)"
+                    class="text-destructive hover:text-destructive shrink-0">
                     <Trash2 class="w-4 h-4" />
                   </Button>
                 </div>
                 <div class="space-y-4">
                   <div class="space-y-2">
                     <label class="text-sm text-muted-foreground">Command</label>
-                    <Input v-model="(mcpServer as McpConfig).command" placeholder="e.g., npx, uvx, python" @input="markChanged" />
+                    <Input v-model="(mcpServer as McpConfig).command" placeholder="e.g., npx, uvx, python"
+                      @input="markChanged" />
                   </div>
                   <div class="space-y-2">
                     <label class="text-sm text-muted-foreground">Current Working Directory (CWD)</label>
@@ -278,21 +269,14 @@
                       </Button>
                     </div>
                     <div v-if="(mcpServer as McpConfig).args?.length" class="flex flex-wrap gap-2">
-                      <div 
-                        v-for="(arg, index) in (mcpServer as McpConfig).args" 
-                        :key="index"
-                        class="flex items-center gap-1 bg-muted px-2 py-1 rounded-md"
-                      >
-                        <Input
-                          :modelValue="arg"
+                      <div v-for="(arg, index) in (mcpServer as McpConfig).args" :key="index"
+                        class="flex items-center gap-1 bg-muted px-2 py-1 rounded-md">
+                        <Input :modelValue="arg"
                           @update:modelValue="(v: string | number) => { (mcpServer as McpConfig).args[index] = String(v); markChanged() }"
                           class="h-6 w-auto min-w-[60px] text-sm border-0 bg-transparent p-1 focus-visible:ring-0"
-                          placeholder="参数值"
-                        />
-                        <button 
-                          @click="removeMcpArg(mcpServer as McpConfig, index)"
-                          class="text-muted-foreground hover:text-destructive"
-                        >
+                          placeholder="参数值" />
+                        <button @click="removeMcpArg(mcpServer as McpConfig, index)"
+                          class="text-muted-foreground hover:text-destructive">
                           <X class="w-3 h-3" />
                         </button>
                       </div>
@@ -308,31 +292,21 @@
                       </Button>
                     </div>
                     <div v-if="getEnvEntries(mcpServer?.env).length" class="space-y-2">
-                      <div 
-                        v-for="[key, value] in getEnvEntries(mcpServer?.env)" 
-                        :key="key"
-                        class="flex items-center gap-2"
-                      >
-                        <Input
-                          :modelValue="key"
-                          @update:modelValue="(newKey: string | number) => {
-                            const env = (mcpServer as McpConfig).env
-                            const oldValue = env[key]
-                            delete env[key]
-                            env[String(newKey)] = oldValue
-                            markChanged()
-                          }"
-                          class="flex-1"
-                          placeholder="KEY"
-                        />
+                      <div v-for="[key, value] in getEnvEntries(mcpServer?.env)" :key="key"
+                        class="flex items-center gap-2">
+                        <Input :modelValue="key" @update:modelValue="(newKey: string | number) => {
+                          const env = (mcpServer as McpConfig).env
+                          const oldValue = env[key]
+                          delete env[key]
+                          env[String(newKey)] = oldValue
+                          markChanged()
+                        }" class="flex-1" placeholder="KEY" />
                         <span class="text-muted-foreground">=</span>
-                        <Input
-                          :modelValue="value"
+                        <Input :modelValue="value"
                           @update:modelValue="(v: string | number) => { (mcpServer as McpConfig).env[key] = String(v); markChanged() }"
-                          class="flex-1"
-                          placeholder="value"
-                        />
-                        <Button variant="ghost" size="icon-sm" @click="removeMcpEnv(mcpServer as McpConfig, key)" class="text-destructive hover:text-destructive shrink-0">
+                          class="flex-1" placeholder="value" />
+                        <Button variant="ghost" size="icon-sm" @click="removeMcpEnv(mcpServer as McpConfig, key)"
+                          class="text-destructive hover:text-destructive shrink-0">
                           <X class="w-4 h-4" />
                         </Button>
                       </div>
@@ -349,9 +323,13 @@
                 <p class="font-medium text-foreground">MCP (Model Context Protocol) 服务器可以为 AI 提供额外的工具能力。</p>
                 <p>常见示例：</p>
                 <ul class="list-disc list-inside space-y-1 ml-2">
-                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y @modelcontextprotocol/server-filesystem /path</code> - 文件系统访问</li>
-                  <li><code class="bg-muted px-1 rounded">uvx</code> + <code class="bg-muted px-1 rounded">mcp-server-git</code> - Git 操作</li>
-                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y @modelcontextprotocol/server-github</code> - GitHub 集成</li>
+                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y
+            @modelcontextprotocol/server-filesystem /path</code> - 文件系统访问</li>
+                  <li><code class="bg-muted px-1 rounded">uvx</code> + <code
+                      class="bg-muted px-1 rounded">mcp-server-git</code> -
+                    Git 操作</li>
+                  <li><code class="bg-muted px-1 rounded">npx</code> + <code class="bg-muted px-1 rounded">-y
+            @modelcontextprotocol/server-github</code> - GitHub 集成</li>
                 </ul>
               </div>
             </div>
@@ -414,7 +392,8 @@
                 <div class="col-span-2 space-y-2">
                   <label class="text-sm text-muted-foreground">模型目录</label>
                   <div class="flex gap-2">
-                    <Input v-model="config!.live2d.model_dir" placeholder="选择模型存放目录" @input="onModelDirChange" class="flex-1" />
+                    <Input v-model="config!.live2d.model_dir" placeholder="选择模型存放目录" @input="onModelDirChange"
+                      class="flex-1" />
                     <Button variant="outline" size="icon" @click="selectLive2DModelFolder">
                       <FolderOpen class="w-4 h-4" />
                     </Button>
@@ -422,7 +401,7 @@
                 </div>
                 <div class="col-span-2 space-y-2">
                   <label class="text-sm text-muted-foreground">选择模型</label>
-                  <Select v-model="config!.live2d.model_name" @update:modelValue="markChanged">
+                  <Select v-model="config!.live2d.model_name" @update:modelValue="markChanged" @update:open="loadLive2DModels">
                     <SelectTrigger class="w-full">
                       <SelectValue placeholder="选择模型" />
                     </SelectTrigger>
@@ -443,7 +422,8 @@
         <div class="max-w-4xl mx-auto flex items-center justify-between">
           <span v-if="hasChanges" class="text-sm text-muted-foreground">有未保存的更改</span>
           <span v-else class="text-sm text-muted-foreground/50">无更改</span>
-          <Button :disabled="!hasChanges || saving" @click="saveConfig" :variant="hasChanges && !saving ? 'default' : 'outline'">
+          <Button :disabled="!hasChanges || saving" @click="saveConfig"
+            :variant="hasChanges && !saving ? 'default' : 'outline'">
             <Save class="w-4 h-4 mr-2" v-if="!saving" />
             <Spinner class="w-4 h-4 mr-2" v-else />
             {{ saving ? '保存中...' : '保存配置' }}
@@ -458,7 +438,7 @@
 import { onMounted, ref, markRaw, computed } from 'vue'
 import { ConfigBundle, WindowBundle } from '../../bindings/github.com/yockii/wangshu/internal/bundle'
 import { Config } from '../../bindings/github.com/yockii/wangshu/internal/config'
-import { AgentConfig, ProviderConfig, ChannelConfig, McpConfig } from '../../bindings/github.com/yockii/wangshu/internal/types'
+import { AgentConfig, ProviderConfig, ChannelConfig, McpConfig, Live2DConfig, SkillConfig, BrowserConfig } from '../../bindings/github.com/yockii/wangshu/internal/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -553,7 +533,7 @@ const saveConfig = async () => {
   saving.value = true
   try {
     await ConfigBundle.SaveConfig(config.value)
-    originalConfig.value = JSON.stringify(config.value)
+    loadConfig()
     hasChanges.value = false
   } catch (error) {
     console.error('Failed to save config:', error)
@@ -572,7 +552,7 @@ const confirmRename = (type: 'providers' | 'agents' | 'channels' | 'mcp_servers'
     delete editingNames.value[type][oldName]
     return
   }
-  
+
   if (type === 'providers') {
     renameProvider(oldName, newName)
   } else if (type === 'agents') {
@@ -582,7 +562,7 @@ const confirmRename = (type: 'providers' | 'agents' | 'channels' | 'mcp_servers'
   } else if (type === 'mcp_servers') {
     renameMcpServer(oldName, newName)
   }
-  
+
   delete editingNames.value[type][oldName]
 }
 
@@ -602,6 +582,7 @@ const addProvider = () => {
     config.value.providers = {}
   }
   config.value.providers[name] = new ProviderConfig({
+    provider_name: name,
     type: 'openai',
     api_key: '',
     base_url: ''
@@ -631,9 +612,10 @@ const addAgent = () => {
     config.value.agents = {}
   }
   config.value.agents[name] = new AgentConfig({
+    agent_name: name,
     provider: providerNames.value[0] || '',
     model: '',
-    workspace: '~/.wangshu/workspace',
+    workspace: './workspace',
     temperature: 0.7,
     max_tokens: 0,
     enable_image_recognition: false,
@@ -664,6 +646,7 @@ const addChannel = () => {
     config.value.channels = {}
   }
   config.value.channels[name] = new ChannelConfig({
+    channel_name: name,
     type: 'feishu',
     enabled: false,
     agent: agentNames.value[0] || ''
@@ -682,7 +665,7 @@ const renameMcpServer = (oldName: string, newName: string) => {
   const mcpServer = (config.value as any).mcp_servers[oldName]
   if (!mcpServer) return
   delete (config.value as any).mcp_servers[oldName]
-  ;(config.value as any).mcp_servers[newName] = mcpServer
+    ; (config.value as any).mcp_servers[newName] = mcpServer
   markChanged()
 }
 
@@ -788,12 +771,16 @@ const onModelDirChange = async () => {
   await loadLive2DModels()
 }
 
-onMounted(async () => {
+const loadConfig = async () => {
   config.value = await ConfigBundle.GetConfig()
   console.log(config.value)
   if (config.value) {
     originalConfig.value = JSON.stringify(config.value)
     await loadLive2DModels()
   }
+}
+
+onMounted(() => {
+  loadConfig()
 })
 </script>

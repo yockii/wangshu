@@ -4,8 +4,8 @@ set -e
 # Build configuration
 APP_NAME="wangshu-desktop"
 BUNDLE_ID="com.xhnic.wangshu"
-VERSION="v0.5.0-alpha.4"
-BUILD_NUMBER="v0.5.0-alpha.4"
+VERSION="v0.5.0-alpha.5"
+BUILD_NUMBER="v0.5.0-alpha.5"
 BUILD_DIR="build/ios"
 TARGET="simulator"
 

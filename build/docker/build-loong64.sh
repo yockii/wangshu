@@ -9,6 +9,8 @@ export GOARCH=loong64
 export GOOS=linux
 
 if [ -d "frontend" ] && [ -f "frontend/package.json" ] && [ ! -d "frontend/dist" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     (cd frontend && rm -rf node_modules package-lock.json && npm install --silent --force && npm run build --silent)
 fi
 

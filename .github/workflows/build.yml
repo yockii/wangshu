@@ -12,11 +12,6 @@ on:
         required: true
         type: boolean
         default: true
-      skip_loong64:
-        description: 'Skip Loong64 build (slow, ~30-60 min)'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -124,16 +119,21 @@ jobs:
           if-no-files-found: error
 
   build-loong64:
-    if: ${{ !inputs.skip_loong64 }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Register loong64 support
-        run: docker run --rm --privileged tonistiigi/binfmt --install loong64
+      # 1. 核心修正：只使用 tonistiigi/binfmt，并明确指定库路径
+      - name: Setup QEMU for Loong64
+        id: qemu-setup
+        run: |
+          # 安装并注册 loong64，指定库路径前缀
+          # 这一步会输出注册信息，我们主要关注它是否成功
+          docker run --rm --privileged tonistiigi/binfmt --install loong64 --library-prefix /usr/loongarch64-linux-gnu
+          
+          # 验证注册状态
+          echo "Checking binfmt status..."
+          cat /proc/sys/fs/binfmt_misc/qemu-loongarch64 || echo "Binfmt not found!"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -146,15 +146,15 @@ jobs:
         run: |
           docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest || true
 
+      # 2. 构建镜像
+      # 注意：这里不需要传 build-arg 给 docker buildx，因为 binfmt 是在宿主机层面生效的
       - name: Build Loong64 image
         run: |
-          docker build --platform linux/loong64 \
+          docker buildx build --platform linux/loong64 \
             -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
             --cache-from ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest \
+            --push \
             -f build/docker/Dockerfile.cross-loong64 build/docker/
-
-      - name: Push image
-        run: docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/wails-cross-loong64:latest
 
       - name: Build linux/loong64
         run: |
@@ -171,7 +171,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [build-cross, build-arm64]
+    needs: [build-cross, build-arm64, build-loong64]
     if: ${{ always() && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:

@@ -340,6 +340,11 @@ export class McpConfig {
      */
     "url"?: string;
 
+    /**
+     * 自定义HTTP请求头，用于http、sse等
+     */
+    "headers"?: { [_ in string]?: string };
+
     /** Creates a new McpConfig instance. */
     constructor($$source: Partial<McpConfig> = {}) {
         if (!("id" in $$source)) {

@@ -32,4 +32,5 @@ const (
 	ToolNameWebFetch    = "web.fetch"
 	ToolNameBrowser     = "browser"
 	ToolNameSprite      = "sprite"
+	ToolNameLocation    = "location"
 )

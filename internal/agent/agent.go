@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/yockii/wangshu/internal/config"
@@ -27,6 +28,9 @@ type Agent struct {
 	taskManager            *task.TaskManager
 	agentName              string
 	enableImageRecognition bool
+
+	contextMap map[string]context.CancelFunc
+	contextMu  sync.Mutex
 }
 
 func NewAgent(provider llm.Provider, name, model, memoryOrganizeTime string, sessionTTL time.Duration, maxIter int, workspaceDir string, enableImageRecognition bool) (*Agent, error) {
@@ -38,6 +42,7 @@ func NewAgent(provider llm.Provider, name, model, memoryOrganizeTime string, ses
 		maxIter:                maxIter,
 		workspaceDir:           workspaceDir,
 		enableImageRecognition: enableImageRecognition,
+		contextMap:             make(map[string]context.CancelFunc),
 	}
 
 	err := config.EnsureWorkspace(workspaceDir)
@@ -72,6 +77,12 @@ func (a *Agent) GetWorkspace() string {
 func (a *Agent) Stop() {
 	a.taskManager.Stop()
 	a.cronManager.Stop()
+	a.contextMu.Lock()
+	for _, c := range a.contextMap {
+		c()
+	}
+	a.contextMap = make(map[string]context.CancelFunc)
+	a.contextMu.Unlock()
 }
 
 func (a *Agent) RunWithChannel(ctx context.Context, msg bus.InboundMessage) (string, error) {
@@ -143,6 +154,22 @@ func (a *Agent) loadImageAsBase64(filePath string) (string, string, error) {
 }
 
 func (a *Agent) SubscribeInbound(ctx context.Context, msg bus.InboundMessage) {
+	ctxKey := fmt.Sprintf("%s-%s", msg.Metadata.Channel, msg.Metadata.ChatID)
+	a.contextMu.Lock()
+	if cancelFunc, ok := a.contextMap[ctxKey]; ok {
+		cancelFunc()
+		delete(a.contextMap, ctxKey)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	a.contextMap[ctxKey] = cancel
+	a.contextMu.Unlock()
+	defer func() {
+		a.contextMu.Lock()
+		delete(a.contextMap, ctxKey)
+		a.contextMu.Unlock()
+		cancel()
+	}()
+
 	response, err := a.RunWithChannel(ctx, msg)
 	if err != nil {
 		slog.Error("Failed to run with channel", "error", err)

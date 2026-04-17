@@ -1,8 +1,17 @@
 package bundle
 
-import "github.com/yockii/wangshu/internal/app"
+import (
+	"fmt"
+
+	"github.com/yockii/wangshu/internal/app"
+	"github.com/yockii/wangshu/internal/variable"
+)
 
 type WindowBundle struct{}
+
+func (w *WindowBundle) UpdateGeoLocation(latitude, longitude, altitude, accuracy, altitudeAccuracy, heading, speed string) {
+	variable.Geolocation = fmt.Sprintf("latitude: %s, longitude: %s, altitude: %s, accuracy: %s, altitudeAccuracy: %s, heading: %s, speed: %s", latitude, longitude, altitude, accuracy, altitudeAccuracy, heading, speed)
+}
 
 func (w *WindowBundle) ShowChatWindow() {
 	app.ShowChatWindow()

@@ -32,7 +32,8 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 	}
 
 	// availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
-	availableTools := tools.GetDefaultToolRegistry().GetProviderDefsWithExcluedTools(constant.ToolNameMessage)
+	// availableTools := tools.GetDefaultToolRegistry().GetProviderDefsWithExcluedTools(constant.ToolNameMessage)
+	availableTools := tools.GetDefaultToolRegistry().GetProviderDefs()
 
 	mcpTools, _ := mcp.DefaultManager.GetMcpTools()
 
@@ -40,6 +41,12 @@ func (a *Agent) runLoop(ctx context.Context, sess *session.Session, msgs []llm.M
 
 	rateLimitCount := 0
 	for i := 0; i < a.maxIter; i++ {
+		select {
+		case <-ctx.Done():
+			return "", nil
+		default:
+		}
+
 		resp, err := a.provider.Chat(ctx, a.model, msgs, availableTools, options)
 
 		if err != nil {

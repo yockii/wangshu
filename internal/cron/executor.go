@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
-	"github.com/yockii/wangshu/internal/config"
 	"github.com/yockii/wangshu/internal/types"
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/llm"
@@ -23,6 +24,116 @@ type CronJobExecutionResult struct {
 	TaskPriority    string `json:"taskPriority,omitempty" jsonschema:"type=string,enum=low,normal,high,description=任务优先级"`
 }
 
+// 由于很多大模型对json响应不稳定，所以改用tool call模式
+func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo) error {
+	slog.Debug("执行定时任务", "jobID", job.ID)
+	userMsgContent := fmt.Sprintf("任务ID: %s\n\n任务内容: %s", job.ID, job.Description)
+	if job.InGroup {
+		userMsgContent += "\n\n你当前在群聊中，如果任务内容涉及到群聊中的某个人，你需要@那个人"
+	}
+	// 1. 准备消息
+	messages := []llm.Message{
+		{
+			Role:    constant.RoleSystem,
+			Content: constant.CronJobExecutionPrompt,
+		},
+		{
+			Role:    constant.RoleUser,
+			Content: userMsgContent,
+		},
+	}
+
+	ts := tools.GetDefaultToolRegistry().GetSelectedToolsInProviderDefs(constant.ToolNameMessage, constant.ToolNameTask)
+
+	// 调用大模型
+	finalContent := ""
+	rateLimitCount := 0
+	for i := 0; i < 10; i++ {
+		resp, err := mgr.provider.Chat(ctx, mgr.model, messages, ts, nil)
+		if err != nil {
+			if strings.Contains(err.Error(), "429") && rateLimitCount < 10 {
+				slog.Error("LLM call failed (429)", "error", err)
+				rateLimitCount++
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			return fmt.Errorf("LLM调用失败: %w", err)
+		}
+
+		rateLimitCount = 0
+		if len(resp.Message.ToolCalls) == 0 {
+			finalContent = resp.Message.Content
+			break
+		}
+
+		// 加到发给大模型的对话列表中
+		messages = append(messages, llm.Message{
+			Role:      constant.RoleAssistant,
+			Content:   resp.Message.Content,
+			ToolCalls: resp.Message.ToolCalls,
+		})
+
+		// 执行所有的工具调用
+		for _, tc := range resp.Message.ToolCalls {
+			toolResult, err := mgr.executeToolCall(ctx, tc, job.Channel, job.ChatID, "", "")
+			if err != nil {
+				toolResult = fmt.Sprintf("Error executing tool %s: %v", tc.Name, err)
+			}
+
+			messages = append(messages, llm.Message{
+				Role:      constant.RoleTool,
+				Content:   toolResult,
+				ToolCalls: []llm.ToolCall{tc},
+			})
+		}
+	}
+	slog.Debug("定时任务执行完成", "jobID", job.ID, "finalContent", finalContent)
+	return nil
+}
+
+// executeToolCall 执行工具调用
+func (mgr *CronManager) executeToolCall(ctx context.Context, tc llm.ToolCall, channel, chatID, chatType, senderID string) (string, error) {
+	var args map[string]any
+	if tc.Arguments != "" {
+		err := json.Unmarshal([]byte(tc.Arguments), &args)
+		if err != nil {
+			return "", fmt.Errorf("Failed to parse tool arguments: %w", err)
+		}
+	}
+
+	if args == nil {
+		args = make(map[string]any)
+	}
+
+	args[constant.ToolCallParamAgentName] = mgr.agentName
+	args[constant.ToolCallParamWorkspace] = mgr.workspace
+	args[constant.ToolCallParamChannel] = channel
+	args[constant.ToolCallParamChatID] = chatID
+	args[constant.ToolCallParamSenderID] = senderID
+	args[constant.ToolCallParamChatType] = chatType
+
+	// Create ToolContext with agent information
+	toolCtx := tooltypes.NewToolContext(
+		mgr.agentName,
+		"", // agent owner - can be added later
+		mgr.workspace,
+		"", // sessionID - can be passed separately if needed
+		channel,
+		chatID,
+		mgr.provider,
+		mgr.model,
+	)
+
+	result := tools.GetDefaultToolRegistry().ExecuteWithContext(ctx, tc.Name, args, toolCtx, channel, chatID)
+	if result.Err != nil {
+		return result.Raw, fmt.Errorf("Tool execution failed: %q", result.Err)
+	}
+	return result.Raw, nil
+}
+
+//*/
+
+/*
 // Execute 执行定时任务
 func (mgr *CronManager) Execute(ctx context.Context, job *types.BasicJobInfo, retryTimes ...int) error {
 	slog.Debug("执行定时任务", "jobID", job.ID)
@@ -188,3 +299,5 @@ func (mgr *CronManager) executeTool(ctx context.Context, channel, chatID, toolNa
 	slog.Info("定时任务工具执行完成", "jobChannel", channel, "jobChatID", chatID, "tool", toolName)
 	return nil
 }
+
+//*/

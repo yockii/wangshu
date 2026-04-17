@@ -363,6 +363,7 @@ func SaveConfig(cfg *Config) error {
 
 	for name, agent := range cfg.Agents {
 		agent.AgentName = name
+		agent.Workspace = utils.ExpandPath(agent.Workspace)
 		store.Save(constant.StorePrefixAgent, agent)
 	}
 
@@ -377,12 +378,15 @@ func SaveConfig(cfg *Config) error {
 	}
 
 	cfg.Skill.ID = constant.SkillID
+	cfg.Skill.GlobalPath = utils.ExpandPath(cfg.Skill.GlobalPath)
 	store.Save(constant.StoreSkill, &cfg.Skill)
 
 	cfg.Browser.ID = constant.BrowserID
+	cfg.Browser.DataDir = utils.ExpandPath(cfg.Browser.DataDir)
 	store.Save(constant.StoreBrowser, &cfg.Browser)
 
 	cfg.Live2D.ID = constant.Live2DID
+	cfg.Live2D.ModelDir = utils.ExpandPath(cfg.Live2D.ModelDir)
 	store.Save(constant.StoreLive2D, &cfg.Live2D)
 
 	return nil

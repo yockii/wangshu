@@ -237,12 +237,12 @@ func ShowQRCodeWindow(qrURL string) {
 			BackgroundColour: application.NewRGBA(255, 255, 255, 255),
 			BackgroundType:   application.BackgroundTypeSolid,
 			URL:              "#/qrcode",
-			Width:            320,
-			Height:           400,
-			MinWidth:         320,
-			MinHeight:        400,
-			MaxWidth:         320,
-			MaxHeight:        400,
+			Width:            400,
+			Height:           550,
+			MinWidth:         400,
+			MinHeight:        550,
+			MaxWidth:         400,
+			MaxHeight:        550,
 			DisableResize:    true,
 			AlwaysOnTop:      true,
 			InitialPosition:  application.WindowCenter,
@@ -259,7 +259,8 @@ func HideQRCodeWindow() {
 	windowLocker.Lock()
 	defer windowLocker.Unlock()
 	if qrcodeWindow != nil {
-		qrcodeWindow.Hide()
+		qrcodeWindow.Close()
+		qrcodeWindow = nil
 	}
 }
 

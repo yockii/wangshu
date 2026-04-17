@@ -18,7 +18,7 @@ type MessageTool struct {
 func NewMessageTool() *MessageTool {
 	tool := new(MessageTool)
 	tool.Name_ = constant.ToolNameMessage
-	tool.Desc_ = "Send a message/notification to the user. Use this tool when you need to communicate with the user, inform them about progress, report results, or provide any information that the user should see. This is the primary way to send messages to the user interface. Do NOT use write_file or other file operations to send messages to users."
+	tool.Desc_ = "Send a message/notification to the user. Use this tool in the following scenarios: 1) In asynchronous tasks (like scheduled tasks) where you need to send messages to users without an ongoing conversation; 2) When you need to send files or images to users (regardless of whether it's in a regular conversation or not). Do NOT use this tool for regular text-only conversation responses, as the system will automatically send your regular response content. Using this tool for regular text-only responses will result in duplicate messages. This is the primary way to send messages to the user interface in asynchronous scenarios and to send files/images. Do NOT use write_file or other file operations to send messages to users."
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{

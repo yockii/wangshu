@@ -1,4 +1,20 @@
 
+## [v0.5.0-alpha.5]
+
+
+### ⚙️ Miscellaneous Tasks
+
+
+- *(docker)* 拆分 RUN 指令并更新 Node.js 安装方式
+
+
+### 🚀 Features
+
+
+- *(mcp)* 增加Mcp的HTTP和SSE实现
+
+
+
 ## [v0.5.0-alpha.4] - 2026-04-15
 
 

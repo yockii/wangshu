@@ -171,64 +171,14 @@ tasks:
       Usage: task release VERSION=1.0.0 [TITLE="Release Title"] [DRAFT=true]
     cmds:
       - cmd: |
-          $VersionTag = if ("{{.VERSION}}".StartsWith("v")) { "{{.VERSION}}" } else { "v{{.VERSION}}" }
-          $Today = Get-Date -Format "yyyy-MM-dd"
-          Write-Host "Preparing release $VersionTag ..." -ForegroundColor Cyan
-          git cliff --tag $VersionTag --unreleased --prepend CHANGELOG.md
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Failed to generate CHANGELOG. Please install git-cliff" -ForegroundColor Red
-            Write-Host "Install: cargo install git-cliff or winget install git-cliff" -ForegroundColor Yellow
-            exit 1
-          }
-          $content = Get-Content CHANGELOG.md -Raw -Encoding UTF8
-          $content = $content -replace "## \[$VersionTag\]", "## [$VersionTag] - $Today"
-          Set-Content CHANGELOG.md $content -NoNewline -Encoding UTF8
-          Write-Host "CHANGELOG.md updated" -ForegroundColor Green
+          git cliff --tag {{.VERSION}} --unreleased --prepend CHANGELOG.md
           git add CHANGELOG.md
-          git commit -m "Update CHANGELOG for $VersionTag"
+          git commit --allow-empty -m "chore: update CHANGELOG for {{.VERSION}}"
           git push
-          $ReleaseTitle = if ("{{.TITLE}}") { "{{.TITLE}}" } else { $VersionTag }
-          Write-Host "Creating GitHub Release..." -ForegroundColor Cyan
-          if ("{{.DRAFT}}" -eq "true") {
-            gh release create $VersionTag --draft --generate-notes --title "$ReleaseTitle"
-          } else {
-            gh release create $VersionTag --generate-notes --title "$ReleaseTitle"
-          }
-          Write-Host ""
-          Write-Host "Done!" -ForegroundColor Green
-          Write-Host "Now build and upload artifacts:" -ForegroundColor Yellow
-          Write-Host "  gh release upload $VersionTag ./bin/*" -ForegroundColor White
+          gh release create {{.VERSION}} --draft --generate-notes --title "{{.VERSION}}"
+          gh release upload {{.VERSION}} ./bin/*
+          gh release edit {{.VERSION}} --draft=false
         platforms: [windows]
-        requires:
-          vars:
-            - VERSION
-      - cmd: |
-          VERSION_TAG=$(if [[ "{{.VERSION}}" == v* ]]; then echo "{{.VERSION}}"; else echo "v{{.VERSION}}"; fi)
-          TODAY=$(date +"%Y-%m-%d")
-          echo "Preparing release $VERSION_TAG ..."
-          git cliff --tag "$VERSION_TAG" --unreleased --prepend CHANGELOG.md
-          if [ $? -ne 0 ]; then
-            echo "Failed to generate CHANGELOG. Please install git-cliff"
-            echo "Install: cargo install git-cliff"
-            exit 1
-          fi
-          sed -i "s/## \[$VERSION_TAG\]/## [$VERSION_TAG] - $TODAY/g" CHANGELOG.md
-          echo "CHANGELOG.md updated"
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG for $VERSION_TAG"
-          git push
-          RELEASE_TITLE=$(if [ -n "{{.TITLE}}" ]; then echo "{{.TITLE}}"; else echo "$VERSION_TAG"; fi)
-          echo "Creating GitHub Release..."
-          if [ "{{.DRAFT}}" = "true" ]; then
-            gh release create "$VERSION_TAG" --draft --generate-notes --title "$RELEASE_TITLE"
-          else
-            gh release create "$VERSION_TAG" --generate-notes --title "$RELEASE_TITLE"
-          fi
-          echo ""
-          echo "Done!"
-          echo "Now build and upload artifacts:"
-          echo "  gh release upload $VERSION_TAG ./bin/*"
-        platforms: [linux, darwin]
-        requires:
-          vars:
-            - VERSION
+    requires:
+      vars:
+        - VERSION

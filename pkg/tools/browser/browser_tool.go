@@ -65,7 +65,17 @@ func NewBrowserTool() *BrowserTool {
 - 根据返回的提示，使用新的start值继续获取：{"action":"html","start":50000}
 - 这样可以完整获取任意大小的页面内容，不会丢失数据
 - 所有操作都会返回元素信息，帮助大模型理解页面结构`
-	tool.Desc_ = "Browser automation tool (Playwright). Actions: open(url), click(selector), fill(selector,text), text(selector), html(), screenshot(path), wait(selector), close(). IMPORTANT: After each operation (open, click, fill, wait, screenshot), the tool automatically returns complete information about all interactive elements on the page (inputs, buttons, links, etc.) with ALL available selectors (id, name, class, xpath, data-*) and attributes. Use this information to choose the most reliable selector for your next action. Do NOT guess selectors - analyze the returned element data first."
+	tool.Desc_ = `Browser automation tool (Playwright). Actions: open(url), click(selector), fill(selector,text), text(selector), html(), screenshot(path), wait(selector), close(), list_tabs(), run_task().
+
+After each operation (open, click, fill, wait), the tool returns a compact list of interactive elements on the page, prioritized by relevance: form inputs > buttons > links. Invisible elements and empty links are filtered out. By default, up to 30 elements are returned.
+
+Parameters for controlling element collection:
+- include_elements: set to false to skip element collection (saves tokens when not needed)
+- max_elements: maximum number of elements to return (default: 30, max: 100)
+- element_types: comma-separated filter, e.g. "input,button,select" to only show form elements
+- search_elements: keyword to filter elements by text, placeholder, value, href, selector, etc. Case-insensitive. Useful for finding specific elements on complex pages.
+
+The browser auto-restarts if it was closed or crashed. Use include_elements=false when you only need the action result. Use search_elements to quickly locate elements by keyword (e.g. "login", "submit", "email").`
 	tool.Params_ = map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -86,11 +96,48 @@ func NewBrowserTool() *BrowserTool {
 			"script_file":       map[string]any{"type": "string", "description": "任务脚本文件路径 (run_task action，与script二选一)"},
 			"keep_browser_open": map[string]any{"type": "boolean", "description": "任务完成后是否保持浏览器打开，默认false (run_task action)"},
 			"variables":         map[string]any{"type": "string", "description": "JSON格式的变量映射，用于替换脚本中的${var_name} (run_task action)"},
+			"include_elements":  map[string]any{"type": "boolean", "description": "是否返回页面元素信息，默认true。设为false可节省token (open/click/fill/text/wait action)"},
+			"max_elements":      map[string]any{"type": "number", "description": "最大返回元素数量，默认30，最大100 (open/click/fill/text/wait action)"},
+			"element_types":     map[string]any{"type": "string", "description": "逗号分隔的元素类型过滤，如\"input,button,select\"只返回表单元素 (open/click/fill/text/wait action)"},
+			"search_elements":   map[string]any{"type": "string", "description": "关键词搜索元素，匹配text/placeholder/value/href/selector等，不区分大小写 (open/click/fill/text/wait action)"},
 		},
 		"required": []string{"action"},
 	}
 	tool.ExecFunc = tool.execute
 	return tool
+}
+
+type elementCollectOptions struct {
+	includeElements bool
+	maxElements     int
+	elementTypes    string
+	searchKeyword   string
+}
+
+func (t *BrowserTool) parseElementOptions(params map[string]string) elementCollectOptions {
+	opts := elementCollectOptions{
+		includeElements: true,
+		maxElements:     30,
+		elementTypes:    "",
+	}
+	if v, ok := params["include_elements"]; ok {
+		opts.includeElements = v != "false"
+	}
+	if v, ok := params["max_elements"]; ok {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			if n > 100 {
+				n = 100
+			}
+			opts.maxElements = n
+		}
+	}
+	if v, ok := params["element_types"]; ok {
+		opts.elementTypes = v
+	}
+	if v, ok := params["search_elements"]; ok {
+		opts.searchKeyword = strings.TrimSpace(v)
+	}
+	return opts
 }
 
 func (t *BrowserTool) execute(ctx context.Context, params map[string]string) *types.ToolResult {
@@ -99,9 +146,9 @@ func (t *BrowserTool) execute(ctx context.Context, params map[string]string) *ty
 		return types.NewToolResult().WithError(fmt.Errorf("action required"))
 	}
 
-	if !t.initialized && action != "close" {
-		if err := t.init(); err != nil {
-			return types.NewToolResult().WithError(err)
+	if action != "close" {
+		if err := t.ensureBrowserReady(); err != nil {
+			return types.NewToolResult().WithError(fmt.Errorf("浏览器启动失败: %w", err))
 		}
 	}
 
@@ -379,28 +426,19 @@ func (t *BrowserTool) init() error {
 
 func element2ActionElement(element ElementInfo) actiontypes.ElementInfo {
 	return actiontypes.ElementInfo{
-		Tag:      element.Tag,
-		Visible:  element.Visible,
-		Enabled:  element.Enabled,
-		Editable: element.Editable,
-
-		IDSelector:    element.IDSelector,
-		NameSelector:  element.NameSelector,
-		ClassSelector: element.ClassSelector,
-		XPathSelector: element.XPathSelector,
-		DataSelectors: element.DataSelectors,
-
-		Type:        element.Type,
-		Name:        element.Name,
-		Placeholder: element.Placeholder,
-		Value:       element.Value,
-		Text:        element.Text,
-		Href:        element.Href,
-		ARIALabel:   element.ARIALabel,
-
-		ReadOnly: element.ReadOnly,
-		Required: element.Required,
-		Checked:  element.Checked,
+		Tag:            element.Tag,
+		Enabled:        element.Enabled,
+		Editable:       element.Editable,
+		Selector:       element.Selector,
+		SelectorUnique: element.SelectorUnique,
+		Type:           element.Type,
+		Placeholder:    element.Placeholder,
+		Value:          element.Value,
+		Text:           element.Text,
+		Href:           element.Href,
+		ReadOnly:       element.ReadOnly,
+		Required:       element.Required,
+		Checked:        element.Checked,
 	}
 }
 
@@ -422,7 +460,13 @@ func (t *BrowserTool) open(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(err)
 	}
 
-	elements := t.collectElements()
+	opts := t.parseElementOptions(params)
+	if !opts.includeElements {
+		return types.NewToolResult().WithRaw("Opened: " + url).WithStructured(
+			actiontypes.NewBrowserOpenData(url, nil))
+	}
+
+	elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
 	result := "Opened: " + url
 	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
 		actiontypes.NewBrowserOpenData(url, elements2ActionElements(elements)))
@@ -489,11 +533,15 @@ func (t *BrowserTool) click(params map[string]string) *types.ToolResult {
 
 	result := "Clicked: " + selector
 
-	// 等待可能的导航或页面更新
 	time.Sleep(500 * time.Millisecond)
 
-	elements := t.collectElements()
-	// return t.appendElementInfo(result)
+	opts := t.parseElementOptions(params)
+	if !opts.includeElements {
+		return types.NewToolResult().WithRaw(result).WithStructured(
+			actiontypes.NewBrowserClickData(nil))
+	}
+
+	elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
 	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
 		actiontypes.NewBrowserClickData(elements2ActionElements(elements)))
 }
@@ -509,9 +557,15 @@ func (t *BrowserTool) fill(params map[string]string) *types.ToolResult {
 		return types.NewToolResult().WithError(err)
 	}
 
-	elements := t.collectElements()
-
 	result := fmt.Sprintf("Filled: %s with '%s'", selector, text)
+
+	opts := t.parseElementOptions(params)
+	if !opts.includeElements {
+		return types.NewToolResult().WithRaw(result).WithStructured(
+			actiontypes.NewBrowserFillData(nil))
+	}
+
+	elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
 	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
 		actiontypes.NewBrowserFillData(elements2ActionElements(elements)))
 }
@@ -525,8 +579,15 @@ func (t *BrowserTool) getText(params map[string]string) *types.ToolResult {
 	if err != nil {
 		return types.NewToolResult().WithError(err)
 	}
-	elements := t.collectElements()
-	return types.NewToolResult().WithRaw(text).WithStructured(
+
+	opts := t.parseElementOptions(params)
+	if !opts.includeElements {
+		return types.NewToolResult().WithRaw(text).WithStructured(
+			actiontypes.NewBrowserTextData(nil))
+	}
+
+	elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
+	return types.NewToolResult().WithRaw(t.appendElementInfo(text, elements)).WithStructured(
 		actiontypes.NewBrowserTextData(elements2ActionElements(elements)))
 }
 
@@ -633,18 +694,10 @@ func (t *BrowserTool) getHTML(params map[string]string) *types.ToolResult {
 	}
 
 	tr := types.NewToolResult()
-	// 如果是HTML格式，添加元素信息摘要（只在第一次获取时）
-	if format != "text" && start == 0 {
-		result.WriteString("\n\n--- 元素摘要 ---\n")
-		elements := t.collectElements()
-		for _, el := range elements {
-			elStr, err := json.MarshalIndent(el, "", "  ")
-			if err != nil {
-				continue
-			}
-			result.WriteString(string(elStr))
-			result.WriteString("\n")
-		}
+	opts := t.parseElementOptions(params)
+	if format != "text" && start == 0 && opts.includeElements {
+		elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
+		result.WriteString(t.appendElementInfo("", elements))
 	}
 	c := result.String()
 	tr.WithRaw(c)
@@ -666,7 +719,13 @@ func (t *BrowserTool) wait(params map[string]string) *types.ToolResult {
 
 	result := "Waited for: " + selector
 
-	elements := t.collectElements()
+	opts := t.parseElementOptions(params)
+	if !opts.includeElements {
+		return types.NewToolResult().WithRaw(result).WithStructured(
+			actiontypes.NewBrowserClickData(nil))
+	}
+
+	elements := t.collectElementsWithOptions(opts.maxElements, opts.elementTypes, opts.searchKeyword)
 	return types.NewToolResult().WithRaw(t.appendElementInfo(result, elements)).WithStructured(
 		actiontypes.NewBrowserClickData(elements2ActionElements(elements)))
 }
@@ -716,37 +775,36 @@ func (t *BrowserTool) listTabs() *types.ToolResult {
 
 // ElementInfo 包含元素的所有选择器和属性信息
 type ElementInfo struct {
-	// 基本信息
 	Tag      string `json:"tag"`
-	Visible  bool   `json:"visible"`
 	Enabled  bool   `json:"enabled"`
 	Editable bool   `json:"editable"`
 
-	// 各种选择器
-	IDSelector    string            `json:"id_selector,omitempty"`
-	NameSelector  string            `json:"name_selector,omitempty"`
-	ClassSelector string            `json:"class_selector,omitempty"`
-	XPathSelector string            `json:"xpath_selector,omitempty"`
-	DataSelectors map[string]string `json:"data_selectors,omitempty"` // data-testid, data-test-id等
+	Selector       string `json:"selector"`
+	SelectorUnique bool   `json:"selector_unique"`
 
-	// 元素属性
 	Type        string `json:"type,omitempty"`
-	Name        string `json:"name,omitempty"`
 	Placeholder string `json:"placeholder,omitempty"`
 	Value       string `json:"value,omitempty"`
 	Text        string `json:"text,omitempty"`
 	Href        string `json:"href,omitempty"`
-	ARIALabel   string `json:"aria_label,omitempty"`
 
-	// 表单特定属性
 	ReadOnly bool `json:"readonly,omitempty"`
 	Required bool `json:"required,omitempty"`
 	Checked  bool `json:"checked,omitempty"`
+
+	Priority int `json:"-"`
 }
 
-// collectElements 收集页面上所有可交互元素的完整信息
-// 不做任何过滤、排序或优先级判断，返回所有可用信息供LLM分析
+// collectElements 收集页面上可交互元素的信息
+// 智能过滤：过滤不可见元素、限制链接数量、按优先级排序
 func (t *BrowserTool) collectElements() []ElementInfo {
+	return t.collectElementsWithOptions(30, "")
+}
+
+// collectElementsWithOptions 带选项的元素收集
+// maxElements: 最大返回元素数量
+// elementTypes: 逗号分隔的元素类型过滤，如 "input,button,select"，空字符串表示所有类型
+func (t *BrowserTool) collectElementsWithOptions(maxElements int, elementTypes string, searchKeyword ...string) []ElementInfo {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -754,97 +812,144 @@ func (t *BrowserTool) collectElements() []ElementInfo {
 		return nil
 	}
 
-	// 使用单一查询获取所有可交互元素
 	selector := "input, textarea, select, button, a[href], [role='button'], [onclick], [tabindex]"
 
-	// 使用JavaScript获取所有元素信息
 	result, err := t.page.EvalOnSelectorAll(selector, `
 		(elements) => {
-			return elements.map((el, index) => {
-				// 检查元素是否可见
+			const getPriority = (el) => {
+				const tag = el.tagName ? el.tagName.toLowerCase() : '';
+				if (tag === 'input' || tag === 'textarea' || tag === 'select') return 5;
+				if (tag === 'button' || el.getAttribute('role') === 'button') return 4;
+				if (tag === 'select') return 3;
+				if (el.hasAttribute('onclick')) return 3;
+				if (tag === 'a') return 1;
+				return 2;
+			};
+
+			const isUniqueSelector = (sel) => {
+				try {
+					return document.querySelectorAll(sel).length === 1;
+				} catch(e) {
+					return false;
+				}
+			};
+
+			const getUniqueSelector = (el) => {
+				if (el.id && el.id !== '' && !el.id.match(/^[0-9]/)) {
+					const sel = '#' + CSS.escape(el.id);
+					if (isUniqueSelector(sel)) return sel;
+				}
+				for (let attr of ['data-testid', 'data-test-id', 'data-cy', 'data-test']) {
+					const val = el.getAttribute(attr);
+					if (val) {
+						const sel = '[' + attr + '="' + CSS.escape(val) + '"]';
+						if (isUniqueSelector(sel)) return sel;
+					}
+				}
+				if (el.name && el.name !== '') {
+					const sel = '[name="' + CSS.escape(el.name) + '"]';
+					if (isUniqueSelector(sel)) return sel;
+				}
+				const ariaLabel = el.getAttribute('aria-label');
+				if (ariaLabel) {
+					const sel = '[aria-label="' + CSS.escape(ariaLabel) + '"]';
+					if (isUniqueSelector(sel)) return sel;
+				}
+				if (el.getAttribute('role')) {
+					const role = el.getAttribute('role');
+					const sel = el.tagName.toLowerCase() + '[role="' + CSS.escape(role) + '"]';
+					if (isUniqueSelector(sel)) return sel;
+				}
+				if (el.placeholder) {
+					const sel = el.tagName.toLowerCase() + '[placeholder="' + CSS.escape(el.placeholder) + '"]';
+					if (isUniqueSelector(sel)) return sel;
+				}
+				if (el.className && typeof el.className === 'string') {
+					const classes = el.className.split(/\\s+/).filter(c =>
+						c && !c.match(/^(css-|_|[a-f0-9]{6,})/i) && !c.includes(':')
+					);
+					for (const cls of classes) {
+						const sel = el.tagName.toLowerCase() + '.' + CSS.escape(cls);
+						if (isUniqueSelector(sel)) return sel;
+					}
+				}
+				if (el.type) {
+					const sel = el.tagName.toLowerCase() + '[type="' + CSS.escape(el.type) + '"]';
+					if (isUniqueSelector(sel)) return sel;
+				}
+				const text = (el.textContent || '').trim();
+				if (text && text.length <= 50 && el.tagName) {
+					const tag = el.tagName.toLowerCase();
+					const candidates = Array.from(document.querySelectorAll(tag))
+						.filter(e => (e.textContent || '').trim() === text);
+					if (candidates.length === 1) {
+						return tag + ':text("' + text.substring(0, 30) + '")';
+					}
+				}
+				return '';
+			};
+
+			const getXPath = (element) => {
+				if (element.id && element.id !== '') {
+					return '//*[@id="' + element.id + '"]';
+				}
+				if (element === document.body) {
+					return element.tagName.toLowerCase();
+				}
+				try {
+					const ix = Array.from(element.parentNode.children)
+						.filter(child => child.tagName === element.tagName)
+						.indexOf(element) + 1;
+					return getXPath(element.parentNode) + '/' +
+						element.tagName.toLowerCase() + '[' + ix + ']';
+				} catch(e) {
+					return '';
+				}
+			};
+
+			const items = [];
+			for (const el of elements) {
 				const rect = el.getBoundingClientRect();
 				const visible = rect.width > 0 && rect.height > 0 &&
 					window.getComputedStyle(el).display !== 'none' &&
 					window.getComputedStyle(el).visibility !== 'hidden' &&
 					el.offsetParent !== null;
 
-				// 检查元素是否可用
-				const enabled = !el.disabled && !el.hasAttribute('disabled');
+				if (!visible) continue;
 
-				// 检查元素是否可编辑
+				const tag = el.tagName ? el.tagName.toLowerCase() : '';
+				const textContent = (el.textContent && typeof el.textContent === 'string')
+					? el.textContent.trim().substring(0, 50)
+					: '';
+
+				if (tag === 'a' && textContent.length < 2) continue;
+
+				const enabled = !el.disabled && !el.hasAttribute('disabled');
 				const editable = !el.readOnly && !el.hasAttribute('readonly');
 
-				// 获取所有data-*属性
-				const dataAttrs = {};
-				for (let attr of el.attributes || []) {
-					if (attr.name && attr.name.startsWith('data-')) {
-						dataAttrs[attr.name] = attr.value || '';
-					}
-				}
+				const bestSelector = getUniqueSelector(el);
+				const fallbackSelector = bestSelector === '' ? getXPath(el) : '';
 
-				// 构建XPath
-				const getXPath = (element) => {
-					if (element.id && element.id !== '') {
-						return '//*[@id="' + element.id + '"]';
-					}
-					if (element === document.body) {
-						return element.tagName.toLowerCase();
-					}
-
-					const ix = Array.from(element.parentNode.children)
-						.filter(child => child.tagName === element.tagName)
-						.indexOf(element) + 1;
-
-					return getXPath(element.parentNode) + '/' +
-						element.tagName.toLowerCase() + '[' + ix + ']';
-				};
-
-				// 获取class选择器（取第一个非动态类名）
-				let classSelector = '';
-				if (el.className && typeof el.className === 'string') {
-					const classes = el.className.split(/\s+/).filter(c =>
-						c && !c.match(/^(css-|_|[a-f0-9]{6,})/i) && !c.includes(':')
-					);
-					if (classes.length > 0) {
-						classSelector = el.tagName.toLowerCase() + '.' + classes[0];
-					}
-				}
-
-				// 获取文本内容（限制长度）
-				let textContent = '';
-				if (el.textContent && typeof el.textContent === 'string') {
-					textContent = el.textContent.trim().substring(0, 100);
-					if (el.textContent.length > 100) {
-						textContent += '...';
-					}
-				}
-
-				// 获取aria-label
-				const ariaLabel = el.getAttribute && el.getAttribute('aria-label') ?
-					el.getAttribute('aria-label') : '';
-
-				return {
-					tag: el.tagName ? el.tagName.toLowerCase() : '',
-					visible: visible,
+				items.push({
+					priority: getPriority(el),
+					tag: tag,
 					enabled: enabled,
 					editable: editable,
-					id_selector: el.id && el.id !== '' ? '#' + el.id : '',
-					name_selector: el.name && el.name !== '' ? '[name="' + el.name + '"]' : '',
-					class_selector: classSelector,
-					xpath_selector: getXPath(el),
-					data_selectors: dataAttrs,
+					selector: bestSelector || fallbackSelector,
+					selector_unique: bestSelector !== '',
 					type: el.type || '',
-					name: el.name || '',
 					placeholder: el.placeholder || '',
-					value: el.value || '',
+					value: (el.value && tag !== 'a') ? el.value.substring(0, 50) : '',
 					text: textContent,
-					href: el.href || '',
-					aria_label: ariaLabel,
+					href: tag === 'a' ? (el.href || '') : '',
 					readonly: !!el.readOnly,
 					required: !!el.required,
 					checked: !!el.checked
-				};
-			});
+				});
+			}
+
+			items.sort((a, b) => b.priority - a.priority);
+			return items;
 		}
 	`)
 
@@ -852,52 +957,93 @@ func (t *BrowserTool) collectElements() []ElementInfo {
 		return nil
 	}
 
-	// 解析结果
-	var elements []ElementInfo
+	var allElements []ElementInfo
 	if dataArray, ok := result.([]interface{}); ok {
 		for _, item := range dataArray {
 			if dataMap, ok := item.(map[string]interface{}); ok {
 				info := ElementInfo{
-					Tag:           getString(dataMap, "tag"),
-					Visible:       getBool(dataMap, "visible"),
-					Enabled:       getBool(dataMap, "enabled"),
-					Editable:      getBool(dataMap, "editable"),
-					IDSelector:    getString(dataMap, "id_selector"),
-					NameSelector:  getString(dataMap, "name_selector"),
-					ClassSelector: getString(dataMap, "class_selector"),
-					XPathSelector: getString(dataMap, "xpath_selector"),
-					DataSelectors: make(map[string]string),
-					Type:          getString(dataMap, "type"),
-					Name:          getString(dataMap, "name"),
-					Placeholder:   getString(dataMap, "placeholder"),
-					Value:         getString(dataMap, "value"),
-					Text:          getString(dataMap, "text"),
-					Href:          getString(dataMap, "href"),
-					ARIALabel:     getString(dataMap, "aria_label"),
-					ReadOnly:      getBool(dataMap, "readonly"),
-					Required:      getBool(dataMap, "required"),
-					Checked:       getBool(dataMap, "checked"),
+					Tag:            getString(dataMap, "tag"),
+					Enabled:        getBool(dataMap, "enabled"),
+					Editable:       getBool(dataMap, "editable"),
+					Selector:       getString(dataMap, "selector"),
+					SelectorUnique: getBool(dataMap, "selector_unique"),
+					Type:           getString(dataMap, "type"),
+					Placeholder:    getString(dataMap, "placeholder"),
+					Value:          getString(dataMap, "value"),
+					Text:           getString(dataMap, "text"),
+					Href:           getString(dataMap, "href"),
+					ReadOnly:       getBool(dataMap, "readonly"),
+					Required:       getBool(dataMap, "required"),
+					Checked:        getBool(dataMap, "checked"),
+					Priority:       getInt(dataMap, "priority"),
 				}
 
-				// 处理data_selectors
-				if dataSel, ok := dataMap["data_selectors"].(map[string]interface{}); ok {
-					for k, v := range dataSel {
-						if vs, ok := v.(string); ok {
-							info.DataSelectors[k] = vs
-						}
-					}
-				}
-
-				elements = append(elements, info)
+				allElements = append(allElements, info)
 			}
 		}
 	}
 
-	if len(elements) == 0 {
+	if len(allElements) == 0 {
 		return nil
 	}
 
-	return elements
+	filtered := filterElementsByTypes(allElements, elementTypes)
+
+	var kw string
+	if len(searchKeyword) > 0 {
+		kw = searchKeyword[0]
+	}
+	filtered = filterElementsByKeyword(filtered, kw)
+
+	if len(filtered) > maxElements {
+		filtered = filtered[:maxElements]
+	}
+
+	return filtered
+}
+
+// filterElementsByTypes 按元素类型过滤
+func filterElementsByTypes(elements []ElementInfo, elementTypes string) []ElementInfo {
+	if elementTypes == "" {
+		return elements
+	}
+
+	types := strings.Split(strings.ToLower(elementTypes), ",")
+	typeSet := make(map[string]bool, len(types))
+	for _, t := range types {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			typeSet[t] = true
+		}
+	}
+
+	var filtered []ElementInfo
+	for _, el := range elements {
+		if typeSet[el.Tag] {
+			filtered = append(filtered, el)
+		}
+	}
+	return filtered
+}
+
+func filterElementsByKeyword(elements []ElementInfo, keyword string) []ElementInfo {
+	if keyword == "" {
+		return elements
+	}
+	kw := strings.ToLower(keyword)
+	var filtered []ElementInfo
+	for _, el := range elements {
+		if strings.Contains(strings.ToLower(el.Text), kw) ||
+			strings.Contains(strings.ToLower(el.Placeholder), kw) ||
+			strings.Contains(strings.ToLower(el.Value), kw) ||
+			strings.Contains(strings.ToLower(el.Href), kw) ||
+			strings.Contains(strings.ToLower(el.Type), kw) ||
+			strings.Contains(strings.ToLower(el.Selector), kw) ||
+			strings.Contains(strings.ToLower(el.Tag), kw) {
+			filtered = append(filtered, el)
+		}
+	}
+	return filtered
 }
 
 // getString 从map中安全获取字符串值
@@ -920,28 +1066,106 @@ func getBool(m map[string]interface{}, key string) bool {
 	return false
 }
 
-// appendElementInfo 在操作结果后附加元素信息
+// getInt 从map中安全获取整数值
+func getInt(m map[string]interface{}, key string) int {
+	if val, ok := m[key]; ok {
+		switch v := val.(type) {
+		case float64:
+			return int(v)
+		case int:
+			return v
+		}
+	}
+	return 0
+}
+
+// appendElementInfo 在操作结果后附加元素信息（紧凑格式）
 func (t *BrowserTool) appendElementInfo(baseResult string, elements []ElementInfo) string {
 	var result strings.Builder
 	result.WriteString(baseResult)
 
-	result.WriteString(fmt.Sprintf("Page Elements (%d found):\n", len(elements)))
-	for _, el := range elements {
-		eleStr, err := json.MarshalIndent(el, "", "  ")
-		if err != nil {
-			continue
+	result.WriteString(fmt.Sprintf("\n[Elements: %d]\n", len(elements)))
+	for i, el := range elements {
+		parts := []string{fmt.Sprintf("%d.%s", i+1, el.Tag)}
+
+		if el.Selector != "" {
+			if el.SelectorUnique {
+				parts = append(parts, el.Selector)
+			} else {
+				parts = append(parts, el.Selector+"(xpath)")
+			}
 		}
-		result.WriteString(fmt.Sprintf("%s\n", string(eleStr)))
+		if el.Type != "" {
+			parts = append(parts, fmt.Sprintf("type=%s", el.Type))
+		}
+		if !el.Enabled {
+			parts = append(parts, "disabled")
+		}
+		if el.Editable && (el.Tag == "input" || el.Tag == "textarea") {
+			parts = append(parts, "editable")
+		}
+		if el.Placeholder != "" {
+			parts = append(parts, fmt.Sprintf("placeholder=%q", truncateStr(el.Placeholder, 30)))
+		}
+		if el.Text != "" && el.Tag != "input" && el.Tag != "textarea" {
+			parts = append(parts, fmt.Sprintf("text=%q", truncateStr(el.Text, 30)))
+		}
+		if el.Href != "" {
+			parts = append(parts, fmt.Sprintf("href=%q", truncateStr(el.Href, 60)))
+		}
+		if el.Value != "" && (el.Tag == "input" || el.Tag == "textarea") {
+			parts = append(parts, fmt.Sprintf("value=%q", truncateStr(el.Value, 30)))
+		}
+		if el.Required {
+			parts = append(parts, "required")
+		}
+		if el.Checked {
+			parts = append(parts, "checked")
+		}
+
+		result.WriteString(strings.Join(parts, " "))
+		result.WriteString("\n")
 	}
+
 	return result.String()
 }
 
-// ensureInitialized 确保浏览器已初始化（供 TaskEngine 使用）
-func (t *BrowserTool) ensureInitialized() error {
-	if !t.initialized {
+// truncateStr 截断字符串
+func truncateStr(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+// ensureBrowserReady 确保浏览器已初始化且可用（供 TaskEngine 和 execute 使用）
+// 如果浏览器已断开连接，会自动清理并重新初始化
+func (t *BrowserTool) ensureBrowserReady() error {
+	if !t.initialized || t.page == nil || t.context == nil {
+		return t.init()
+	}
+	if t.browser != nil && !t.browser.IsConnected() {
+		t.cleanup()
 		return t.init()
 	}
 	return nil
+}
+
+func (t *BrowserTool) cleanup() {
+	if t.page != nil {
+		t.page.Close()
+		t.page = nil
+	}
+	if t.context != nil {
+		t.context.Close()
+		t.context = nil
+	}
+	t.browser = nil
+	if t.pw != nil {
+		t.pw.Stop()
+		t.pw = nil
+	}
+	t.initialized = false
 }
 
 // runTask 执行任务脚本

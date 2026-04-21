@@ -117,7 +117,7 @@ func (e *TaskEngine) Execute(script *TaskScript) *TaskResult {
 		e.result.Duration = time.Since(e.startAt).String()
 	}()
 
-	if err := e.tool.ensureInitialized(); err != nil {
+	if err := e.tool.ensureBrowserReady(); err != nil {
 		e.result.Error = "初始化浏览器失败: " + err.Error()
 		return e.result
 	}

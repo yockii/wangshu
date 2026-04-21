@@ -405,7 +405,7 @@ func TestBrowserTool_CollectElements(t *testing.T) {
 
 	// 验证包含预期的元素信息
 	expectedInfo := []string{
-		"Page Elements",
+		"selector",
 		"username",
 		"password",
 		"submitBtn",
@@ -425,11 +425,9 @@ func TestBrowserTool_CollectElements(t *testing.T) {
 	}
 
 	// 验证包含选择器信息
-	// 注意：class_selector只在元素有class时才返回
 	expectedSelectors := []string{
-		"id_selector",
-		"name_selector",
-		"xpath_selector",
+		"selector",
+		"selector_unique",
 	}
 
 	for _, selector := range expectedSelectors {
@@ -438,14 +436,8 @@ func TestBrowserTool_CollectElements(t *testing.T) {
 		}
 	}
 
-	// 验证包含data选择器（link1有data-testid）
-	if !strings.Contains(elListStr, "data_selectors") {
-		t.Error("Element information should contain data_selectors for elements with data attributes")
-	}
-
 	// 验证包含属性信息
 	expectedAttributes := []string{
-		"visible",
 		"enabled",
 		"editable",
 		"type",
@@ -502,7 +494,7 @@ func TestBrowserTool_Open_WithElements(t *testing.T) {
 	}
 
 	// 验证返回包含元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Result should contain element information, got: %s", result.Raw)
 	}
 
@@ -558,7 +550,7 @@ func TestBrowserTool_Fill_WithElements(t *testing.T) {
 	}
 
 	// 验证返回包含元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Result should contain element information after fill, got: %s", result.Raw)
 	}
 
@@ -615,7 +607,7 @@ func TestBrowserTool_Click_WithElements(t *testing.T) {
 	}
 
 	// 验证返回包含元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Result should contain element information after click, got: %s", result.Raw)
 	}
 
@@ -668,7 +660,7 @@ func TestBrowserTool_Wait_WithElements(t *testing.T) {
 	}
 
 	// 验证返回包含元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Result should contain element information after wait, got: %s", result.Raw)
 	}
 
@@ -752,9 +744,7 @@ func TestBrowserTool_ElementInfoStructure(t *testing.T) {
 	// 验证特殊属性
 	expectedAttributes := []string{
 		`"required": true`,
-		`"enabled": false`, // disabled按钮显示为enabled: false
-		`"aria_label": "Go to page 2"`,
-		`"data-test-id": "page1-link"`, // 在data_selectors中
+		`"enabled": false`,
 		`"placeholder": "Text input"`,
 	}
 
@@ -764,18 +754,15 @@ func TestBrowserTool_ElementInfoStructure(t *testing.T) {
 		}
 	}
 
-	// 验证选择器多样性
-	expectedSelectors := []string{
-		`"id_selector": "#text1"`,
-		`"name_selector": "[name=\"textfield\"]"`,
-		`"data_selectors":`,
-		`"xpath_selector":`,
+	// 验证选择器存在且唯一性标记
+	if !strings.Contains(elStr, `"selector"`) {
+		t.Error("Should contain selector field")
 	}
-
-	for _, selector := range expectedSelectors {
-		if !strings.Contains(elStr, selector) {
-			t.Errorf("Should contain selector '%s'", selector)
-		}
+	if !strings.Contains(elStr, `"selector_unique"`) {
+		t.Error("Should contain selector_unique field")
+	}
+	if !strings.Contains(elStr, `"selector_unique": true`) {
+		t.Error("Should have at least one element with unique selector")
 	}
 
 	t.Logf("Full element info:\n%s", elStr)
@@ -858,7 +845,7 @@ func TestBrowserTool_Screenshot_WithElements(t *testing.T) {
 	}
 
 	// 验证返回包含元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Result should contain element information after screenshot, got: %s", result.Raw)
 	}
 
@@ -905,7 +892,7 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	}
 
 	// 验证返回了元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Expected element information in result, got: %s", result.Raw)
 	}
 
@@ -927,7 +914,7 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	}
 
 	// 验证元素信息仍然被返回
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Expected element information after fill, got: %s", result.Raw)
 	}
 
@@ -1043,7 +1030,7 @@ func TestBrowserTool_RealHTMLFile(t *testing.T) {
 	t.Logf("Wait result:\n%s", result.Raw)
 
 	// 验证最后一次操作后仍然返回元素信息
-	if !strings.Contains(result.Raw, "Page Elements") {
+	if !strings.Contains(result.Raw, "[Elements:") {
 		t.Errorf("Expected element information after wait operation, got: %s", result.Raw)
 	}
 }
@@ -1103,11 +1090,8 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 
 	// 验证选择器类型
 	expectedSelectors := []string{
-		"id_selector",
-		"name_selector",
-		"class_selector",
-		"xpath_selector",
-		"data_selectors", // data-testid在data_selectors中
+		"selector",
+		"selector_unique",
 	}
 
 	for _, selector := range expectedSelectors {
@@ -1124,7 +1108,6 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 		`"type": "email"`,
 		`"type": "password"`,
 		`"required": true`,
-		`"aria_label": "前往页面3"`,
 	}
 
 	for _, attr := range expectedAttributes {
@@ -1133,11 +1116,11 @@ func TestBrowserTool_RealHTMLFile_ElementValidation(t *testing.T) {
 		}
 	}
 
-	// 验证data-testid属性被收集（在data_selectors对象中）
+	// 验证data-testid属性被收集到selector中
 	if !strings.Contains(result.Raw, "username-input") ||
 		!strings.Contains(result.Raw, "email-input") ||
 		!strings.Contains(result.Raw, "submit-button") {
-		t.Error("Expected data-testid attributes to be collected")
+		t.Error("Expected data-testid attributes to be collected in selector")
 	}
 
 	t.Logf("Full result:\n%s", result.Raw)

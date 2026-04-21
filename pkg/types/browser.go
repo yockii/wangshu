@@ -56,29 +56,19 @@ func NewBrowserHTMLData(format string, start int, max_length int, content string
 }
 
 type ElementInfo struct {
-	// 基本信息
 	Tag      string `json:"tag"`
-	Visible  bool   `json:"visible"`
 	Enabled  bool   `json:"enabled"`
 	Editable bool   `json:"editable"`
 
-	// 各种选择器
-	IDSelector    string            `json:"id_selector,omitempty"`
-	NameSelector  string            `json:"name_selector,omitempty"`
-	ClassSelector string            `json:"class_selector,omitempty"`
-	XPathSelector string            `json:"xpath_selector,omitempty"`
-	DataSelectors map[string]string `json:"data_selectors,omitempty"` // data-testid, data-test-id等
+	Selector       string `json:"selector"`
+	SelectorUnique bool   `json:"selector_unique"`
 
-	// 元素属性
 	Type        string `json:"type,omitempty"`
-	Name        string `json:"name,omitempty"`
 	Placeholder string `json:"placeholder,omitempty"`
 	Value       string `json:"value,omitempty"`
 	Text        string `json:"text,omitempty"`
 	Href        string `json:"href,omitempty"`
-	ARIALabel   string `json:"aria_label,omitempty"`
 
-	// 表单特定属性
 	ReadOnly bool `json:"readonly,omitempty"`
 	Required bool `json:"required,omitempty"`
 	Checked  bool `json:"checked,omitempty"`
@@ -115,9 +105,6 @@ type BrowserRunTaskData struct {
 }
 
 func NewBrowserRunTaskData(result map[string]any) *ActionOutput {
-	return NewActionOutput("success", "run task success", BrowserRunTaskData{
-		Result: result,
-	}, nil)
 	return NewActionOutput("success", "run task success", BrowserRunTaskData{
 		Result: result,
 	}, nil)

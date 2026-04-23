@@ -340,6 +340,11 @@ export class McpConfig {
      */
     "url"?: string;
 
+    /**
+     * 自定义HTTP请求头，用于http、sse等
+     */
+    "headers"?: { [_ in string]?: string };
+
     /** Creates a new McpConfig instance. */
     constructor($$source: Partial<McpConfig> = {}) {
         if (!("id" in $$source)) {
@@ -367,12 +372,16 @@ export class McpConfig {
     static createFrom($$source: any = {}): McpConfig {
         const $$createField3_0 = $$createType3;
         const $$createField4_0 = $$createType4;
+        const $$createField8_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField3_0($$parsedSource["args"]);
         }
         if ("env" in $$parsedSource) {
             $$parsedSource["env"] = $$createField4_0($$parsedSource["env"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField8_0($$parsedSource["headers"]);
         }
         return new McpConfig($$parsedSource as Partial<McpConfig>);
     }

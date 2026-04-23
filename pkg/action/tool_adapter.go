@@ -3,6 +3,7 @@ package action
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/yockii/wangshu/pkg/constant"
 	"github.com/yockii/wangshu/pkg/tools"
@@ -37,6 +38,36 @@ func commonParamsExtract(po map[string]any) map[string]string {
 		pr[constant.ToolCallParamTaskID] = po[constant.ToolCallParamTaskID].(string)
 	}
 	return pr
+}
+
+func extractBrowserElementOptions(params map[string]any, pr map[string]string) {
+	if p, ok := params["include_elements"]; ok {
+		if b, ok := p.(bool); ok {
+			pr["include_elements"] = strconv.FormatBool(b)
+		} else if s, ok := p.(string); ok {
+			pr["include_elements"] = s
+		}
+	}
+	if p, ok := params["max_elements"]; ok {
+		switch v := p.(type) {
+		case float64:
+			pr["max_elements"] = strconv.Itoa(int(v))
+		case int:
+			pr["max_elements"] = strconv.Itoa(v)
+		case string:
+			pr["max_elements"] = v
+		}
+	}
+	if p, ok := params["element_types"]; ok {
+		if s, ok := p.(string); ok {
+			pr["element_types"] = s
+		}
+	}
+	if p, ok := params["search_elements"]; ok {
+		if s, ok := p.(string); ok {
+			pr["search_elements"] = s
+		}
+	}
 }
 
 func init() {
@@ -255,6 +286,7 @@ func init() {
 			}
 			pr["url"] = params["url"].(string)
 			pr["action"] = "open"
+			extractBrowserElementOptions(params, pr)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameBrowser, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err
@@ -272,6 +304,7 @@ func init() {
 			}
 
 			pr["action"] = "click"
+			extractBrowserElementOptions(params, pr)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameBrowser, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err
@@ -293,6 +326,7 @@ func init() {
 				pr["timeout"] = p.(string)
 			}
 			pr["action"] = "fill"
+			extractBrowserElementOptions(params, pr)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameBrowser, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err
@@ -311,6 +345,7 @@ func init() {
 				pr["max_length"] = p.(string)
 			}
 			pr["action"] = "html"
+			extractBrowserElementOptions(params, pr)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameBrowser, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err
@@ -342,6 +377,7 @@ func init() {
 			}
 
 			pr["action"] = "wait"
+			extractBrowserElementOptions(params, pr)
 			tr := tools.GetDefaultToolRegistry().Execute(ctx, constant.ToolNameBrowser, pr)
 			if tr.Err != nil {
 				return tr.Structured, tr.Err

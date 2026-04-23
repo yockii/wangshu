@@ -13,8 +13,9 @@ type McpConfig struct {
 	Env     map[string]string `json:"env"`
 	Cwd     string            `json:"cwd,omitempty"`
 	// 通信协议，默认stdio，以后可能扩展到http、sse等
-	TransportType string `json:"transport_type,omitempty"` // 通信协议，默认stdio，以后可能扩展到http、sse等
-	URL           string `json:"url,omitempty"`            // 通信地址，用于http、sse等
+	TransportType string            `json:"transport_type,omitempty"` // 通信协议，默认stdio，以后可能扩展到http、sse等
+	URL           string            `json:"url,omitempty"`            // 通信地址，用于http、sse等
+	Headers       map[string]string `json:"headers,omitempty"`        // 自定义HTTP请求头，用于http、sse等
 }
 
 func (m *McpConfig) GetID() string {

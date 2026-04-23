@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"sync"
 
@@ -42,6 +43,38 @@ func (m *McpManager) ReLoadMcpClients() error {
 			}
 
 			transport := &mcp.CommandTransport{Command: cmd}
+			sess, connectErr := client.Connect(context.Background(), transport, nil)
+			if connectErr != nil {
+				err = multierror.Append(err, connectErr)
+				continue
+			}
+			DefaultManager.sessions.Store(name, sess)
+		} else if mcpCfg.TransportType == "http" {
+			if mcpCfg.URL == "" {
+				err = multierror.Append(err, fmt.Errorf("mcp client %s: url is required for http transport", name))
+				continue
+			}
+			httpClient := newHTTPClientWithHeaders(mcpCfg.Headers)
+			transport := &mcp.StreamableClientTransport{
+				Endpoint:   mcpCfg.URL,
+				HTTPClient: httpClient,
+			}
+			sess, connectErr := client.Connect(context.Background(), transport, nil)
+			if connectErr != nil {
+				err = multierror.Append(err, connectErr)
+				continue
+			}
+			DefaultManager.sessions.Store(name, sess)
+		} else if mcpCfg.TransportType == "sse" {
+			if mcpCfg.URL == "" {
+				err = multierror.Append(err, fmt.Errorf("mcp client %s: url is required for sse transport", name))
+				continue
+			}
+			httpClient := newHTTPClientWithHeaders(mcpCfg.Headers)
+			transport := &mcp.SSEClientTransport{
+				Endpoint:   mcpCfg.URL,
+				HTTPClient: httpClient,
+			}
 			sess, connectErr := client.Connect(context.Background(), transport, nil)
 			if connectErr != nil {
 				err = multierror.Append(err, connectErr)
@@ -109,4 +142,28 @@ func (m *McpManager) CloseAll() error {
 		return true
 	})
 	return nil
+}
+
+type headerTransport struct {
+	base    http.RoundTripper
+	headers map[string]string
+}
+
+func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	for k, v := range t.headers {
+		req.Header.Set(k, v)
+	}
+	return t.base.RoundTrip(req)
+}
+
+func newHTTPClientWithHeaders(headers map[string]string) *http.Client {
+	if len(headers) == 0 {
+		return http.DefaultClient
+	}
+	return &http.Client{
+		Transport: &headerTransport{
+			base:    http.DefaultTransport,
+			headers: headers,
+		},
+	}
 }

@@ -22,10 +22,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl xz-utils pkg-config gcc libc6-dev \
     libgtk-3-dev libwebkit2gtk-4.1-dev \
     libgtk-4-dev libwebkitgtk-6.0-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g npm@latest
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
+    export NVM_DIR="$HOME/.nvm" && \
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && \
+    nvm install 22 && \
+    nvm use 22 && \
+    nvm alias default 22 && \
+    ln -s "$NVM_DIR/versions/node/$(cat $NVM_DIR/alias/default)/bin/node" /usr/local/bin/node && \
+    ln -s "$NVM_DIR/versions/node/$(cat $NVM_DIR/alias/default)/bin/npm" /usr/local/bin/npm
+
 
 # Install Zig - automatically selects correct binary for host architecture
 ARG ZIG_VERSION=0.14.0
@@ -129,6 +136,12 @@ RUN chmod +x /usr/local/bin/zcc-windows-arm64
 COPY <<'SCRIPT' /usr/local/bin/build.sh
 #!/bin/sh
 set -e
+
+# Load nvm environment if available
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    \. "$NVM_DIR/nvm.sh"
+fi
 
 OS=${1:-darwin}
 ARCH=${2:-arm64}

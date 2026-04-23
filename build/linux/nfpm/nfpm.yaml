@@ -6,7 +6,7 @@
 name: "wangshu-desktop"
 arch: ${GOARCH}
 platform: "linux"
-version: "v0.5.0-alpha.5"
+version: "v0.5.0-alpha.6"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>

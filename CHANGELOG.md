@@ -1,4 +1,32 @@
 
+## [v0.5.0-alpha.6]
+
+
+### ⚙️ Miscellaneous Tasks
+
+
+- *(docker)* 拆分 RUN 指令并更新 Node.js 安装方式
+
+update CHANGELOG for v0.5.0-alpha.5
+
+bump version to v0.5.0-alpha.6
+
+
+### 🚀 Features
+
+
+- *(mcp)* 增加Mcp的HTTP和SSE实现
+
+
+### 🚜 Refactor
+
+
+- *(Taskfile)* 简化发布任务流程
+
+- *(browser)* 重构浏览器工具元素收集逻辑并优化元素信息结构
+
+
+
 ## [v0.5.0-alpha.5]
 
 

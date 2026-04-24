@@ -1,3 +1,4 @@
+Import-Module Microsoft.PowerShell.Utility -Force
 $files = Get-ChildItem bin/*.exe, bin/wangshu-desktop-* -ErrorAction SilentlyContinue
 if ($files) {
     $files | ForEach-Object {

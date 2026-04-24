@@ -168,7 +168,7 @@ tasks:
     summary: Creates a new release with changelog
     desc: |
       Creates a new release with changelog generation and GitHub release creation.
-      Usage: task release VERSION=1.0.0 [TITLE="Release Title"] [DRAFT=true]
+      Usage: task release VERSION=0.0.1
     cmds:
       - cmd: |
           git cliff --tag {{.VERSION}} --unreleased --prepend CHANGELOG.md
